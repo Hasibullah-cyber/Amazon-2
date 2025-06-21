@@ -1,1 +1,6 @@
-{}
+{
+  "/checkout/payment/page": "app/checkout/payment/page.js",
+  "/category/[slug]/page": "app/category/[slug]/page.js",
+  "/category/[slug]/[subcategory]/page": "app/category/[slug]/[subcategory]/page.js",
+  "/page": "app/page.js"
+}
