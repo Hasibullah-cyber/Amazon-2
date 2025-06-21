@@ -304,8 +304,8 @@ const getRelatedProducts = (relatedIds: number[]) => {
   return relatedIds.map((id) => products[id as keyof typeof products]).filter(Boolean)
 }
 
-export default function ProductPage({ params }: { params: { id: string } }) {
-  const { id } = params
+export default async function ProductPage({ params }: { params: { id: string } }) {
+  const { id } = await params
   const product = products[id as keyof typeof products]
 
   if (!product) {
