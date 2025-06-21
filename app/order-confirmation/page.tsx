@@ -120,7 +120,7 @@ export default function OrderConfirmationPage() {
                       <p className="text-sm text-gray-600">{item.description || "No description"}</p>
                       <p className="text-sm">Qty: {item.quantity}</p>
                     </div>
-                    <span className="font-medium">৳{item.price}</span>
+                    <span className="font-medium">৳{(item.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
               </div>

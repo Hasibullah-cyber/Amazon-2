@@ -231,7 +231,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
               </div>
 
               <div className="border-b border-gray-200 pb-4 mb-4">
-                <div className="text-2xl amazon-price">৳{(product.price * 110).toFixed(2)}</div>
+                <div className="text-2xl amazon-price">৳{product.price.toFixed(2)}</div>
                 <div className="text-xs text-gray-500 flex items-center mt-1">
                   <span>Includes 10% VAT</span>
                   <span className="mx-1">•</span>

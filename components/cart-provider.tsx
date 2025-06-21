@@ -43,10 +43,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("cart", JSON.stringify(cartItems))
     }
 
-    // Calculate total price with VAT (10%)
+    // Calculate subtotal only (without VAT)
     const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    const totalWithVAT = subtotal * 1.1 // Adding 10% VAT
-    setTotalPrice(totalWithVAT)
+    setTotalPrice(subtotal)
   }, [cartItems])
 
   const addToCart = (item: CartItem) => {

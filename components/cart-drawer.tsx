@@ -67,9 +67,9 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                         <div>
                           <div className="flex justify-between">
                             <h3 className="text-sm font-medium text-gray-900">{item.name}</h3>
-                            <p className="ml-4 amazon-price">৳{(item.price * item.quantity * 110).toFixed(2)}</p>
+                            <p className="ml-4 amazon-price">৳{(item.price * item.quantity).toFixed(2)}</p>
                           </div>
-                          <p className="mt-1 text-xs text-gray-500">৳{(item.price * 110).toFixed(2)} each</p>
+                          <p className="mt-1 text-xs text-gray-500">৳{item.price.toFixed(2)} each</p>
                           <p className="mt-1 text-xs text-[#007600]">In Stock</p>
                         </div>
 
@@ -118,15 +118,15 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
             <div className="border-t border-gray-200 p-4 space-y-4 bg-gray-50">
               <div className="flex justify-between text-base font-medium text-gray-900">
                 <p>Subtotal ({cartItems.reduce((total, item) => total + item.quantity, 0)} items)</p>
-                <p className="amazon-price">৳{(totalPrice * 110).toFixed(2)}</p>
+                <p className="amazon-price">৳{totalPrice.toFixed(2)}</p>
               </div>
               <div className="flex justify-between text-sm text-gray-500">
                 <p>VAT (10%)</p>
-                <p>৳{(totalPrice * 10).toFixed(2)}</p>
+                <p>৳{(totalPrice * 0.1).toFixed(2)}</p>
               </div>
               <div className="flex justify-between text-base font-bold">
                 <p>Total</p>
-                <p className="amazon-price">৳{(totalPrice * 110).toFixed(2)}</p>
+                <p className="amazon-price">৳{(totalPrice * 1.1).toFixed(2)}</p>
               </div>
               <p className="text-sm text-gray-500">Shipping calculated at checkout.</p>
               <div className="grid gap-3">
