@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if API key is configured and valid
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === "your_actual_gemini_api_key_here" || GEMINI_API_KEY.length < 10) {
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === "AIzaSyBAUxGbH4WJ5g0vdJ2fo4q5NNUbZkQg4vA" || GEMINI_API_KEY.length < 10) {
       return NextResponse.json({
         response: `I'm currently running in offline mode, but I can still help you! 🛍️
 
