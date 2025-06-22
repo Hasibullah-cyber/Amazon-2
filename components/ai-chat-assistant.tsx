@@ -30,6 +30,11 @@ export default function AIChatAssistant() {
   const [hasError, setHasError] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -136,6 +141,10 @@ Try browsing our categories or ask me anything else! 😊`,
       description: "Attempting to reconnect to AI services",
       duration: 2000,
     })
+  }
+
+  if (!mounted) {
+    return null
   }
 
   return (

@@ -24,9 +24,11 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [totalPrice, setTotalPrice] = useState(0)
+  const [mounted, setMounted] = useState(false)
 
   // Load cart from localStorage on initial render
   useEffect(() => {
+    setMounted(true)
     const savedCart = localStorage.getItem("cart")
     if (savedCart) {
       try {
@@ -39,14 +41,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Save cart to localStorage whenever it changes
   useEffect(() => {
-    if (cartItems.length > 0) {
+    if (mounted && cartItems.length > 0) {
       localStorage.setItem("cart", JSON.stringify(cartItems))
     }
 
     // Calculate subtotal only (without VAT)
     const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
     setTotalPrice(subtotal)
-  }, [cartItems])
+  }, [cartItems, mounted])
 
   const addToCart = (item: CartItem) => {
     setCartItems((prevItems) => {
@@ -66,7 +68,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCartItems((prevItems) => prevItems.filter((item) => item.id !== id))
 
     // If cart becomes empty after removal, clear localStorage
-    if (cartItems.length === 1) {
+    if (mounted && cartItems.length === 1) {
       localStorage.removeItem("cart")
     }
   }
@@ -79,7 +81,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => {
     setCartItems([])
-    localStorage.removeItem("cart")
+    if (mounted) {
+      localStorage.removeItem("cart")
+    }
   }
 
   return (

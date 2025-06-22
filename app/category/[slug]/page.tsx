@@ -124,14 +124,14 @@ export default async function CategoryPage({ params }: { params: { slug: string 
         <div className="bg-white p-6 rounded-sm mt-6">
           <h2 className="text-2xl font-medium text-black mb-4">Popular in {category.name}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((item) => (
-              <div key={item} className="text-center">
+            {category.subcategories.slice(0, 6).map((subcategory, index) => (
+              <Link key={subcategory.slug} href={`/category/${slug}/${subcategory.slug}`} className="text-center hover:shadow-md transition-shadow p-2 rounded">
                 <div className="aspect-square bg-gray-100 rounded-sm mb-2 flex items-center justify-center">
-                  <span className="text-gray-400 text-sm">Product {item}</span>
+                  <span className="text-gray-400 text-sm">{subcategory.name}</span>
                 </div>
-                <p className="text-xs text-gray-600 line-clamp-2">Sample Product Name</p>
-                <p className="text-sm font-medium amazon-price">৳1,299</p>
-              </div>
+                <p className="text-xs text-gray-600 line-clamp-2">{subcategory.name}</p>
+                <p className="text-sm font-medium amazon-price">From ৳{(Math.random() * 100 + 50).toFixed(2)}</p>
+              </Link>
             ))}
           </div>
         </div>
