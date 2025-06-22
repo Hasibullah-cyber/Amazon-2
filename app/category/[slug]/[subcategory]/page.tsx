@@ -330,7 +330,7 @@ export default async function SubcategoryPage({ params }: { params: { slug: stri
                   </div>
 
                   <div className="mt-2">
-                    <span className="amazon-price text-lg">৳{(product.price * 110).toFixed(2)}</span>
+                    <span className="amazon-price text-lg">৳{product.price.toFixed(2)}</span>
                     <div className="text-xs text-gray-500 flex items-center mt-1">
                       <span>Includes 10% VAT</span>
                       <span className="mx-1">•</span>
