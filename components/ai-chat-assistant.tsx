@@ -36,6 +36,11 @@ export default function AIChatAssistant() {
     setMounted(true)
   }, [])
 
+  // Don't render anything during hydration
+  if (!mounted) {
+    return null
+  }
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
@@ -141,10 +146,6 @@ Try browsing our categories or ask me anything else! 😊`,
       description: "Attempting to reconnect to AI services",
       duration: 2000,
     })
-  }
-
-  if (!mounted) {
-    return null
   }
 
   return (
