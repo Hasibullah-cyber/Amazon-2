@@ -139,10 +139,10 @@ export default function Navbar() {
               )}
             </div>
 
-            <div className="hidden md:block mr-4 text-sm">
+            <Link href="/order-history" className="hidden md:block mr-4 text-sm hover:text-orange-300 transition-colors">
               <div className="text-gray-300 text-xs">Returns</div>
               <div className="font-bold">& Orders</div>
-            </div>
+            </Link>
 
             {/* Cart */}
             <button

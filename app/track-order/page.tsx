@@ -99,7 +99,7 @@ export default function TrackOrderPage() {
             <Button 
               onClick={handleTrackOrder} 
               disabled={loading}
-              className="px-8 py-3 text-lg"
+              className="px-8 py-3 text-lg bg-blue-600 hover:bg-blue-700 text-white"
             >
               {loading ? "Searching..." : "Track Order"}
             </Button>
