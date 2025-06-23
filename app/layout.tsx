@@ -31,7 +31,11 @@ export default function RootLayout({
           <AuthProvider>
             <AdminAuthProvider>
               <CartProvider>
+                <Navbar />
                 {children}
+                <Footer />
+                <Toaster />
+                <AIChatWrapper />
               </CartProvider>
             </AdminAuthProvider>
           </AuthProvider>
