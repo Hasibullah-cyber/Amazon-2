@@ -82,7 +82,7 @@ const categories = {
   },
 }
 
-export default async function CategoryPage({ params }: { params: { slug: string } }) {
+export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const category = categories[slug as keyof typeof categories]
 
