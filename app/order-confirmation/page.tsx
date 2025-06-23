@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState } from "react"
@@ -5,6 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Package, Truck, MapPin, CreditCard } from "lucide-react"
 import Link from "next/link"
+import { storeManager } from "@/lib/store"
 
 export default function OrderConfirmationPage() {
   const [order, setOrder] = useState<any>(null)
@@ -25,7 +27,7 @@ export default function OrderConfirmationPage() {
       const totalAmount = subtotal + vat + shipping
 
       parsedOrder = {
-        orderId: "#HS-2025-XYZ",
+        orderId: `#HS-${Date.now()}`,
         name: "Guest User",
         address: "123 Default Street",
         city: "Dhaka",
@@ -41,23 +43,51 @@ export default function OrderConfirmationPage() {
       }
     }
 
+    if (parsedOrder) {
+      // Add order to admin system
+      storeManager.addOrder({
+        orderId: parsedOrder.orderId,
+        customerName: parsedOrder.name,
+        customerEmail: parsedOrder.email || "guest@example.com",
+        customerPhone: parsedOrder.phone,
+        address: parsedOrder.address,
+        city: parsedOrder.city,
+        items: parsedOrder.cartItems?.map((item: any) => ({
+          id: item.id?.toString() || Date.now().toString(),
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image || "/placeholder.svg"
+        })) || [],
+        subtotal: parsedOrder.subtotal,
+        shipping: parsedOrder.shipping || 120,
+        vat: parsedOrder.vat,
+        totalAmount: parsedOrder.totalAmount,
+        status: 'pending',
+        paymentMethod: parsedOrder.paymentMethod,
+        estimatedDelivery: parsedOrder.estimatedDelivery || "1-2 business days"
+      })
+
+      // Clear cart after successful order
+      localStorage.removeItem("cart")
+    }
+
     setOrder(parsedOrder)
   }, [])
 
   if (!order) return <div className="p-6">Loading your order...</div>
 
   return (
-    <div className="bg-gray-100 min-h-screen py-8">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <Card className="p-8 text-center mb-6 bg-green-50 border-green-200">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        {/* Success Header */}
+        <div className="text-center mb-8">
           <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-green-800 mb-2">Order Placed Successfully!</h1>
-          <p className="text-green-700 mb-4">Thank you for shopping with Hasib Shop</p>
-          <div className="bg-white p-4 rounded-md inline-block">
-            <p className="text-sm text-gray-600">Order Number</p>
-            <p className="text-xl font-bold text-black">{order.orderId || "#HS-2025-XYZ"}</p>
-          </div>
-        </Card>
+          <h1 className="text-3xl font-bold text-black mb-2">Order Confirmed!</h1>
+          <p className="text-gray-600">
+            Thank you for your purchase. Your order <span className="font-medium">{order.orderId}</span> has been received.
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Order Details */}
@@ -85,48 +115,54 @@ export default function OrderConfirmationPage() {
               </div>
             </Card>
 
-            <Card className="p-6">
-              <h2 className="text-xl font-medium text-black mb-4 flex items-center">
-                <CreditCard className="h-5 w-5 mr-2" />
-                Payment Information
-              </h2>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span>Payment Method:</span>
-                  <span className="font-medium">{order.paymentMethod}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Transaction ID:</span>
-                  <span className="font-medium">{order.transactionId || "N/A"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Payment Status:</span>
-                  <span className="text-green-600 font-medium">Confirmed</span>
-                </div>
-              </div>
-            </Card>
-
+            {/* Order Items */}
             <Card className="p-6">
               <h2 className="text-xl font-medium text-black mb-4 flex items-center">
                 <Package className="h-5 w-5 mr-2" />
                 Order Items
               </h2>
               <div className="space-y-4">
-                {order.cartItems?.map((item: any, i: number) => (
-                  <div key={i} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-md">
-                    <div className="w-16 h-16 bg-gray-200 rounded"></div>
+                {order.cartItems?.map((item: any, index: number) => (
+                  <div key={index} className="flex items-center space-x-4 pb-4 border-b last:border-b-0">
+                    <div className="w-16 h-16 bg-gray-200 rounded-md flex items-center justify-center">
+                      <Package className="h-8 w-8 text-gray-400" />
+                    </div>
                     <div className="flex-1">
                       <h3 className="font-medium">{item.name}</h3>
-                      <p className="text-sm text-gray-600">{item.description || "No description"}</p>
-                      <p className="text-sm">Qty: {item.quantity}</p>
+                      <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
                     </div>
-                    <span className="font-medium">৳{(item.price * item.quantity).toFixed(2)}</span>
+                    <div className="text-right">
+                      <p className="font-medium">৳{(item.price * item.quantity).toFixed(2)}</p>
+                    </div>
                   </div>
                 ))}
               </div>
             </Card>
-          </div>
 
+            {/* Payment Information */}
+            <Card className="p-6">
+              <h2 className="text-xl font-medium text-black mb-4 flex items-center">
+                <CreditCard className="h-5 w-5 mr-2" />
+                Payment Details
+              </h2>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Payment Method:</span>
+                  <span className="font-medium">{order.paymentMethod}</span>
+                </div>
+                {order.transactionId && (
+                  <div className="flex justify-between">
+                    <span>Transaction ID:</span>
+                    <span className="font-medium">{order.transactionId}</span>
+                  </div>
+                )}
+              </div>
+              <div className="mt-6 text-xs text-gray-500">
+                <p>You will receive an email confirmation shortly with your order details and tracking information.</p>
+              </div>
+            </Card>
+          </div>
+    
           {/* Order Summary */}
           <div className="lg:col-span-1">
             <Card className="p-6 sticky top-4">
@@ -153,47 +189,15 @@ export default function OrderConfirmationPage() {
 
               <div className="mt-6 space-y-3">
                 <Button className="amazon-button w-full" asChild>
-                  <Link href="/orders">Track Your Order</Link>
-                </Button>
-                <Button variant="outline" className="w-full" asChild>
                   <Link href="/">Continue Shopping</Link>
                 </Button>
-              </div>
-
-              <div className="mt-6 text-xs text-gray-500">
-                <p>You will receive an email confirmation shortly with your order details and tracking information.</p>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/admin">View Admin Panel</Link>
+                </Button>
               </div>
             </Card>
           </div>
         </div>
-
-        {/* Next Steps */}
-        <Card className="p-6 mt-6">
-          <h2 className="text-xl font-medium text-black mb-4">What happens next?</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Package className="h-6 w-6 text-blue-600" />
-              </div>
-              <h3 className="font-medium mb-2">Order Processing</h3>
-              <p className="text-sm text-gray-600">We'll prepare your items for shipment within 24 hours</p>
-            </div>
-            <div className="text-center p-4">
-              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Truck className="h-6 w-6 text-yellow-600" />
-              </div>
-              <h3 className="font-medium mb-2">Shipped</h3>
-              <p className="text-sm text-gray-600">Your order will be shipped and you'll receive tracking details</p>
-            </div>
-            <div className="text-center p-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-              <h3 className="font-medium mb-2">Delivered</h3>
-              <p className="text-sm text-gray-600">Your order will arrive at your doorstep within 1-2 business days</p>
-            </div>
-          </div>
-        </Card>
       </div>
     </div>
   )

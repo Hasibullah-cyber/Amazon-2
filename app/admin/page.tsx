@@ -1,121 +1,212 @@
+
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { storeManager } from "@/lib/store"
+import { Package, Users, ShoppingCart, TrendingUp, AlertTriangle, Eye, Edit, Trash2 } from "lucide-react"
 
 export default function AdminHome() {
-  // Sample data - replace with real database data later
-  const stats = {
-    totalOrders: 42,
-    newCustomers: 8,
-    topProduct: "Wireless Earbuds",
-    revenue: "$3,845"
+  const [stats, setStats] = useState<any>(null)
+  const [orders, setOrders] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
+
+  useEffect(() => {
+    const updateData = () => {
+      setStats(storeManager.getStats())
+      setOrders(storeManager.getOrders())
+      setProducts(storeManager.getProducts())
+    }
+
+    updateData()
+    const unsubscribe = storeManager.subscribe(updateData)
+
+    return unsubscribe
+  }, [])
+
+  const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
+    storeManager.updateOrderStatus(orderId, newStatus as any)
   }
 
-  const recentOrders = [
-    { id: "#ORD-1289", customer: "siam ahmed", amount: "$89.99", status: "Shipped" },
-    { id: "#ORD-1288", customer: "Rafi luchu", amount: "$124.99", status: "Processing" },
-    { id: "#ORD-1287", customer: "Hasib sikder", amount: "$55.00", status: "Delivered" }
-  ]
-
-  const popularProducts = [
-    { name: "Wireless Earbuds", stock: 42, price: "$59.99" },
-    { name: "Smart Watch", stock: 15, price: "$129.99" },
-    { name: "Bluetooth Speaker", stock: 28, price: "$79.99" }
-  ]
+  if (!stats) return <div className="p-6">Loading admin dashboard...</div>
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">Admin Panel</h1>
-      <p className="text-gray-600 mb-6">Welcome back! Here's your store overview.</p>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <p className="text-gray-600">Welcome back! Here's your store overview.</p>
+        </div>
+        <div className="text-sm text-gray-500">
+          Last updated: {new Date().toLocaleTimeString()}
+        </div>
+      </div>
 
       {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Orders</p>
+              <p className="text-2xl font-bold">{stats.totalOrders}</p>
+            </div>
+            <ShoppingCart className="h-8 w-8 text-blue-600" />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+              <p className="text-2xl font-bold">৳{stats.totalRevenue.toFixed(2)}</p>
+            </div>
+            <TrendingUp className="h-8 w-8 text-green-600" />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Pending Orders</p>
+              <p className="text-2xl font-bold">{stats.pendingOrders}</p>
+            </div>
+            <Package className="h-8 w-8 text-orange-600" />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Low Stock Items</p>
+              <p className="text-2xl font-bold">{stats.lowStockProducts}</p>
+            </div>
+            <AlertTriangle className="h-8 w-8 text-red-600" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <h3 className="text-gray-500">Total Orders</h3>
-          <p className="text-2xl font-bold">{stats.totalOrders}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <h3 className="text-gray-500">New Customers</h3>
-          <p className="text-2xl font-bold">{stats.newCustomers}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <h3 className="text-gray-500">Top Product</h3>
-          <p className="text-2xl font-bold">{stats.topProduct}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <h3 className="text-gray-500">Revenue</h3>
-          <p className="text-2xl font-bold">{stats.revenue}</p>
-        </div>
+        <Button asChild className="h-12">
+          <Link href="/admin/orders">
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Manage Orders
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="h-12">
+          <Link href="/admin/products">
+            <Package className="h-4 w-4 mr-2" />
+            Manage Products
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="h-12">
+          <Link href="/admin/users">
+            <Users className="h-4 w-4 mr-2" />
+            Manage Users
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="h-12">
+          <Link href="/admin/dashboard">
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Analytics
+          </Link>
+        </Button>
       </div>
 
-      {/* Quick Links */}
-      <div className="grid gap-4 md:grid-cols-2 mb-8">
-        <Link href="/admin/orders">
-          <div className="p-4 bg-white rounded-xl shadow hover:bg-gray-50 transition cursor-pointer border">
-            <h2 className="text-xl font-semibold">Orders</h2>
-            <p className="text-gray-500">Manage customer orders</p>
-          </div>
-        </Link>
-        <Link href="/admin/products">
-          <div className="p-4 bg-white rounded-xl shadow hover:bg-gray-50 transition cursor-pointer border">
-            <h2 className="text-xl font-semibold">Products</h2>
-            <p className="text-gray-500">Add or update products</p>
-          </div>
-        </Link>
-      </div>
-
-      {/* Recent Orders Table */}
-      <div className="bg-white p-4 rounded-lg shadow mb-8">
-        <h2 className="text-xl font-semibold mb-4">Recent Orders</h2>
+      {/* Recent Orders */}
+      <Card className="p-6 mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Recent Orders</h2>
+          <Link href="/admin/orders" className="text-blue-600 hover:underline">
+            View All
+          </Link>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead>
               <tr className="border-b">
                 <th className="text-left p-2">Order ID</th>
                 <th className="text-left p-2">Customer</th>
-                <th className="text-left p-2">Amount</th>
+                <th className="text-left p-2">Items</th>
+                <th className="text-left p-2">Total</th>
                 <th className="text-left p-2">Status</th>
+                <th className="text-left p-2">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {recentOrders.map((order) => (
+              {stats.recentOrders.map((order: any) => (
                 <tr key={order.id} className="border-b hover:bg-gray-50">
-                  <td className="p-2">{order.id}</td>
-                  <td className="p-2">{order.customer}</td>
-                  <td className="p-2">{order.amount}</td>
+                  <td className="p-2 font-mono text-sm">{order.orderId}</td>
+                  <td className="p-2">{order.customerName}</td>
+                  <td className="p-2">{order.items.length} items</td>
+                  <td className="p-2">৳{order.totalAmount.toFixed(2)}</td>
                   <td className="p-2">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      order.status === "Delivered" ? "bg-green-100 text-green-800" :
-                      order.status === "Shipped" ? "bg-blue-100 text-blue-800" :
-                      "bg-yellow-100 text-yellow-800"
-                    }`}>
-                      {order.status}
-                    </span>
+                    <select
+                      value={order.status}
+                      onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                      className={`px-2 py-1 rounded-full text-xs border ${
+                        order.status === "delivered" ? "bg-green-100 text-green-800 border-green-200" :
+                        order.status === "shipped" ? "bg-blue-100 text-blue-800 border-blue-200" :
+                        order.status === "processing" ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                        "bg-gray-100 text-gray-800 border-gray-200"
+                      }`}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="processing">Processing</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </td>
+                  <td className="p-2">
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline">
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
       {/* Product Inventory */}
-      <div className="bg-white p-4 rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Product Inventory</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          {popularProducts.map((product) => (
-            <div key={product.name} className="border p-4 rounded-lg hover:shadow-md transition">
-              <h3 className="font-medium">{product.name}</h3>
-              <p className="text-gray-600">Price: {product.price}</p>
-              <p className={`mt-2 text-sm ${
-                product.stock > 20 ? "text-green-600" : "text-red-600"
-              }`}>
-                {product.stock} in stock
-              </p>
+      <Card className="p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Product Inventory</h2>
+          <Link href="/admin/products" className="text-blue-600 hover:underline">
+            Manage All
+          </Link>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {products.slice(0, 6).map((product) => (
+            <div key={product.id} className="border p-4 rounded-lg hover:shadow-md transition">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-medium truncate">{product.name}</h3>
+                <span className="text-sm font-bold">৳{product.price}</span>
+              </div>
+              <p className="text-gray-600 text-sm mb-2">ID: {product.id}</p>
+              <div className="flex justify-between items-center">
+                <span className={`text-sm ${
+                  product.stock > 20 ? "text-green-600" : 
+                  product.stock > 10 ? "text-yellow-600" : "text-red-600"
+                }`}>
+                  {product.stock} in stock
+                </span>
+                <div className="flex gap-1">
+                  <Button size="sm" variant="outline">
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }
