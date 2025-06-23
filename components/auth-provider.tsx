@@ -24,10 +24,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe
   }, [])
 
-  if (!mounted) {
-    return <>{children}</>
-  }
-
   const signOut = () => {
     authManager.signOut()
   }
