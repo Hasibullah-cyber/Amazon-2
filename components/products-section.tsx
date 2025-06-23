@@ -94,7 +94,7 @@ export default function ProductsSection() {
     // Validate and sanitize rating value
     const validRating = typeof rating === 'number' && !isNaN(rating) && rating >= 0 ? rating : 0
     const clampedRating = Math.min(Math.max(validRating, 0), 5) // Clamp between 0 and 5
-    
+
     const fullStars = Math.floor(clampedRating)
     const hasHalfStar = clampedRating % 1 >= 0.5
 

@@ -1,4 +1,3 @@
-
 'use client'
 
 import { Inter } from "next/font/google";
@@ -10,6 +9,7 @@ import { CartProvider } from "@/components/cart-provider";
 import { AuthProvider } from "@/components/auth-provider";
 import { AdminAuthProvider } from "@/components/admin-auth-provider";
 import { Toaster } from "@/components/ui/toaster";
+import AIChatWrapper from "@/components/ai-chat-wrapper"
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -40,6 +40,7 @@ export default function RootLayout({
                   </main>
                   <Footer />
                 </div>
+                <AIChatWrapper />
                 <Toaster />
               </CartProvider>
             </AdminAuthProvider>

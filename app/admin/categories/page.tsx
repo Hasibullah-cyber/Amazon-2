@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -83,9 +82,9 @@ export default function CategoriesPage() {
                 <FolderPlus className="h-3 w-3" />
               </Button>
             </div>
-            
+
             <p className="text-gray-600 mb-4">{category.description}</p>
-            
+
             <div className="space-y-2">
               <h4 className="font-medium text-sm text-gray-700">Subcategories:</h4>
               {category.subcategories?.length > 0 ? (
