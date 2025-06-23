@@ -1,5 +1,6 @@
-
 // Global store for orders and inventory management
+import { notificationService } from "./notifications"
+
 interface Product {
   id: string
   name: string
@@ -85,13 +86,17 @@ class StoreManager {
       createdAt: new Date().toISOString(),
     }
     this.orders.unshift(newOrder)
-    
+
     // Update inventory
     order.items.forEach(item => {
       this.updateProductStock(item.id, -item.quantity)
     })
-    
+
     this.notifyListeners()
+
+    // Send confirmation email/SMS
+    notificationService.sendOrderConfirmation(newOrder);
+
     return newOrder
   }
 
@@ -104,6 +109,9 @@ class StoreManager {
     if (orderIndex !== -1) {
       this.orders[orderIndex].status = status
       this.notifyListeners()
+
+      // Send status update notification
+      notificationService.sendOrderStatusUpdate(this.orders[orderIndex]);
     }
   }
 

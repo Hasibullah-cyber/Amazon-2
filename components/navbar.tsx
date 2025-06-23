@@ -104,6 +104,11 @@ export default function Navbar() {
               <Link href="/#contact" className="text-white hover:text-gray-300 hidden md:block">
                 Contact
               </Link>
+              <Link href="/track-order">
+                <Button variant="outline" size="sm" className="hidden md:flex">
+                  Track Order
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
