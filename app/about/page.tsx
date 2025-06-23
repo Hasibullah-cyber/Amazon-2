@@ -1,6 +1,8 @@
 import { Card } from "@/components/ui/card"
 import Image from "next/image"
 
+export const dynamic = 'force-dynamic'
+
 export default function AboutPage() {
   return (
     <div className="bg-gray-100 py-16 min-h-screen">

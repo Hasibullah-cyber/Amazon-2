@@ -1,5 +1,7 @@
 import { Card } from "@/components/ui/card"
 
+export const dynamic = 'force-dynamic'
+
 export default function PrivacyPolicyPage() {
   return (
     <div className="bg-gradient-to-br from-blue-50 to-purple-50 py-16 min-h-screen">
