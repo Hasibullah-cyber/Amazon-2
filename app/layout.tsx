@@ -6,9 +6,10 @@ import { ThemeProvider } from "@/components/theme-provider"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
 import { CartProvider } from "@/components/cart-provider"
+import { AuthProvider } from "@/components/auth-provider"
+import { AdminAuthProvider } from "@/components/admin-auth-provider"
 import { Toaster } from "@/components/ui/toaster"
 import AIChatWrapper from "@/components/ai-chat-wrapper"
-import { AuthProvider } from "@/components/auth-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -28,15 +29,11 @@ export default function RootLayout({
       <body className={inter.className} id="top" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            <CartProvider>
-              <div className="min-h-screen flex flex-col">
-                <Navbar />
-                <main className="flex-1 bg-gray-100">{children}</main>
-                <Footer />
-                <AIChatWrapper />
-              </div>
-              <Toaster />
-            </CartProvider>
+            <AdminAuthProvider>
+              <CartProvider>
+                {children}
+              </CartProvider>
+            </AdminAuthProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

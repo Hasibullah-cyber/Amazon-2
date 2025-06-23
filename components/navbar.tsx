@@ -6,7 +6,9 @@ import { ShoppingCart, Menu, X, User, MapPin, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
 import { useAuth } from "@/components/auth-provider"
+import { useAdminAuth } from "@/components/admin-auth-provider"
 import { AuthModal } from "@/components/auth-modal"
+import { AdminLoginModal } from "@/components/admin-login-modal"
 import CartDrawer from "@/components/cart-drawer"
 import RegularSearch from "@/components/regular-search"
 
@@ -16,8 +18,10 @@ export default function Navbar() {
   const [isAuthOpen, setIsAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false)
   const { cartItems } = useCart()
   const { user, isAuthenticated, signOut } = useAuth()
+  const { admin, isAdminAuthenticated, adminSignOut } = useAdminAuth()
 
   const totalItems = cartItems.reduce((total, item) => total + item.quantity, 0)
 
@@ -82,6 +86,25 @@ export default function Navbar() {
                         >
                           Track Order
                         </Link>
+                        {isAdminAuthenticated ? (
+                          <Link
+                            href="/admin"
+                            className="flex items-center px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            Admin Panel
+                          </Link>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setIsAdminLoginOpen(true)
+                              setIsUserMenuOpen(false)
+                            }}
+                            className="flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 text-blue-600"
+                          >
+                            Admin Login
+                          </button>
+                        )}
                         <button
                           onClick={handleSignOut}
                           className="flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 text-red-600"
@@ -105,6 +128,12 @@ export default function Navbar() {
                     className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                   >
                     Sign Up
+                  </button>
+                  <button
+                    onClick={() => setIsAdminLoginOpen(true)}
+                    className="px-4 py-2 text-sm font-medium bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                  >
+                    Admin
                   </button>
                 </div>
               )}
@@ -287,6 +316,10 @@ export default function Navbar() {
         isOpen={isAuthOpen} 
         onClose={() => setIsAuthOpen(false)} 
         initialMode={authMode}
+      />
+      <AdminLoginModal 
+        isOpen={isAdminLoginOpen} 
+        onClose={() => setIsAdminLoginOpen(false)} 
       />
     </header>
   )

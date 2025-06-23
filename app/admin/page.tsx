@@ -6,12 +6,16 @@ import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { storeManager } from "@/lib/store"
+import { useAdminAuth } from "@/components/admin-auth-provider"
+import { AdminLoginModal } from "@/components/admin-login-modal"
 import { Package, Users, ShoppingCart, TrendingUp, AlertTriangle, Eye, Edit, Trash2 } from "lucide-react"
 
 export default function AdminHome() {
   const [stats, setStats] = useState<any>(null)
   const [orders, setOrders] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
+  const [showAdminLogin, setShowAdminLogin] = useState(false)
+  const { isAdminAuthenticated, adminSignOut } = useAdminAuth()
 
   useEffect(() => {
     const updateData = () => {
@@ -30,6 +34,27 @@ export default function AdminHome() {
     storeManager.updateOrderStatus(orderId, newStatus as any)
   }
 
+  if (!isAdminAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
+          <h1 className="text-2xl font-bold mb-4">Admin Access Required</h1>
+          <p className="text-gray-600 mb-6">You need to be logged in as an admin to access this page.</p>
+          <button
+            onClick={() => setShowAdminLogin(true)}
+            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Admin Login
+          </button>
+          <AdminLoginModal 
+            isOpen={showAdminLogin} 
+            onClose={() => setShowAdminLogin(false)} 
+          />
+        </div>
+      </div>
+    )
+  }
+
   if (!stats) return <div className="p-6">Loading admin dashboard...</div>
 
   return (
@@ -39,8 +64,16 @@ export default function AdminHome() {
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           <p className="text-gray-600">Welcome back! Here's your store overview.</p>
         </div>
-        <div className="text-sm text-gray-500">
-          Last updated: {new Date().toLocaleTimeString()}
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-500">
+            Last updated: {new Date().toLocaleTimeString()}
+          </div>
+          <button
+            onClick={adminSignOut}
+            className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors"
+          >
+            Admin Logout
+          </button>
         </div>
       </div>
 

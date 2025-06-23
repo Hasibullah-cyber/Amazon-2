@@ -253,9 +253,6 @@ export default function OrderConfirmationPage() {
                 <Button variant="outline" className="w-full" asChild>
                   <Link href={`/track-order?id=${order.orderId}`}>Track This Order</Link>
                 </Button>
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href="/admin">View Admin Panel</Link>
-                </Button>
               </div>
             </Card>
           </div>
