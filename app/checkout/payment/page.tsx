@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+
+export const dynamic = 'force-dynamic'
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { CreditCard, Truck, Wallet } from "lucide-react"
