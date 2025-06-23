@@ -152,7 +152,7 @@ class StoreManager {
       this.notifyListeners()
 
       // Send status update notification
-      notificationService.sendOrderStatusUpdate(this.orders[orderIndex]);
+      notificationService.sendOrderStatusUpdate(this.orders[orderIndex], status);
     }
   }
 
