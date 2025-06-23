@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Package, Truck, MapPin, CreditCard, Mail, MessageSquare } from "lucide-react"
+import { Card } from "@/components/ui/card"
+import { CheckCircle, Package, Truck, MapPin, Calendar, CreditCard } from "lucide-react"
 import Link from "next/link"
+
+export const dynamic = 'force-dynamic'
 import { storeManager } from "@/lib/store"
 import { notificationService } from "@/lib/notifications"
 import { useAuth } from "@/components/auth-provider"
@@ -164,7 +166,7 @@ export default function OrderConfirmationPage() {
   }
 
   if (loading) return <div className="p-6">Loading your order...</div>
-  
+
   if (!order) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
@@ -196,7 +198,7 @@ export default function OrderConfirmationPage() {
           <p className="text-gray-600">
             Thank you for your purchase. Your order <span className="font-medium">{order.orderId}</span> has been received.
           </p>
-          
+
           {/* Notification Status */}
           <div className="mt-6 space-y-3">
             {sendingNotifications && (
@@ -207,7 +209,7 @@ export default function OrderConfirmationPage() {
                 </div>
               </div>
             )}
-            
+
             {!sendingNotifications && (emailSent || smsSent) && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h3 className="font-medium text-green-800 mb-2">Confirmation Sent!</h3>
@@ -227,7 +229,7 @@ export default function OrderConfirmationPage() {
                 </div>
               </div>
             )}
-            
+
             {!sendingNotifications && !emailSent && !smsSent && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex items-center text-yellow-800">
@@ -347,7 +349,7 @@ export default function OrderConfirmationPage() {
                 <p>{user?.email || order.email || "guest@example.com"}</p>
                 <p>{order.phone || "01700000000"}</p>
               </div>
-            
+
               <div className="mt-6 space-y-3">
                 <Button className="amazon-button w-full" asChild>
                   <Link href="/">Continue Shopping</Link>

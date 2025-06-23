@@ -1,12 +1,15 @@
-
 "use client"
 
 import { useState } from "react"
-import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Search, Package, Truck, CheckCircle, MapPin } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
+
 import { storeManager } from "@/lib/store"
-import { Search, Package, Truck, CheckCircle, Clock, MapPin, Phone, Mail, X } from "lucide-react"
+import { Phone, Mail, X, Clock } from "lucide-react"
 
 export default function TrackOrderPage() {
   const [trackingId, setTrackingId] = useState("")
@@ -49,7 +52,7 @@ export default function TrackOrderPage() {
 
   const getStatusIcon = (status: string, isActive: boolean) => {
     const iconClass = `h-6 w-6 ${isActive ? 'text-blue-600' : 'text-gray-400'}`
-    
+
     switch (status) {
       case 'pending': return <Clock className={iconClass} />
       case 'processing': return <Package className={iconClass} />
@@ -134,7 +137,7 @@ export default function TrackOrderPage() {
                   {['pending', 'processing', 'shipped', 'delivered'].map((status, index) => {
                     const isActive = getStatusProgress(order.status) > index
                     const isCurrent = order.status === status
-                    
+
                     return (
                       <div key={status} className="flex flex-col items-center relative">
                         <div className={`rounded-full p-3 ${
@@ -149,7 +152,7 @@ export default function TrackOrderPage() {
                         }`}>
                           {status.charAt(0).toUpperCase() + status.slice(1)}
                         </div>
-                        
+
                         {/* Connecting Line */}
                         {index < 3 && (
                           <div className={`absolute top-6 left-1/2 w-full h-0.5 -z-10 ${
