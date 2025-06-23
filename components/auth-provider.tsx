@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   if (!mounted) {
-    return <div suppressHydrationWarning>{children}</div>
+    return <>{children}</>
   }
 
   const signOut = () => {
