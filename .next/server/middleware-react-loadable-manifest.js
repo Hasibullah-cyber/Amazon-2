@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"components/ai-chat-wrapper.tsx -> ./ai-chat-assistant\":{\"id\":\"components/ai-chat-wrapper.tsx -> ./ai-chat-assistant\",\"files\":[\"static/chunks/_app-pages-browser_components_ai-chat-assistant_tsx.js\"]}}"
+self.__REACT_LOADABLE_MANIFEST="{}"
