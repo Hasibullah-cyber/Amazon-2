@@ -350,12 +350,26 @@ export default function OrderConfirmationPage() {
                 <p>{order.phone || "01700000000"}</p>
               </div>
 
+              {/* Order Tracking Status */}
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-medium text-blue-800 mb-2">Order Status</h4>
+                <div className="flex items-center space-x-2">
+                  <Package className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm text-blue-700">
+                    Your order is currently: <span className="font-medium">PENDING</span>
+                  </span>
+                </div>
+                <p className="text-xs text-blue-600 mt-1">
+                  We'll update you via email and SMS as your order progresses.
+                </p>
+              </div>
+
               <div className="mt-6 space-y-3">
                 <Button className="amazon-button w-full" asChild>
                   <Link href="/">Continue Shopping</Link>
                 </Button>
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href={`/track-order?id=${order.orderId}`}>Track This Order</Link>
+                  <Link href="/order-history">View All Orders</Link>
                 </Button>
               </div>
             </Card>

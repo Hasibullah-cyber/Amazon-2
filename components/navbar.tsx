@@ -79,13 +79,7 @@ export default function Navbar() {
                           <p className="font-medium">{user?.name}</p>
                           <p className="text-sm text-gray-500">{user?.email}</p>
                         </div>
-                        <Link
-                          href="/track-order"
-                          className="flex items-center px-4 py-2 text-sm hover:bg-gray-100"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          Track Order
-                        </Link>
+                        
                         {isAdminAuthenticated ? (
                           <Link
                             href="/admin"
@@ -197,11 +191,6 @@ export default function Navbar() {
               <Link href="/#contact" className="text-white hover:text-gray-300 hidden md:block">
                 Contact
               </Link>
-              <Link href="/track-order">
-                <Button variant="outline" size="sm" className="hidden md:flex border-white text-white hover:bg-white hover:text-black">
-                  Track Order
-                </Button>
-              </Link>
             </div>
           </div>
         </div>
@@ -267,7 +256,7 @@ export default function Navbar() {
                     <p className="text-sm text-gray-500">{user?.email}</p>
                   </div>
                   <Link
-                    href="/track-order"
+                    href="/order-history"
                     className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100"
                     onClick={() => setIsMenuOpen(false)}
                   >

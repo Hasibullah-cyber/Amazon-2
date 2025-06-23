@@ -20,6 +20,7 @@ export default function OrderHistoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
   const [showReturnModal, setShowReturnModal] = useState(false)
   const [showRatingModal, setShowRatingModal] = useState(false)
   const [returnReason, setReturnReason] = useState("")
@@ -171,6 +172,27 @@ export default function OrderHistoryPage() {
     return order.status === 'delivered'
   }
 
+  const toggleOrderExpansion = (orderId: string) => {
+    setExpandedOrder(expandedOrder === orderId ? null : orderId)
+  }
+
+  const getStatusProgress = (status: string) => {
+    const statuses = ['pending', 'processing', 'shipped', 'delivered']
+    return statuses.indexOf(status) + 1
+  }
+
+  const getTrackingStatusIcon = (status: string, isActive: boolean) => {
+    const iconClass = `h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-400'}`
+    
+    switch (status) {
+      case 'pending': return <Package className={iconClass} />
+      case 'processing': return <Package className={iconClass} />
+      case 'shipped': return <Truck className={iconClass} />
+      case 'delivered': return <CheckCircle className={iconClass} />
+      default: return <Package className={iconClass} />
+    }
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
@@ -280,8 +302,14 @@ export default function OrderHistoryPage() {
 
                 {/* Action Buttons */}
                 <div className="flex flex-wrap gap-2 pt-4 border-t">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/track-order?id=${order.orderId}`}>Track Order</Link>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => toggleOrderExpansion(order.id)}
+                    className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                  >
+                    <Package className="h-4 w-4 mr-1" />
+                    {expandedOrder === order.id ? 'Hide Tracking' : 'Track Order'}
                   </Button>
                   
                   {canReturn(order) && (
@@ -307,11 +335,85 @@ export default function OrderHistoryPage() {
                       Rate Order
                     </Button>
                   )}
-
-                  <Button variant="outline" size="sm">
-                    View Details
-                  </Button>
                 </div>
+
+                {/* Expanded Order Tracking Details */}
+                {expandedOrder === order.id && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+                    <h4 className="font-medium text-gray-800 mb-4">Order Tracking - {order.orderId}</h4>
+                    
+                    {/* Progress Tracker */}
+                    <div className="relative mb-6">
+                      <div className="flex justify-between items-center">
+                        {['pending', 'processing', 'shipped', 'delivered'].map((status, index) => {
+                          const isActive = getStatusProgress(order.status) > index
+                          const isCurrent = order.status === status
+                          
+                          return (
+                            <div key={status} className="flex flex-col items-center relative z-10">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${
+                                isActive 
+                                  ? 'bg-blue-600 border-blue-600 text-white' 
+                                  : isCurrent 
+                                  ? 'bg-white border-blue-600 text-blue-600'
+                                  : 'bg-gray-200 border-gray-300 text-gray-400'
+                              }`}>
+                                {getTrackingStatusIcon(status, isActive || isCurrent)}
+                              </div>
+                              <div className={`mt-2 text-xs font-medium ${
+                                isActive || isCurrent ? 'text-blue-600' : 'text-gray-400'
+                              }`}>
+                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      
+                      {/* Progress Line */}
+                      <div className="absolute top-5 left-5 right-5 h-0.5 bg-gray-200">
+                        <div 
+                          className="h-full bg-blue-600 transition-all duration-500"
+                          style={{ width: `${((getStatusProgress(order.status) - 1) / 3) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Current Status Details */}
+                    <div className="bg-white p-4 rounded-lg border">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-gray-800">Current Status:</span>
+                        <Badge className={getStatusColor(order.status)}>
+                          {getStatusIcon(order.status)}
+                          <span className="ml-1">{order.status.toUpperCase()}</span>
+                        </Badge>
+                      </div>
+                      
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p><strong>Order Date:</strong> {new Date(order.createdAt).toLocaleDateString()}</p>
+                        <p><strong>Estimated Delivery:</strong> {order.estimatedDelivery || "1-2 business days"}</p>
+                        <p><strong>Payment Method:</strong> {order.paymentMethod}</p>
+                        {order.status === 'shipped' && (
+                          <p className="text-blue-600"><strong>Tracking Info:</strong> Your order is on the way!</p>
+                        )}
+                        {order.status === 'delivered' && (
+                          <p className="text-green-600"><strong>Delivered:</strong> Your order has been delivered successfully!</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Delivery Address */}
+                    <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                      <h5 className="font-medium text-blue-800 mb-1">Delivery Address</h5>
+                      <div className="text-sm text-blue-700">
+                        <p>{order.customerName}</p>
+                        <p>{order.address}</p>
+                        <p>{order.city}</p>
+                        <p>Phone: {order.customerPhone}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </Card>
             ))}
           </div>
