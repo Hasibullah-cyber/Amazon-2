@@ -12,14 +12,22 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    isAuthenticated: false
+  const [authState, setAuthState] = useState<AuthState>(() => {
+    // Initialize with auth manager state if available
+    if (typeof window !== 'undefined') {
+      return authManager.getAuthState()
+    }
+    return {
+      user: null,
+      isAuthenticated: false
+    }
   })
-  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
+    // Set initial state from auth manager
+    setAuthState(authManager.getAuthState())
+    
+    // Subscribe to auth changes
     const unsubscribe = authManager.subscribe(setAuthState)
     return unsubscribe
   }, [])

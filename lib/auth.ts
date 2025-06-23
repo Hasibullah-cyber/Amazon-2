@@ -1,4 +1,3 @@
-
 export interface User {
   id: string
   email: string
@@ -17,8 +16,10 @@ class AuthManager {
   private currentUser: User | null = null
 
   constructor() {
-    // Load user from localStorage on initialization
-    this.loadUserFromStorage()
+    if (typeof window !== 'undefined') {
+      // Load user from localStorage on initialization
+      this.loadUserFromStorage()
+    }
   }
 
   private loadUserFromStorage() {
@@ -57,7 +58,7 @@ class AuthManager {
       user: this.currentUser,
       isAuthenticated: !!this.currentUser
     })
-    
+
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener)
     }
