@@ -180,7 +180,7 @@ const renderRating = (rating: number) => {
 
 // Function to get related products
 const getRelatedProducts = (relatedIds: number[]) => {
-  return relatedIds.map((id) => products[id as keyof typeof products]).filter(Boolean)
+  return relatedIds.map((id) => products[String(id) as keyof typeof products]).filter(Boolean)
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
