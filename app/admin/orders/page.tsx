@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -7,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { storeManager } from "@/lib/store"
 import { Search, Eye, Package, Truck, CheckCircle, X, Filter } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([])
@@ -75,7 +76,7 @@ export default function OrdersPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Orders Management</h1>
-      
+
       {/* Filters and Search */}
       <Card className="p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4">

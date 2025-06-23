@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -8,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { storeManager } from "@/lib/store"
 import { Search, Plus, Edit, Trash2, Package, AlertTriangle, X } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([])
@@ -60,7 +61,7 @@ export default function ProductsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const productData = {
       name: formData.name,
       description: formData.description,
@@ -191,16 +192,16 @@ export default function ProductsPage() {
                 </Button>
               </div>
             </div>
-            
+
             <p className="text-sm text-gray-600 mb-2">{product.description}</p>
             <div className="text-sm text-gray-500 mb-2">ID: {product.id}</div>
-            
+
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="font-medium">Price:</span>
                 <span className="text-lg font-bold">৳{product.price}</span>
               </div>
-              
+
               <div className="flex justify-between items-center">
                 <span className="font-medium">Stock:</span>
                 <div className="flex items-center gap-2">
@@ -216,7 +217,7 @@ export default function ProductsPage() {
                   )}
                 </div>
               </div>
-              
+
               <div className="flex justify-between items-center">
                 <span className="font-medium">Category:</span>
                 <span className="text-sm px-2 py-1 bg-gray-100 rounded">

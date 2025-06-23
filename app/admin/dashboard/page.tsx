@@ -1,10 +1,11 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { storeManager } from "@/lib/store"
 import { TrendingUp, TrendingDown, ShoppingCart, Package, Users, DollarSign } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null)
@@ -44,7 +45,7 @@ export default function DashboardPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Analytics Dashboard</h1>
-      
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card className="p-6">
