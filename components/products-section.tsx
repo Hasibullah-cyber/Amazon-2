@@ -91,17 +91,21 @@ export default function ProductsSection() {
 
   // Function to render star ratings
   const renderRating = (rating: number, product: any) => {
-    const fullStars = Math.floor(rating)
-    const hasHalfStar = rating % 1 >= 0.5
+    // Validate and sanitize rating value
+    const validRating = typeof rating === 'number' && !isNaN(rating) && rating >= 0 ? rating : 0
+    const clampedRating = Math.min(Math.max(validRating, 0), 5) // Clamp between 0 and 5
+    
+    const fullStars = Math.floor(clampedRating)
+    const hasHalfStar = clampedRating % 1 >= 0.5
 
     return (
       <div className="flex items-center">
-        {[...Array(fullStars)].map((_, i) => (
+        {fullStars > 0 && [...Array(fullStars)].map((_, i) => (
           <Star key={i} className="h-4 w-4 fill-[#FFA41C] text-[#FFA41C]" />
         ))}
         {hasHalfStar && <StarHalf className="h-4 w-4 fill-[#FFA41C] text-[#FFA41C]" />}
         <span className="ml-1 text-sm amazon-link">
-          {rating} ({product.reviews})
+          {clampedRating.toFixed(1)} ({product.reviews || 0})
         </span>
       </div>
     )
