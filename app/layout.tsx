@@ -7,7 +7,7 @@ import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
 import { CartProvider } from "@/components/cart-provider"
 import { Toaster } from "@/components/ui/toaster"
-import AIChatAssistant from "@/components/ai-chat-assistant"
+import { AIChatAssistant } from "@/components/ai-chat-assistant"
 
 const inter = Inter({ subsets: ["latin"] })
 
