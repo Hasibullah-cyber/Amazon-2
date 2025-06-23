@@ -14,6 +14,9 @@ const nextConfig = {
     allowedDevOrigins: [
       "*.replit.dev",
       "*.pike.replit.dev",
+      "*.sisko.replit.dev",
+      "*.replit.app",
+      "*.id.replit.app"
     ],
   },
   async rewrites() {
