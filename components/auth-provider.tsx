@@ -1,4 +1,3 @@
-
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
@@ -12,22 +11,14 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [authState, setAuthState] = useState<AuthState>(() => {
-    // Initialize with auth manager state if available
-    if (typeof window !== 'undefined') {
-      return authManager.getAuthState()
-    }
-    return {
-      user: null,
-      isAuthenticated: false
-    }
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    loading: true,
   })
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    // Set initial state from auth manager
-    setAuthState(authManager.getAuthState())
-    
-    // Subscribe to auth changes
+    setMounted(true)
     const unsubscribe = authManager.subscribe(setAuthState)
     return unsubscribe
   }, [])
@@ -44,7 +35,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       ...authState,
       signOut,
-      refreshAuth
+      refreshAuth,
+      loading: !mounted,
     }}>
       {children}
     </AuthContext.Provider>
