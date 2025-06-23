@@ -12,9 +12,9 @@ export default function AdminHome() {
   }
 
   const recentOrders = [
-    { id: "#ORD-1289", customer: "John Doe", amount: "$89.99", status: "Shipped" },
-    { id: "#ORD-1288", customer: "Jane Smith", amount: "$124.99", status: "Processing" },
-    { id: "#ORD-1287", customer: "Alex Johnson", amount: "$55.00", status: "Delivered" }
+    { id: "#ORD-1289", customer: "siam ahmed", amount: "$89.99", status: "Shipped" },
+    { id: "#ORD-1288", customer: "Rafi luchu", amount: "$124.99", status: "Processing" },
+    { id: "#ORD-1287", customer: "Hasib sikder", amount: "$55.00", status: "Delivered" }
   ]
 
   const popularProducts = [
