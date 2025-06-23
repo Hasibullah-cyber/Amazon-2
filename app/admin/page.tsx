@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -8,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { storeManager } from "@/lib/store"
 import { useAdminAuth } from "@/components/admin-auth-provider"
 import { AdminLoginModal } from "@/components/admin-login-modal"
-import { Package, Users, ShoppingCart, TrendingUp, AlertTriangle, Eye, Edit, Trash2 } from "lucide-react"
+import { Package, Users, ShoppingCart, TrendingUp, AlertTriangle, Eye, Edit, Trash2, FolderOpen } from "lucide-react"
 
 export default function AdminHome() {
   const [stats, setStats] = useState<any>(null)

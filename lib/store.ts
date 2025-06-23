@@ -38,6 +38,47 @@ interface Order {
 
 class StoreManager {
   private orders: Order[] = []
+  private categories: any[] = [
+    {
+      id: "electronics",
+      name: "Electronics",
+      description: "Cutting-edge gadgets and devices",
+      subcategories: [
+        { id: "mobile-phones", name: "Mobile Phones", description: "Smartphones and feature phones" },
+        { id: "headphones", name: "Headphones & Earphones", description: "Audio devices and accessories" },
+        { id: "laptops", name: "Laptops & Computers", description: "Computing devices" },
+        { id: "smartwatches", name: "Smartwatches", description: "Fitness and smart wearables" }
+      ]
+    },
+    {
+      id: "fashion",
+      name: "Fashion",
+      description: "Stylish apparel and accessories",
+      subcategories: [
+        { id: "sarees", name: "Sarees", description: "Traditional and designer sarees" },
+        { id: "clothing", name: "Clothing", description: "Men's and women's clothing" },
+        { id: "accessories", name: "Accessories", description: "Fashion accessories" }
+      ]
+    },
+    {
+      id: "home-living",
+      name: "Home & Living",
+      description: "Beautiful furnishings and decor",
+      subcategories: [
+        { id: "candles", name: "Candles & Aromatherapy", description: "Scented candles and aromatherapy" },
+        { id: "furniture", name: "Furniture", description: "Home furniture and decor" }
+      ]
+    },
+    {
+      id: "beauty",
+      name: "Beauty & Personal Care",
+      description: "Premium self-care products",
+      subcategories: [
+        { id: "skincare", name: "Skincare", description: "Skincare products and treatments" },
+        { id: "makeup", name: "Makeup", description: "Cosmetics and beauty products" }
+      ]
+    }
+  ]
   private products: Product[] = [
     {
       id: "101",
@@ -151,6 +192,42 @@ class StoreManager {
     this.products.push(newProduct)
     this.notifyListeners()
     return newProduct
+  }
+
+  // Category management
+  getCategories() {
+    return [...this.categories]
+  }
+
+  addCategory(category: { name: string; description: string; subcategories?: any[] }) {
+    const newCategory = {
+      ...category,
+      id: category.name.toLowerCase().replace(/\s+/g, '-'),
+      subcategories: category.subcategories || []
+    }
+    this.categories.push(newCategory)
+    this.notifyListeners()
+    return newCategory
+  }
+
+  updateCategory(categoryId: string, updates: any) {
+    const categoryIndex = this.categories.findIndex(cat => cat.id === categoryId)
+    if (categoryIndex !== -1) {
+      this.categories[categoryIndex] = { ...this.categories[categoryIndex], ...updates }
+      this.notifyListeners()
+    }
+  }
+
+  addSubcategory(categoryId: string, subcategory: { name: string; description: string }) {
+    const categoryIndex = this.categories.findIndex(cat => cat.id === categoryId)
+    if (categoryIndex !== -1) {
+      const newSubcategory = {
+        ...subcategory,
+        id: subcategory.name.toLowerCase().replace(/\s+/g, '-')
+      }
+      this.categories[categoryIndex].subcategories.push(newSubcategory)
+      this.notifyListeners()
+    }
   }
 
   // Statistics

@@ -1,13 +1,30 @@
 "use client"
-import { useCart } from "@/components/cart-provider"
-import { useToast } from "@/components/ui/use-toast"
-import Image from "next/image"
-import TaxInfo from "@/components/tax-info"
-import Link from "next/link"
-import { Star, StarHalf } from "lucide-react"
 
-// Sample product data
-const featuredProducts = [
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import { useCart } from "@/components/cart-provider"
+import { TaxInfo } from "@/components/tax-info"
+import { storeManager } from "@/lib/store"
+
+export default function ProductsSection() {
+  const [products, setProducts] = useState<any[]>([])
+  const { addToCart } = useCart()
+
+  useEffect(() => {
+    const updateProducts = () => {
+      const allProducts = storeManager.getProducts()
+      setProducts(allProducts)
+    }
+
+    updateProducts()
+    const unsubscribe = storeManager.subscribe(updateProducts)
+    return unsubscribe
+  }, [])
+
+  // Sample product data (fallback)
+  const sampleProducts = [
   {
     id: 1,
     name: "Premium Wireless Headphones",
@@ -50,8 +67,6 @@ const featuredProducts = [
   },
 ]
 
-export default function ProductsSection() {
-  const { addToCart } = useCart()
   const { toast } = useToast()
 
   const handleAddToCart = (product: any) => {
@@ -88,13 +103,15 @@ export default function ProductsSection() {
     )
   }
 
+  const productsToShow = products.length > 0 ? products : sampleProducts
+
   return (
     <section id="products" className="py-8">
       <div className="container mx-auto px-4">
         <h2 className="amazon-title text-2xl mb-4">Featured Products</h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {featuredProducts.map((product) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {productsToShow.slice(0, 8).map((product) => (
             <div key={product.id} className="amazon-card">
               <Link href={`/product/${product.id}`} className="block">
                 <div className="aspect-square relative mb-3">

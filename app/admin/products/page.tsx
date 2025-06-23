@@ -21,13 +21,17 @@ export default function ProductsPage() {
     description: "",
     price: "",
     stock: "",
-    category: "electronics"
+    category: "electronics",
+    subcategory: ""
   })
+  const [categories, setCategories] = useState<any[]>([])
 
   useEffect(() => {
     const updateProducts = () => {
       const allProducts = storeManager.getProducts()
+      const allCategories = storeManager.getCategories()
       setProducts(allProducts)
+      setCategories(allCategories)
       filterProducts(allProducts, searchTerm, categoryFilter)
     }
 
@@ -81,7 +85,8 @@ export default function ProductsPage() {
       description: "",
       price: "",
       stock: "",
-      category: "electronics"
+      category: "electronics",
+      subcategory: ""
     })
     setShowAddForm(false)
     setEditingProduct(null)
@@ -94,7 +99,8 @@ export default function ProductsPage() {
       description: product.description,
       price: product.price.toString(),
       stock: product.stock.toString(),
-      category: product.category
+      category: product.category,
+      subcategory: product.subcategory || ""
     })
     setShowAddForm(true)
   }
@@ -305,12 +311,26 @@ export default function ProductsPage() {
                   <label className="block text-sm font-medium mb-1">Category</label>
                   <select
                     value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    onChange={(e) => setFormData({...formData, category: e.target.value, subcategory: ""})}
                     className="w-full border rounded-md px-3 py-2"
                     required
                   >
                     {categories.map(cat => (
-                      <option key={cat.value} value={cat.value}>{cat.label}</option>
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Subcategory</label>
+                  <select
+                    value={formData.subcategory}
+                    onChange={(e) => setFormData({...formData, subcategory: e.target.value})}
+                    className="w-full border rounded-md px-3 py-2"
+                  >
+                    <option value="">Select subcategory (optional)</option>
+                    {categories.find(cat => cat.id === formData.category)?.subcategories?.map((sub: any) => (
+                      <option key={sub.id} value={sub.id}>{sub.name}</option>
                     ))}
                   </select>
                 </div>
