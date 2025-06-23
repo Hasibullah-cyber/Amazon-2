@@ -16,11 +16,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user: null,
     isAuthenticated: false
   })
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const unsubscribe = authManager.subscribe(setAuthState)
     return unsubscribe
   }, [])
+
+  if (!mounted) {
+    return <div suppressHydrationWarning>{children}</div>
+  }
 
   const signOut = () => {
     authManager.signOut()
