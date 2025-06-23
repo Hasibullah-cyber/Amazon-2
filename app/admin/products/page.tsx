@@ -109,7 +109,7 @@ export default function ProductsPage() {
     storeManager.updateProduct(productId, { stock: newStock })
   }
 
-  const categories = [
+  const categoryOptions = [
     { value: "electronics", label: "Electronics" },
     { value: "fashion", label: "Fashion" },
     { value: "home-living", label: "Home & Living" },
@@ -146,7 +146,7 @@ export default function ProductsPage() {
             className="border rounded-md px-3 py-2"
           >
             <option value="all">All Categories</option>
-            {categories.map(cat => (
+            {categoryOptions.map(cat => (
               <option key={cat.value} value={cat.value}>{cat.label}</option>
             ))}
           </select>
@@ -220,7 +220,7 @@ export default function ProductsPage() {
               <div className="flex justify-between items-center">
                 <span className="font-medium">Category:</span>
                 <span className="text-sm px-2 py-1 bg-gray-100 rounded">
-                  {categories.find(c => c.value === product.category)?.label}
+                  {categoryOptions.find(c => c.value === product.category)?.label}
                 </span>
               </div>
 
