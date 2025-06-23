@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useCart } from "@/components/cart-provider"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Minus, Plus } from "lucide-react"
 

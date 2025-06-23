@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
 import TaxInfo from "@/components/tax-info"
 import { storeManager } from "@/lib/store"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { Star, StarHalf } from "lucide-react"
 
 export default function ProductsSection() {
@@ -69,7 +69,7 @@ export default function ProductsSection() {
   },
 ]
 
-  
+
 
   const { toast } = useToast()
 

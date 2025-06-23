@@ -4,7 +4,7 @@ import { X, Plus, Minus } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from '@/hooks/use-toast'
 
 interface CartDrawerProps {
   open: boolean
