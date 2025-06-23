@@ -6,6 +6,7 @@ import { authManager, AuthState, User } from "@/lib/auth"
 interface AuthContextType extends AuthState {
   signOut: () => void
   refreshAuth: () => void
+  loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -13,6 +14,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
+    isAuthenticated: false,
     loading: true,
   })
   const [mounted, setMounted] = useState(false)

@@ -9,6 +9,7 @@ export interface User {
 export interface AuthState {
   user: User | null
   isAuthenticated: boolean
+  loading?: boolean
 }
 
 class AuthManager {
