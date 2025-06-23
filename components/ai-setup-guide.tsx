@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Copy, ExternalLink, CheckCircle, AlertCircle, Sparkles, Bot, Search } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AISetupGuide() {
   const [apiKey, setApiKey] = useState("")
