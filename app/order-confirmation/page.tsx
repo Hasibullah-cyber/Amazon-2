@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { CheckCircle, Package, Truck, MapPin, Calendar, CreditCard } from "lucide-react"
+import { CheckCircle, Package, Truck, MapPin, Calendar, CreditCard, Mail, MessageSquare } from "lucide-react"
 import Link from "next/link"
 
 export const dynamic = 'force-dynamic'
