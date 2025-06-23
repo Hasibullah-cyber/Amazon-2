@@ -223,7 +223,7 @@ const renderRating = (rating: number) => {
   )
 }
 
-export default async function SubcategoryPage({ params }: { params: { slug: string; subcategory: string } }) {
+export default async function SubcategoryPage({ params }: { params: Promise<{ slug: string; subcategory: string }> }) {
   const { slug, subcategory } = await params
   const subcategoryData = subcategoryProducts[subcategory as keyof typeof subcategoryProducts]
 
