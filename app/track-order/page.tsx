@@ -78,7 +78,7 @@ export default function TrackOrderPage() {
       <div className="max-w-4xl mx-auto px-4">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-black mb-2">Track Your Order</h1>
-          <p className="text-gray-600">Enter your order ID to get real-time updates on your delivery</p>
+          <p className="text-black">Enter your order ID to get real-time updates on your delivery</p>
         </div>
 
         {/* Search Section */}
@@ -99,7 +99,7 @@ export default function TrackOrderPage() {
             <Button 
               onClick={handleTrackOrder} 
               disabled={loading}
-              className="px-8 py-3 text-lg bg-blue-600 hover:bg-blue-700 text-white"
+              className="px-8 py-3 text-lg bg-black hover:bg-gray-800 text-white"
             >
               {loading ? "Searching..." : "Track Order"}
             </Button>
@@ -278,8 +278,8 @@ export default function TrackOrderPage() {
         {/* Demo Section */}
         {!order && !error && (
           <Card className="p-6 bg-gray-50">
-            <h3 className="text-lg font-semibold mb-3">Demo Order IDs</h3>
-            <p className="text-sm text-gray-600 mb-4">
+            <h3 className="text-lg font-semibold mb-3 text-black">Demo Order IDs</h3>
+            <p className="text-sm text-black mb-4">
               Try tracking with these sample order IDs to see the system in action:
             </p>
             <div className="flex flex-wrap gap-2">
