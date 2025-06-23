@@ -18,12 +18,11 @@ export function AIChatAssistant() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [isClient, setIsClient] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Fix hydration mismatch by only rendering after client-side hydration
   useEffect(() => {
-    setIsClient(true)
+    setMounted(true)
   }, [])
 
   const scrollToBottom = () => {
@@ -94,8 +93,7 @@ export function AIChatAssistant() {
     }
   }
 
-  // Don't render anything until client-side to prevent hydration mismatch
-  if (!isClient) {
+  if (!mounted) {
     return null
   }
 
