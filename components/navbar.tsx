@@ -198,7 +198,7 @@ export default function Navbar() {
                 Contact
               </Link>
               <Link href="/track-order">
-                <Button variant="outline" size="sm" className="hidden md:flex">
+                <Button variant="outline" size="sm" className="hidden md:flex border-white text-white hover:bg-white hover:text-black">
                   Track Order
                 </Button>
               </Link>
