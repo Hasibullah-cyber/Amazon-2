@@ -69,7 +69,7 @@ export default function RegularSearch() {
     // First, try exact product name match
     const exactMatch = searchDatabase[lowerQuery as keyof typeof searchDatabase]
     if (exactMatch) {
-      if (exactMatch.name) {
+      if ('name' in exactMatch && exactMatch.name) {
         toast({
           title: "Product Found!",
           description: `Found: ${exactMatch.name}`,
@@ -90,7 +90,7 @@ export default function RegularSearch() {
     // Try partial matches for brand names and product types
     for (const [key, value] of Object.entries(searchDatabase)) {
       if (lowerQuery.includes(key) || key.includes(lowerQuery)) {
-        if (value.name) {
+        if ('name' in value && value.name) {
           toast({
             title: "Product Found!",
             description: `Found: ${value.name}`,
