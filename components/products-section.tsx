@@ -5,8 +5,10 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
-import { TaxInfo } from "@/components/tax-info"
+import TaxInfo from "@/components/tax-info"
 import { storeManager } from "@/lib/store"
+import { useToast } from "@/components/ui/use-toast"
+import { Star, StarHalf } from "lucide-react"
 
 export default function ProductsSection() {
   const [products, setProducts] = useState<any[]>([])
@@ -66,6 +68,8 @@ export default function ProductsSection() {
     reviews: 156,
   },
 ]
+
+  
 
   const { toast } = useToast()
 
