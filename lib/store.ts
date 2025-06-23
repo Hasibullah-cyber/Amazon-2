@@ -30,7 +30,7 @@ interface Order {
   shipping: number
   vat: number
   totalAmount: number
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned'
   paymentMethod: string
   createdAt: string
   estimatedDelivery: string
