@@ -10,6 +10,17 @@ interface SMSTemplate {
   message: string
 }
 
+// Notification system for order confirmations
+interface EmailTemplate {
+  subject: string
+  html: string
+  text: string
+}
+
+interface SMSTemplate {
+  message: string
+}
+
 class NotificationService {
   // Email service (using a mock implementation - replace with your preferred service)
   async sendOrderConfirmationEmail(order: any): Promise<boolean> {
@@ -226,6 +237,19 @@ Thank you for shopping with us!
     const smsMessage = `Order Update: ${message} Order ID: ${order.orderId}. Track your order on our website.`
     console.log('Sending status update SMS to:', order.customerPhone)
     console.log('Message:', smsMessage)
+  }
+
+  // Convenience method for sending both email and SMS confirmations
+  async sendOrderConfirmation(order: any): Promise<{email: boolean, sms: boolean}> {
+    const [emailResult, smsResult] = await Promise.all([
+      this.sendOrderConfirmationEmail(order),
+      this.sendOrderConfirmationSMS(order)
+    ])
+    
+    return {
+      email: emailResult,
+      sms: smsResult
+    }
   }
 }
 

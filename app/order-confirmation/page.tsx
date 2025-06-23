@@ -3,15 +3,18 @@
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Package, Truck, MapPin, CreditCard } from "lucide-react"
+import { CheckCircle, Package, Truck, MapPin, CreditCard, Mail, MessageSquare } from "lucide-react"
 import Link from "next/link"
 import { storeManager } from "@/lib/store"
-import { sendOrderConfirmation } from "@/lib/notifications"
+import { notificationService } from "@/lib/notifications"
 import { useAuth } from "@/components/auth-provider"
 
 export default function OrderConfirmationPage() {
   const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [emailSent, setEmailSent] = useState(false)
+  const [smsSent, setSmsSent] = useState(false)
+  const [sendingNotifications, setSendingNotifications] = useState(false)
   const { user } = useAuth()
 
   useEffect(() => {
@@ -89,6 +92,12 @@ export default function OrderConfirmationPage() {
 
           // Clear cart after successful order
           localStorage.removeItem("cart")
+
+          // Send notifications after order is created
+          if (parsedOrder) {
+            setSendingNotifications(true)
+            sendNotifications(parsedOrder)
+          }
         } catch (error) {
           console.error("Failed to add order to store:", error)
         }
@@ -102,6 +111,57 @@ export default function OrderConfirmationPage() {
       setLoading(false)
     }
   }, [])
+
+  const sendNotifications = async (orderData: any) => {
+    try {
+      // Prepare order data for notifications
+      const notificationOrder = {
+        orderId: orderData.orderId,
+        customerName: orderData.name || "Guest User",
+        customerEmail: orderData.email || user?.email || "guest@example.com",
+        customerPhone: orderData.phone || "01700000000",
+        address: orderData.address || "123 Default Street",
+        city: orderData.city || "Dhaka",
+        items: orderData.cartItems?.map((item: any) => ({
+          id: item.id?.toString() || Date.now().toString(),
+          name: item.name || "Unknown Product",
+          price: item.price || 0,
+          quantity: item.quantity || 1,
+          image: item.image || "/placeholder.svg"
+        })) || [],
+        subtotal: orderData.subtotal || 0,
+        shipping: orderData.shipping || 120,
+        vat: orderData.vat || 0,
+        totalAmount: orderData.totalAmount || 0,
+        paymentMethod: orderData.paymentMethod || "Cash on Delivery",
+        estimatedDelivery: orderData.estimatedDelivery || "1-2 business days",
+        createdAt: new Date().toISOString()
+      }
+
+      // Send email notification
+      try {
+        const emailResult = await notificationService.sendOrderConfirmationEmail(notificationOrder)
+        setEmailSent(emailResult)
+      } catch (error) {
+        console.error("Failed to send email:", error)
+        setEmailSent(false)
+      }
+
+      // Send SMS notification
+      try {
+        const smsResult = await notificationService.sendOrderConfirmationSMS(notificationOrder)
+        setSmsSent(smsResult)
+      } catch (error) {
+        console.error("Failed to send SMS:", error)
+        setSmsSent(false)
+      }
+
+    } catch (error) {
+      console.error("Error sending notifications:", error)
+    } finally {
+      setSendingNotifications(false)
+    }
+  }
 
   if (loading) return <div className="p-6">Loading your order...</div>
   
@@ -136,6 +196,48 @@ export default function OrderConfirmationPage() {
           <p className="text-gray-600">
             Thank you for your purchase. Your order <span className="font-medium">{order.orderId}</span> has been received.
           </p>
+          
+          {/* Notification Status */}
+          <div className="mt-6 space-y-3">
+            {sendingNotifications && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-blue-800">Sending confirmation notifications...</span>
+                </div>
+              </div>
+            )}
+            
+            {!sendingNotifications && (emailSent || smsSent) && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h3 className="font-medium text-green-800 mb-2">Confirmation Sent!</h3>
+                <div className="space-y-1 text-sm">
+                  {emailSent && (
+                    <div className="flex items-center text-green-700">
+                      <Mail className="h-4 w-4 mr-2" />
+                      Email confirmation sent to {user?.email || order.email || "your email"}
+                    </div>
+                  )}
+                  {smsSent && (
+                    <div className="flex items-center text-green-700">
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      SMS confirmation sent to {order.phone}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {!sendingNotifications && !emailSent && !smsSent && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center text-yellow-800">
+                  <div className="text-sm">
+                    Order confirmed, but notifications could not be sent. Please save this page for your records.
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
