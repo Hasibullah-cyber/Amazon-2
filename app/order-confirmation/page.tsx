@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -7,9 +6,13 @@ import { Button } from "@/components/ui/button"
 import { CheckCircle, Package, Truck, MapPin, CreditCard } from "lucide-react"
 import Link from "next/link"
 import { storeManager } from "@/lib/store"
+import { sendOrderConfirmation } from "@/lib/notifications"
+import { useAuth } from "@/components/auth-provider"
 
 export default function OrderConfirmationPage() {
   const [order, setOrder] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
 
   useEffect(() => {
     const storedOrder = localStorage.getItem("order")
@@ -162,7 +165,7 @@ export default function OrderConfirmationPage() {
               </div>
             </Card>
           </div>
-    
+
           {/* Order Summary */}
           <div className="lg:col-span-1">
             <Card className="p-6 sticky top-4">
@@ -186,7 +189,13 @@ export default function OrderConfirmationPage() {
                   <span className="amazon-price">৳{order.totalAmount}</span>
                 </div>
               </div>
-
+              <div>
+              <h3 className="font-semibold text-gray-800 mb-2">Customer Information</h3>
+              <p>{user?.name || order.customerName}</p>
+              <p>{user?.email || order.customerEmail}</p>
+              <p>{order.customerPhone}</p>
+            </div>
+            
               <div className="mt-6 space-y-3">
                 <Button className="amazon-button w-full" asChild>
                   <Link href="/">Continue Shopping</Link>
