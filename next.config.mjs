@@ -37,6 +37,12 @@ const nextConfig = {
         os: false,
         path: false,
       }
+      // Add configuration to handle chunk loading errors
+      config.output = {
+        ...config.output,
+        publicPath: '/_next/',
+        chunkLoadTimeout: 60000,
+      }
     }
     return config
   },
