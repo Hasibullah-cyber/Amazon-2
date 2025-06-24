@@ -21,13 +21,19 @@ export default function CategoriesPage() {
   })
 
   useEffect(() => {
-    const updateCategories = () => {
-      const allCategories = storeManager.getCategories()
-      setCategories(allCategories)
+    const updateCategories = async () => {
+      try {
+        const allCategories = await storeManager.getCategories()
+        setCategories(allCategories)
+      } catch (error) {
+        console.error('Error fetching categories:', error)
+      }
     }
 
     updateCategories()
-    const unsubscribe = storeManager.subscribe(updateCategories)
+    const unsubscribe = storeManager.subscribe(() => {
+      updateCategories()
+    })
 
     return unsubscribe
   }, [])
