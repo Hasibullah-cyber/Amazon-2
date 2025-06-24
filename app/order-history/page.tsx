@@ -7,7 +7,6 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { storeManager } from "@/lib/store"
 import { useAuth } from "@/components/auth-provider"
 import { Package, Truck, CheckCircle, X, RotateCcw, Star, Search, Calendar } from "lucide-react"
 import Link from "next/link"
@@ -26,39 +25,42 @@ export default function OrderHistoryPage() {
   const [returnReason, setReturnReason] = useState("")
   const [rating, setRating] = useState(0)
   const [review, setReview] = useState("")
+  const [loading, setLoading] = useState(true)
   const { user } = useAuth()
 
-  useEffect(() => {
-    const updateOrders = () => {
-      const allOrders = storeManager.getOrders()
-      // Filter orders for current user
-      const userOrders = user ? 
-        allOrders.filter(order => 
-          order.customerEmail === user.email || 
-          order.customerName === user.name
-        ) : 
-        allOrders.filter(order => {
-          // For guest users, try to match with stored order data
-          const storedOrder = localStorage.getItem("order")
-          if (storedOrder) {
-            try {
-              const parsed = JSON.parse(storedOrder)
-              return order.orderId === parsed.orderId
-            } catch {
-              return false
-            }
-          }
-          return false
-        })
-      
-      setOrders(userOrders)
-      filterOrders(userOrders, searchTerm, filterStatus)
+  const fetchOrders = async () => {
+    if (!user) {
+      setLoading(false)
+      return
     }
 
-    updateOrders()
-    const unsubscribe = storeManager.subscribe(updateOrders)
-    return unsubscribe
-  }, [user, searchTerm, filterStatus])
+    try {
+      const params = new URLSearchParams()
+      if (user.email) params.append('email', user.email)
+      if (user.name) params.append('name', user.name)
+      
+      const response = await fetch(`/api/user-orders?${params}`)
+      if (response.ok) {
+        const userOrders = await response.json()
+        setOrders(userOrders)
+        filterOrders(userOrders, searchTerm, filterStatus)
+      } else {
+        console.error('Failed to fetch orders')
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchOrders()
+  }, [user])
+
+  useEffect(() => {
+    filterOrders(orders, searchTerm, filterStatus)
+  }, [searchTerm, filterStatus, orders])
 
   const filterOrders = (ordersList: any[], search: string, status: string) => {
     let filtered = ordersList
@@ -114,23 +116,40 @@ export default function OrderHistoryPage() {
     setShowRatingModal(true)
   }
 
-  const submitReturn = () => {
+  const submitReturn = async () => {
     if (selectedOrder && returnReason.trim()) {
-      // Update order status to returned
-      storeManager.updateOrderStatus(selectedOrder.id, 'returned')
-      
-      // Store return request (in a real app, this would go to a returns system)
-      const returnRequest = {
-        orderId: selectedOrder.orderId,
-        reason: returnReason,
-        requestDate: new Date().toISOString(),
-        customerName: selectedOrder.customerName
+      try {
+        const response = await fetch('/api/update-order-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            orderId: selectedOrder.id,
+            status: 'returned'
+          })
+        })
+
+        if (response.ok) {
+          // Store return request (in a real app, this would go to a returns system)
+          const returnRequest = {
+            orderId: selectedOrder.orderId,
+            reason: returnReason,
+            requestDate: new Date().toISOString(),
+            customerName: selectedOrder.customerName
+          }
+          
+          // Store in localStorage for demo purposes
+          const existingReturns = JSON.parse(localStorage.getItem("returns") || "[]")
+          existingReturns.push(returnRequest)
+          localStorage.setItem("returns", JSON.stringify(existingReturns))
+          
+          // Refresh orders
+          await fetchOrders()
+        }
+      } catch (error) {
+        console.error('Error submitting return:', error)
       }
-      
-      // Store in localStorage for demo purposes
-      const existingReturns = JSON.parse(localStorage.getItem("returns") || "[]")
-      existingReturns.push(returnRequest)
-      localStorage.setItem("returns", JSON.stringify(existingReturns))
       
       setShowReturnModal(false)
       setReturnReason("")
@@ -191,6 +210,16 @@ export default function OrderHistoryPage() {
       case 'delivered': return <CheckCircle className={iconClass} />
       default: return <Package className={iconClass} />
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">Loading...</h1>
+        </div>
+      </div>
+    )
   }
 
   if (!user) {
