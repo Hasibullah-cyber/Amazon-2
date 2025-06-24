@@ -19,110 +19,114 @@ export default function OrderConfirmationPage() {
   const { user } = useAuth()
 
   useEffect(() => {
-    try {
-      const storedOrder = localStorage.getItem("order")
-      const storedCart = localStorage.getItem("cart")
-      let parsedOrder = null
+    const processOrder = async () => {
+      try {
+        const storedOrder = localStorage.getItem("order")
+        const storedCart = localStorage.getItem("cart")
+        let parsedOrder = null
 
-      if (storedOrder) {
-        try {
-          parsedOrder = JSON.parse(storedOrder)
-        } catch (error) {
-          console.error("Failed to parse stored order:", error)
+        if (storedOrder) {
+          try {
+            parsedOrder = JSON.parse(storedOrder)
+          } catch (error) {
+            console.error("Failed to parse stored order:", error)
+          }
         }
-      }
 
-      if (!parsedOrder?.cartItems?.length && storedCart) {
-        try {
-          const cartItems = JSON.parse(storedCart)
-          if (Array.isArray(cartItems) && cartItems.length > 0) {
-            const subtotal = cartItems.reduce(
-              (total: number, item: any) => total + (item.price || 0) * (item.quantity || 0),
-              0
-            )
-            const vat = Math.round(subtotal * 0.1)
-            const shipping = 120
-            const totalAmount = subtotal + vat + shipping
+        if (!parsedOrder?.cartItems?.length && storedCart) {
+          try {
+            const cartItems = JSON.parse(storedCart)
+            if (Array.isArray(cartItems) && cartItems.length > 0) {
+              const subtotal = cartItems.reduce(
+                (total: number, item: any) => total + (item.price || 0) * (item.quantity || 0),
+                0
+              )
+              const vat = Math.round(subtotal * 0.1)
+              const shipping = 120
+              const totalAmount = subtotal + vat + shipping
 
-            parsedOrder = {
-              orderId: `#HS-${Date.now()}`,
-              name: "Guest User",
-              address: "123 Default Street",
-              city: "Dhaka",
-              phone: "01700000000",
-              paymentMethod: "Cash on Delivery",
-              transactionId: null,
-              estimatedDelivery: "1-2 business days",
-              cartItems,
-              subtotal,
-              shipping,
-              vat,
-              totalAmount,
+              parsedOrder = {
+                orderId: `#HS-${Date.now()}`,
+                name: "Guest User",
+                address: "123 Default Street",
+                city: "Dhaka",
+                phone: "01700000000",
+                paymentMethod: "Cash on Delivery",
+                transactionId: null,
+                estimatedDelivery: "1-2 business days",
+                cartItems,
+                subtotal,
+                shipping,
+                vat,
+                totalAmount,
+              }
             }
+          } catch (error) {
+            console.error("Failed to parse stored cart:", error)
           }
-        } catch (error) {
-          console.error("Failed to parse stored cart:", error)
         }
-      }
 
-      if (parsedOrder && parsedOrder.cartItems) {
-        // Add order to admin system via API
-        try {
-          const orderData = {
-            orderId: parsedOrder.orderId || `#HS-${Date.now()}`,
-            customerName: parsedOrder.name || "Guest User",
-            customerEmail: parsedOrder.email || "guest@example.com",
-            customerPhone: parsedOrder.phone || "01700000000",
-            address: parsedOrder.address || "123 Default Street",
-            city: parsedOrder.city || "Dhaka",
-            items: parsedOrder.cartItems?.map((item: any) => ({
-              id: item.id?.toString() || Date.now().toString(),
-              name: item.name || "Unknown Product",
-              price: item.price || 0,
-              quantity: item.quantity || 1,
-              image: item.image || "/placeholder.svg"
-            })) || [],
-            subtotal: parsedOrder.subtotal || 0,
-            shipping: parsedOrder.shipping || 120,
-            vat: parsedOrder.vat || 0,
-            totalAmount: parsedOrder.totalAmount || 0,
-            status: 'pending',
-            paymentMethod: parsedOrder.paymentMethod || "Cash on Delivery",
-            estimatedDelivery: parsedOrder.estimatedDelivery || "1-2 business days"
+        if (parsedOrder && parsedOrder.cartItems) {
+          // Add order to admin system via API
+          try {
+            const orderData = {
+              orderId: parsedOrder.orderId || `#HS-${Date.now()}`,
+              customerName: parsedOrder.name || "Guest User",
+              customerEmail: parsedOrder.email || "guest@example.com",
+              customerPhone: parsedOrder.phone || "01700000000",
+              address: parsedOrder.address || "123 Default Street",
+              city: parsedOrder.city || "Dhaka",
+              items: parsedOrder.cartItems?.map((item: any) => ({
+                id: item.id?.toString() || Date.now().toString(),
+                name: item.name || "Unknown Product",
+                price: item.price || 0,
+                quantity: item.quantity || 1,
+                image: item.image || "/placeholder.svg"
+              })) || [],
+              subtotal: parsedOrder.subtotal || 0,
+              shipping: parsedOrder.shipping || 120,
+              vat: parsedOrder.vat || 0,
+              totalAmount: parsedOrder.totalAmount || 0,
+              status: 'pending',
+              paymentMethod: parsedOrder.paymentMethod || "Cash on Delivery",
+              estimatedDelivery: parsedOrder.estimatedDelivery || "1-2 business days"
+            }
+
+            const response = await fetch('/api/orders', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(orderData),
+            })
+
+            if (!response.ok) {
+              throw new Error('Failed to save order')
+            }
+
+            // Clear cart after successful order
+            localStorage.removeItem("cart")
+
+            // Send notifications after order is created
+            if (parsedOrder) {
+              setSendingNotifications(true)
+              sendNotifications(parsedOrder)
+            }
+          } catch (error) {
+            console.error("Failed to add order to store:", error)
           }
-
-          const response = await fetch('/api/orders', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(orderData),
-          })
-
-          if (!response.ok) {
-            throw new Error('Failed to save order')
-          }
-
-          // Clear cart after successful order
-          localStorage.removeItem("cart")
-
-          // Send notifications after order is created
-          if (parsedOrder) {
-            setSendingNotifications(true)
-            sendNotifications(parsedOrder)
-          }
-        } catch (error) {
-          console.error("Failed to add order to store:", error)
         }
-      }
 
-      setOrder(parsedOrder)
-    } catch (error) {
-      console.error("Error processing order:", error)
-      setOrder(null)
-    } finally {
-      setLoading(false)
+        setOrder(parsedOrder)
+      } catch (error) {
+        console.error("Error processing order:", error)
+        setOrder(null)
+      } finally {
+        setLoading(false)
+      }
     }
+
+    processOrder()
   }, [])
 
   const sendNotifications = async (orderData: any) => {
