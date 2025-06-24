@@ -1,23 +1,27 @@
-
 "use client"
 
 import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useState } from "react"
-import { storeManager } from "@/lib/store"
 
 export default function CategoriesSection() {
   const [categories, setCategories] = useState<any[]>([])
 
   useEffect(() => {
-    const updateCategories = () => {
-      const allCategories = storeManager.getCategories()
-      setCategories(allCategories)
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories')
+        if (response.ok) {
+          const categoriesData = await response.json()
+          setCategories(categoriesData)
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error)
+      } finally {
+      }
     }
 
-    updateCategories()
-    const unsubscribe = storeManager.subscribe(updateCategories)
-    return unsubscribe
+    fetchCategories()
   }, [])
   return (
     <section id="categories" className="py-8">

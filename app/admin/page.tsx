@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic'
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { storeManager } from "@/lib/store"
 import { useAdminAuth } from "@/components/admin-auth-provider"
 import { AdminLoginModal } from "@/components/admin-login-modal"
 import { Package, Users, ShoppingCart, TrendingUp, AlertTriangle, Eye, Edit, Trash2, FolderOpen } from "lucide-react"
@@ -21,10 +20,24 @@ export default function AdminHome() {
   useEffect(() => {
     const updateData = async () => {
       try {
-        const fetchedStats = await storeManager.getStats()
-        const fetchedOrders = await storeManager.getOrders()
-        const fetchedProducts = await storeManager.getProducts()
-        
+        const response = await fetch('/api/admin/stats')
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const fetchedStats = await response.json()
+
+        const ordersResponse = await fetch('/api/admin/orders');
+        if (!ordersResponse.ok) {
+          throw new Error(`HTTP error! status: ${ordersResponse.status}`);
+        }
+        const fetchedOrders = await ordersResponse.json();
+
+        const productsResponse = await fetch('/api/admin/products');
+          if (!productsResponse.ok) {
+            throw new Error(`HTTP error! status: ${productsResponse.status}`);
+        }
+        const fetchedProducts = await productsResponse.json();
+
         setStats(fetchedStats)
         setOrders(fetchedOrders)
         setProducts(fetchedProducts)
@@ -34,14 +47,22 @@ export default function AdminHome() {
     }
 
     updateData()
-    const unsubscribe = storeManager.subscribe(updateData)
 
-    return unsubscribe
   }, [])
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      await storeManager.updateOrderStatus(orderId, newStatus as any)
+      const response = await fetch(`/api/admin/orders/${orderId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
     } catch (error) {
       console.error('Error updating order status:', error)
     }
@@ -182,7 +203,7 @@ export default function AdminHome() {
               </tr>
             </thead>
             <tbody>
-              {stats.recentOrders.map((order: any) => (
+              {stats && stats.recentOrders && stats.recentOrders.map((order: any) => (
                 <tr key={order.id} className="border-b hover:bg-gray-50">
                   <td className="p-2 font-mono text-sm">{order.orderId}</td>
                   <td className="p-2">{order.customerName}</td>
@@ -229,7 +250,7 @@ export default function AdminHome() {
           </Link>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {products.slice(0, 6).map((product) => (
+          {products && products.slice(0, 6).map((product) => (
             <div key={product.id} className="border p-4 rounded-lg hover:shadow-md transition">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-medium truncate">{product.name}</h3>

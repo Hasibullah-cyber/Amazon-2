@@ -6,7 +6,6 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
 import TaxInfo from "@/components/tax-info"
-import { storeManager } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
 import { Star, StarHalf } from "lucide-react"
 
@@ -16,10 +15,13 @@ export default function ProductsSection() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const updateProducts = async () => {
+    const fetchProducts = async () => {
       try {
-        const fetchedProducts = await storeManager.getProducts()
-        setProducts(fetchedProducts)
+        const response = await fetch('/api/products')
+        if (response.ok) {
+          const productsData = await response.json()
+          setProducts(productsData)
+        }
       } catch (error) {
         console.error('Error fetching products:', error)
       } finally {
@@ -27,10 +29,7 @@ export default function ProductsSection() {
       }
     }
 
-    updateProducts()
-    const unsubscribe = storeManager.subscribe(updateProducts)
-
-    return unsubscribe
+    fetchProducts()
   }, [])
 
   // Sample product data (fallback)
