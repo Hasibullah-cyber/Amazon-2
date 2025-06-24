@@ -28,16 +28,22 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<any[]>([])
 
   useEffect(() => {
-    const updateProducts = () => {
-      const allProducts = storeManager.getProducts()
-      const allCategories = storeManager.getCategories()
-      setProducts(allProducts)
-      setCategories(allCategories)
-      filterProducts(allProducts, searchTerm, categoryFilter)
+    const updateProducts = async () => {
+      try {
+        const allProducts = await storeManager.getProducts()
+        const allCategories = await storeManager.getCategories()
+        setProducts(allProducts)
+        setCategories(allCategories)
+        filterProducts(allProducts, searchTerm, categoryFilter)
+      } catch (error) {
+        console.error('Error fetching products and categories:', error)
+      }
     }
 
     updateProducts()
-    const unsubscribe = storeManager.subscribe(updateProducts)
+    const unsubscribe = storeManager.subscribe(() => {
+      updateProducts()
+    })
 
     return unsubscribe
   }, [searchTerm, categoryFilter])
