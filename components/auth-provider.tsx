@@ -33,12 +33,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthState(authManager.getAuthState())
   }
 
+  // Prevent hydration mismatch by not rendering children until mounted
+  if (!mounted) {
+    return <AuthContext.Provider value={{
+      user: null,
+      isAuthenticated: false,
+      loading: true,
+      signOut,
+      refreshAuth,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  }
+
   return (
     <AuthContext.Provider value={{
       ...authState,
       signOut,
       refreshAuth,
-      loading: !mounted,
+      loading: false,
     }}>
       {children}
     </AuthContext.Provider>

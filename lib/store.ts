@@ -46,7 +46,10 @@ class StoreManager {
   constructor() {
     // Only initialize DB on server-side and if not already done
     if (typeof window === 'undefined' && !this.dbInitialized) {
-      this.initializeDb()
+      this.initializeDb().catch(error => {
+        console.error('Database initialization failed:', error)
+        this.dbInitialized = true // Mark as initialized to prevent retries
+      })
     }
   }
 
