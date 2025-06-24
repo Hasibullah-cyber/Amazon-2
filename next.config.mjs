@@ -16,7 +16,8 @@ const nextConfig = {
       "*.pike.replit.dev",
       "*.sisko.replit.dev",
       "*.replit.app",
-      "*.id.replit.app"
+      "*.id.replit.app",
+      "*.vercel.app"
     ],
   },
   webpack: (config, { isServer }) => {
@@ -41,7 +42,28 @@ const nextConfig = {
       config.output = {
         ...config.output,
         publicPath: '/_next/',
-        chunkLoadTimeout: 60000,
+        chunkLoadTimeout: 120000,
+      }
+      
+      // Improve chunk splitting for better loading
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: {
+              minChunks: 2,
+              priority: -20,
+              reuseExistingChunk: true,
+            },
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              priority: -10,
+              chunks: 'all',
+            },
+          },
+        },
       }
     }
     return config

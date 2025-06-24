@@ -1,4 +1,3 @@
-
 import { Pool } from 'pg'
 
 // Disable pg-native to avoid module resolution errors
@@ -12,6 +11,12 @@ const pool = new Pool({
 export { pool }
 
 export async function initializeDatabase() {
+  // Check if DATABASE_URL is configured
+  if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('base')) {
+    console.warn('DATABASE_URL is not properly configured. Please set it in your Secrets.')
+    return false
+  }
+
   try {
     const client = await pool.connect()
 
@@ -91,14 +96,15 @@ export async function initializeDatabase() {
 
       console.log('Database initialized successfully')
     } catch (error) {
-      console.error('Error initializing database:', error)
-      throw error
+      console.error('Failed to initialize database:', error)
+      return false
     } finally {
       client.release()
     }
-  } catch (connectionError) {
-    console.error('Failed to connect to database:', connectionError)
-    // Don't throw here to allow app to start without database
-    console.log('App will continue without database functionality')
+
+    return true
+  } catch (error) {
+    console.error('Failed to connect to database:', error)
+    return false
   }
 }
