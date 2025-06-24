@@ -40,16 +40,36 @@ interface Order {
 
 class StoreManager {
   private listeners: Array<() => void> = []
+  private static instance: StoreManager | null = null
+  private dbInitialized = false
 
   constructor() {
-    this.initializeDb()
+    // Only initialize DB on server-side and if not already done
+    if (typeof window === 'undefined' && !this.dbInitialized) {
+      this.initializeDb()
+    }
+  }
+
+  static getInstance(): StoreManager {
+    if (!StoreManager.instance) {
+      StoreManager.instance = new StoreManager()
+    }
+    return StoreManager.instance
   }
 
   private async initializeDb() {
+    if (this.dbInitialized) return
+    
     try {
       await initializeDatabase()
+      this.dbInitialized = true
     } catch (error) {
-      console.error('Failed to initialize database:', error)
+      // Only log error if it's not a duplicate constraint error
+      if (!error.message?.includes('duplicate key value violates unique constraint')) {
+        console.error('Failed to initialize database:', error)
+      }
+      // Mark as initialized even if there was a duplicate error
+      this.dbInitialized = true
     }
   }
 
@@ -406,5 +426,5 @@ class StoreManager {
   }
 }
 
-export const storeManager = new StoreManager()
+export const storeManager = StoreManager.getInstance()
 

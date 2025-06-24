@@ -245,4 +245,11 @@ class ServerStoreManager {
   }
 }
 
-export const serverStoreManager = new ServerStoreManager()
+let serverStoreManagerInstance: ServerStoreManager | null = null
+
+export const serverStoreManager = (() => {
+  if (!serverStoreManagerInstance) {
+    serverStoreManagerInstance = new ServerStoreManager()
+  }
+  return serverStoreManagerInstance
+})()

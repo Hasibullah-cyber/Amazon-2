@@ -86,8 +86,13 @@ export async function initializeDatabase() {
 
     console.log('Database initialized successfully')
   } catch (error) {
-    console.error('Error initializing database:', error)
-    throw error
+    // Don't throw error for duplicate constraints during builds
+    if (error.code === '23505' && error.detail?.includes('already exists')) {
+      console.log('Database tables already exist, skipping initialization')
+    } else {
+      console.error('Error initializing database:', error)
+      throw error
+    }
   } finally {
     client.release()
   }
