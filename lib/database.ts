@@ -1,6 +1,9 @@
 
 import { Pool } from 'pg'
 
+// Disable pg-native to avoid module resolution errors
+process.env.NODE_PG_FORCE_NATIVE = 'false'
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
