@@ -8,7 +8,7 @@ import { Search, Package, Truck, CheckCircle, MapPin } from "lucide-react"
 
 export const dynamic = 'force-dynamic'
 
-import { storeManager } from "@/lib/store"
+
 import { Phone, Mail, X, Clock } from "lucide-react"
 
 export default function TrackOrderPage() {
@@ -17,7 +17,7 @@ export default function TrackOrderPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const handleTrackOrder = () => {
+  const handleTrackOrder = async () => {
     if (!trackingId.trim()) {
       setError("Please enter an order ID")
       return
@@ -26,23 +26,31 @@ export default function TrackOrderPage() {
     setLoading(true)
     setError("")
 
-    // Search for order by ID
-    const orders = storeManager.getOrders()
-    const foundOrder = orders.find(order => 
-      order.orderId.toLowerCase() === trackingId.toLowerCase() ||
-      order.id === trackingId
-    )
+    try {
+      // Search for order by ID via API
+      const response = await fetch('/api/orders')
+      if (response.ok) {
+        const orders = await response.json()
+        const foundOrder = orders.find((order: any) => 
+          order.orderId.toLowerCase() === trackingId.toLowerCase() ||
+          order.id === trackingId
+        )
 
-    setTimeout(() => {
-      if (foundOrder) {
-        setOrder(foundOrder)
-        setError("")
+        if (foundOrder) {
+          setOrder(foundOrder)
+          setError("")
+        } else {
+          setOrder(null)
+          setError("Order not found. Please check your order ID and try again.")
+        }
       } else {
-        setOrder(null)
-        setError("Order not found. Please check your order ID and try again.")
+        setError("Failed to fetch orders. Please try again.")
       }
+    } catch (error) {
+      setError("Failed to fetch orders. Please try again.")
+    } finally {
       setLoading(false)
-    }, 1000) // Simulate API delay
+    }
   }
 
   const getStatusProgress = (status: string) => {
@@ -283,19 +291,34 @@ export default function TrackOrderPage() {
               Try tracking with these sample order IDs to see the system in action:
             </p>
             <div className="flex flex-wrap gap-2">
-              {storeManager.getOrders().slice(0, 3).map((order) => (
-                <Button
-                  key={order.id}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setTrackingId(order.orderId)
-                    handleTrackOrder()
-                  }}
-                >
-                  {order.orderId}
-                </Button>
-              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setTrackingId("HS-1234567890")
+                  setTrackingId("HS-1234567890")
+                }}
+              >
+                HS-1234567890
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setTrackingId("HS-0987654321")
+                }}
+              >
+                HS-0987654321
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setTrackingId("HS-1122334455")
+                }}
+              >
+                HS-1122334455
+              </Button>
             </div>
           </Card>
         )}

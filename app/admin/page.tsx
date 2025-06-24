@@ -37,16 +37,6 @@ export default function AdminHome() {
           setOrders(fetchedOrders)
           setProducts(fetchedProducts)
         }
-
-        const productsResponse = await fetch('/api/admin/products');
-          if (!productsResponse.ok) {
-            throw new Error(`HTTP error! status: ${productsResponse.status}`);
-        }
-        const fetchedProducts = await productsResponse.json();
-
-        setStats(fetchedStats)
-        setOrders(fetchedOrders)
-        setProducts(fetchedProducts)
       } catch (error) {
         console.error('Error fetching admin data:', error)
       }
