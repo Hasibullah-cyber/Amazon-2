@@ -17,14 +17,20 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
 
   useEffect(() => {
-    const updateOrders = () => {
-      const allOrders = storeManager.getOrders()
-      setOrders(allOrders)
-      filterOrders(allOrders, searchTerm, statusFilter)
+    const updateOrders = async () => {
+      try {
+        const allOrders = await storeManager.getOrders()
+        setOrders(allOrders)
+        filterOrders(allOrders, searchTerm, statusFilter)
+      } catch (error) {
+        console.error('Error fetching orders:', error)
+      }
     }
 
     updateOrders()
-    const unsubscribe = storeManager.subscribe(updateOrders)
+    const unsubscribe = storeManager.subscribe(() => {
+      updateOrders()
+    })
 
     return unsubscribe
   }, [searchTerm, statusFilter])
