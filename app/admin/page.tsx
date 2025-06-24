@@ -19,10 +19,18 @@ export default function AdminHome() {
   const { isAdminAuthenticated, adminSignOut } = useAdminAuth()
 
   useEffect(() => {
-    const updateData = () => {
-      setStats(storeManager.getStats())
-      setOrders(storeManager.getOrders())
-      setProducts(storeManager.getProducts())
+    const updateData = async () => {
+      try {
+        const fetchedStats = await storeManager.getStats()
+        const fetchedOrders = await storeManager.getOrders()
+        const fetchedProducts = await storeManager.getProducts()
+        
+        setStats(fetchedStats)
+        setOrders(fetchedOrders)
+        setProducts(fetchedProducts)
+      } catch (error) {
+        console.error('Error fetching admin data:', error)
+      }
     }
 
     updateData()
@@ -31,8 +39,12 @@ export default function AdminHome() {
     return unsubscribe
   }, [])
 
-  const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
-    storeManager.updateOrderStatus(orderId, newStatus as any)
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      await storeManager.updateOrderStatus(orderId, newStatus as any)
+    } catch (error) {
+      console.error('Error updating order status:', error)
+    }
   }
 
   if (!isAdminAuthenticated) {

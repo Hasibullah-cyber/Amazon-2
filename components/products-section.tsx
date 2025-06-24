@@ -13,15 +13,23 @@ import { Star, StarHalf } from "lucide-react"
 export default function ProductsSection() {
   const [products, setProducts] = useState<any[]>([])
   const { addToCart } = useCart()
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const updateProducts = () => {
-      const allProducts = storeManager.getProducts()
-      setProducts(allProducts)
+    const updateProducts = async () => {
+      try {
+        const fetchedProducts = await storeManager.getProducts()
+        setProducts(fetchedProducts)
+      } catch (error) {
+        console.error('Error fetching products:', error)
+      } finally {
+        setLoading(false)
+      }
     }
 
     updateProducts()
     const unsubscribe = storeManager.subscribe(updateProducts)
+
     return unsubscribe
   }, [])
 
@@ -112,6 +120,18 @@ export default function ProductsSection() {
   }
 
   const productsToShow = products.length > 0 ? products : sampleProducts
+
+  if (loading) {
+    return (
+      <section id="products" className="py-8">
+        <div className="container mx-auto px-4">
+          <h2 className="amazon-title text-2xl mb-4">Featured Products</h2>
+          <p>Loading products...</p>
+        </div>
+      </section>
+    )
+  }
+
 
   return (
     <section id="products" className="py-8">
