@@ -1,5 +1,3 @@
 {
-  "/api/products/route": "app/api/products/route.js",
-  "/api/categories/route": "app/api/categories/route.js",
   "/page": "app/page.js"
 }
