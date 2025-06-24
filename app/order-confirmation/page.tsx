@@ -7,7 +7,6 @@ import { CheckCircle, Package, Truck, MapPin, Calendar, CreditCard, Mail, Messag
 import Link from "next/link"
 
 export const dynamic = 'force-dynamic'
-import { storeManager } from "@/lib/store"
 import { notificationService } from "@/lib/notifications"
 import { useAuth } from "@/components/auth-provider"
 
@@ -67,9 +66,9 @@ export default function OrderConfirmationPage() {
       }
 
       if (parsedOrder && parsedOrder.cartItems) {
-        // Add order to admin system
+        // Add order to admin system via API
         try {
-          storeManager.addOrder({
+          const orderData = {
             orderId: parsedOrder.orderId || `#HS-${Date.now()}`,
             customerName: parsedOrder.name || "Guest User",
             customerEmail: parsedOrder.email || "guest@example.com",
@@ -90,7 +89,19 @@ export default function OrderConfirmationPage() {
             status: 'pending',
             paymentMethod: parsedOrder.paymentMethod || "Cash on Delivery",
             estimatedDelivery: parsedOrder.estimatedDelivery || "1-2 business days"
+          }
+
+          const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(orderData),
           })
+
+          if (!response.ok) {
+            throw new Error('Failed to save order')
+          }
 
           // Clear cart after successful order
           localStorage.removeItem("cart")

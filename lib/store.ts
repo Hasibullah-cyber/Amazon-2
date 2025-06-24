@@ -1,6 +1,5 @@
 
 
-import 'server-only'
 import { pool, initializeDatabase } from "./database"
 import { notificationService } from "./notifications"
 
