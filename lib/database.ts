@@ -85,15 +85,15 @@ export async function initializeDatabase() {
     }
 
     console.log('Database initialized successfully')
-  } catch (error) {
-    // Don't throw error for duplicate constraints during builds
-    if (error.code === '23505' && error.detail?.includes('already exists')) {
-      console.log('Database tables already exist, skipping initialization')
-    } else {
+    } catch (error) {
       console.error('Error initializing database:', error)
       throw error
+    } finally {
+      client.release()
     }
-  } finally {
-    client.release()
+  } catch (connectionError) {
+    console.error('Failed to connect to database:', connectionError)
+    // Don't throw here to allow app to start without database
+    console.log('App will continue without database functionality')
   }
 }
