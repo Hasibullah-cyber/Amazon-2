@@ -15,7 +15,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const product = await request.json()
-    const newProduct = await storeManager.addProduct(product)
+    const newProduct = await serverStoreManager.addProduct(product)
     return NextResponse.json(newProduct)
   } catch (error) {
     console.error('Error adding product:', error)
