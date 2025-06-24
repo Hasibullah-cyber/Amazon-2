@@ -42,14 +42,15 @@ const nextConfig = {
       config.output = {
         ...config.output,
         publicPath: '/_next/',
-        chunkLoadTimeout: 120000,
+        chunkLoadTimeout: 30000,
       }
       
-      // Improve chunk splitting for better loading
+      // Improve chunk splitting and loading reliability
       config.optimization = {
         ...config.optimization,
         splitChunks: {
           chunks: 'all',
+          maxSize: 244000,
           cacheGroups: {
             default: {
               minChunks: 2,
@@ -61,7 +62,25 @@ const nextConfig = {
               name: 'vendors',
               priority: -10,
               chunks: 'all',
+              maxSize: 244000,
             },
+            framework: {
+              chunks: 'all',
+              name: 'framework',
+              test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
+              priority: 40,
+              enforce: true,
+            },
+          },
+        },
+      }
+      
+      // Add module retry configuration
+      config.module = {
+        ...config.module,
+        parser: {
+          javascript: {
+            dynamicImportMode: 'lazy',
           },
         },
       }
