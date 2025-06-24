@@ -20,17 +20,23 @@ export default function AdminHome() {
   useEffect(() => {
     const updateData = async () => {
       try {
-        const response = await fetch('/api/admin/stats')
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const fetchedStats = await response.json()
+        const [statsResponse, ordersResponse, productsResponse] = await Promise.all([
+          fetch('/api/admin/stats'),
+          fetch('/api/admin/orders'),
+          fetch('/api/admin/products')
+        ])
 
-        const ordersResponse = await fetch('/api/admin/orders');
-        if (!ordersResponse.ok) {
-          throw new Error(`HTTP error! status: ${ordersResponse.status}`);
+        if (statsResponse.ok && ordersResponse.ok && productsResponse.ok) {
+          const [fetchedStats, fetchedOrders, fetchedProducts] = await Promise.all([
+            statsResponse.json(),
+            ordersResponse.json(),
+            productsResponse.json()
+          ])
+
+          setStats(fetchedStats)
+          setOrders(fetchedOrders)
+          setProducts(fetchedProducts)
         }
-        const fetchedOrders = await ordersResponse.json();
 
         const productsResponse = await fetch('/api/admin/products');
           if (!productsResponse.ok) {

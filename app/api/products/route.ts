@@ -1,10 +1,10 @@
 
 import { NextResponse } from 'next/server'
-import { storeManager } from '@/lib/store'
+import { serverStoreManager } from '@/lib/server-store'
 
 export async function GET() {
   try {
-    const products = await storeManager.getProducts()
+    const products = await serverStoreManager.getProducts()
     return NextResponse.json(products)
   } catch (error) {
     console.error('Error fetching products:', error)

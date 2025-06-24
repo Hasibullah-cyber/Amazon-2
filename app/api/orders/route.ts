@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server'
 import { storeManager } from '@/lib/store'
 
@@ -15,7 +14,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const order = await request.json()
-    const newOrder = await storeManager.addOrder(order)
+    const newOrder = await storeManager.addOrder({
+    })
     return NextResponse.json(newOrder)
   } catch (error) {
     console.error('Error adding order:', error)

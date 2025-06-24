@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
-import { storeManager } from "@/lib/store"
+
 import { TrendingUp, TrendingDown, ShoppingCart, Package, Users, DollarSign } from "lucide-react"
 
 export const dynamic = 'force-dynamic'
@@ -13,16 +13,36 @@ export default function DashboardPage() {
   const [products, setProducts] = useState<any[]>([])
 
   useEffect(() => {
-    const updateData = () => {
-      setStats(storeManager.getStats())
-      setOrders(storeManager.getOrders())
-      setProducts(storeManager.getProducts())
+    const updateData = async () => {
+      try {
+        const [statsResponse, ordersResponse, productsResponse] = await Promise.all([
+          fetch('/api/admin/stats'),
+          fetch('/api/admin/orders'),
+          fetch('/api/admin/products')
+        ])
+
+        if (statsResponse.ok && ordersResponse.ok && productsResponse.ok) {
+          const [fetchedStats, fetchedOrders, fetchedProducts] = await Promise.all([
+            statsResponse.json(),
+            ordersResponse.json(),
+            productsResponse.json()
+          ])
+
+          setStats(fetchedStats)
+          setOrders(fetchedOrders)
+          setProducts(fetchedProducts)
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error)
+      }
     }
 
     updateData()
-    const unsubscribe = storeManager.subscribe(updateData)
-
-    return unsubscribe
+    
+    // Set up periodic refresh
+    const interval = setInterval(updateData, 30000) // Refresh every 30 seconds
+    
+    return () => clearInterval(interval)
   }, [])
 
   if (!stats) return <div className="p-6">Loading analytics...</div>

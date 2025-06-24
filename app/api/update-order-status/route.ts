@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
-import { storeManager } from '@/lib/store'
+import { serverStoreManager } from '@/lib/server-store'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Order ID and status are required' }, { status: 400 })
     }
     
-    await storeManager.updateOrderStatus(orderId, status)
+    await serverStoreManager.updateOrderStatus(orderId, status)
     
     return NextResponse.json({ success: true })
   } catch (error) {
