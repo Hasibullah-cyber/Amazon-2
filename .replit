@@ -21,4 +21,8 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
+args = "pnpm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm run dev"
