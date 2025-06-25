@@ -17,38 +17,30 @@ export default function ProductsSection() {
 
   useEffect(() => {
     let isMounted = true
-    let fetchStarted = false
     
     const fetchProducts = async () => {
-      if (fetchStarted) return
-      fetchStarted = true
-      
       try {
-        const response = await fetch('/api/products', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
+        setLoading(true)
+        const response = await fetch('/api/products')
         
         if (response.ok && isMounted) {
           const productsData = await response.json()
           if (Array.isArray(productsData) && productsData.length > 0) {
             setProducts(productsData)
+            setError(null)
           } else {
             setProducts(sampleProducts)
+            setError(null)
           }
-          setError(null)
         } else if (isMounted) {
-          console.warn('API failed, using sample products')
           setProducts(sampleProducts)
-          setError('Failed to load products from API')
+          setError(null)
         }
       } catch (error) {
         console.error('Error fetching products:', error)
         if (isMounted) {
           setProducts(sampleProducts)
-          setError('Network error loading products')
+          setError(null)
         }
       } finally {
         if (isMounted) {
