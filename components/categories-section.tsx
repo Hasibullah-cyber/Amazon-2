@@ -37,8 +37,12 @@ export default function CategoriesSection() {
 
   useEffect(() => {
     let isMounted = true
+    let hasStarted = false
 
     const fetchCategories = async () => {
+      if (hasStarted) return
+      hasStarted = true
+      
       try {
         const response = await fetch('/api/categories')
         if (response.ok && isMounted) {

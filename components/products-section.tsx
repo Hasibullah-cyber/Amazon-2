@@ -53,7 +53,7 @@ export default function ProductsSection() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [hasLoaded])
 
   // Sample product data (fallback)
   const sampleProducts = [
