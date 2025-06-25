@@ -14,7 +14,8 @@ export async function initializeDatabase() {
   // Check if DATABASE_URL is configured
   if (!process.env.DATABASE_URL || 
       process.env.DATABASE_URL.includes('base') || 
-      process.env.DATABASE_URL.includes('your_database_url_here')) {
+      process.env.DATABASE_URL.includes('your_database_url_here') ||
+      process.env.DATABASE_URL === 'your_database_url_here') {
     console.warn('DATABASE_URL is not properly configured. App will run in demo mode without database.')
     return false
   }

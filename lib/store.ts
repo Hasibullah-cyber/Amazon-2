@@ -47,7 +47,7 @@ class StoreManager {
     // Only initialize DB on server-side and if not already done
     if (typeof window === 'undefined' && !this.dbInitialized) {
       this.initializeDb().catch(error => {
-        console.error('Database initialization failed:', error)
+        console.warn('Database initialization failed, running in demo mode:', error.message)
         this.dbInitialized = true // Mark as initialized to prevent retries
       })
     }
@@ -173,17 +173,60 @@ class StoreManager {
 
   // Products management
   async getProducts(): Promise<Product[]> {
-    const client = await pool.connect()
-    
     try {
-      const result = await client.query(`
-        SELECT id, name, price, stock, category, image, description 
-        FROM products 
-        ORDER BY name
-      `)
-      return result.rows
-    } finally {
-      client.release()
+      const client = await pool.connect()
+      
+      try {
+        const result = await client.query(`
+          SELECT id, name, price, stock, category, image, description 
+          FROM products 
+          ORDER BY name
+        `)
+        return result.rows
+      } finally {
+        client.release()
+      }
+    } catch (error) {
+      console.warn('Database not available, returning sample products')
+      // Return sample products when database is not available
+      return [
+        {
+          id: "1",
+          name: "Premium Wireless Headphones",
+          price: 199.99,
+          stock: 50,
+          category: "electronics",
+          image: "/placeholder.svg?height=300&width=300",
+          description: "Immersive sound quality with noise cancellation technology."
+        },
+        {
+          id: "2", 
+          name: "Designer Sunglasses",
+          price: 79.99,
+          stock: 30,
+          category: "fashion",
+          image: "/placeholder.svg?height=300&width=300",
+          description: "Protect your eyes with style and elegance."
+        },
+        {
+          id: "3",
+          name: "Scented Candle Set", 
+          price: 34.99,
+          stock: 100,
+          category: "home-living",
+          image: "/placeholder.svg?height=300&width=300",
+          description: "Set of 3 premium scented candles for a relaxing atmosphere."
+        },
+        {
+          id: "4",
+          name: "Luxury Skincare Set",
+          price: 129.99,
+          stock: 25,
+          category: "beauty", 
+          image: "/placeholder.svg?height=300&width=300",
+          description: "Complete skincare routine with premium ingredients."
+        }
+      ]
     }
   }
 

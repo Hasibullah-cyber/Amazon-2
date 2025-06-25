@@ -20,10 +20,20 @@ export default function ProductsSection() {
         const response = await fetch('/api/products')
         if (response.ok) {
           const productsData = await response.json()
-          setProducts(productsData)
+          if (Array.isArray(productsData) && productsData.length > 0) {
+            setProducts(productsData)
+          } else {
+            // Use sample products if API returns empty or invalid data
+            setProducts(sampleProducts)
+          }
+        } else {
+          console.warn('API failed, using sample products')
+          setProducts(sampleProducts)
         }
       } catch (error) {
         console.error('Error fetching products:', error)
+        // Fallback to sample products on error
+        setProducts(sampleProducts)
       } finally {
         setLoading(false)
       }
