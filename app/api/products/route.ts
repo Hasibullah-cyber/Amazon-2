@@ -5,7 +5,11 @@ import { serverStoreManager } from '@/lib/server-store'
 export async function GET() {
   try {
     const products = await serverStoreManager.getProducts()
-    return NextResponse.json(products)
+    if (products && products.length > 0) {
+      return NextResponse.json(products)
+    }
+    // If no products in database, return sample products
+    console.log('No products found in database, returning sample products')
   } catch (error) {
     console.error('Error fetching products:', error)
     // Return sample products as fallback

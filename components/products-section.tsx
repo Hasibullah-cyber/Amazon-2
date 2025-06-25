@@ -13,17 +13,24 @@ export default function ProductsSection() {
   const [products, setProducts] = useState<any[]>([])
   const { addToCart } = useCart()
   const [loading, setLoading] = useState(true)
-  const [hasLoaded, setHasLoaded] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let isMounted = true
+    let fetchStarted = false
     
     const fetchProducts = async () => {
-      if (hasLoaded) return
+      if (fetchStarted) return
+      fetchStarted = true
       
       try {
-        setLoading(true)
-        const response = await fetch('/api/products')
+        const response = await fetch('/api/products', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        
         if (response.ok && isMounted) {
           const productsData = await response.json()
           if (Array.isArray(productsData) && productsData.length > 0) {
@@ -31,19 +38,21 @@ export default function ProductsSection() {
           } else {
             setProducts(sampleProducts)
           }
+          setError(null)
         } else if (isMounted) {
           console.warn('API failed, using sample products')
           setProducts(sampleProducts)
+          setError('Failed to load products from API')
         }
       } catch (error) {
         console.error('Error fetching products:', error)
         if (isMounted) {
           setProducts(sampleProducts)
+          setError('Network error loading products')
         }
       } finally {
         if (isMounted) {
           setLoading(false)
-          setHasLoaded(true)
         }
       }
     }
@@ -53,7 +62,7 @@ export default function ProductsSection() {
     return () => {
       isMounted = false
     }
-  }, [hasLoaded])
+  }, [])
 
   // Sample product data (fallback)
   const sampleProducts = [

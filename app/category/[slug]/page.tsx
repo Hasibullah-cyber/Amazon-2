@@ -84,6 +84,12 @@ const categories = {
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+
+  // Validate slug exists
+  if (!slug || !categories[slug as keyof typeof categories]) {
+    notFound()
+  }
+
   const category = categories[slug as keyof typeof categories]
 
   if (!category) {
