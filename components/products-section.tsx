@@ -13,10 +13,14 @@ export default function ProductsSection() {
   const [products, setProducts] = useState<any[]>([])
   const { addToCart } = useCart()
   const [loading, setLoading] = useState(true)
+  const [hasLoaded, setHasLoaded] = useState(false)
 
   useEffect(() => {
+    if (hasLoaded) return // Prevent multiple fetches
+    
     const fetchProducts = async () => {
       try {
+        setLoading(true)
         const response = await fetch('/api/products')
         if (response.ok) {
           const productsData = await response.json()
@@ -36,11 +40,12 @@ export default function ProductsSection() {
         setProducts(sampleProducts)
       } finally {
         setLoading(false)
+        setHasLoaded(true)
       }
     }
 
     fetchProducts()
-  }, [])
+  }, [hasLoaded])
 
   // Sample product data (fallback)
   const sampleProducts = [
@@ -128,18 +133,27 @@ export default function ProductsSection() {
     )
   }
 
-  const productsToShow = products.length > 0 ? products : sampleProducts
-
   if (loading) {
     return (
       <section id="products" className="py-8">
         <div className="container mx-auto px-4">
           <h2 className="amazon-title text-2xl mb-4">Featured Products</h2>
-          <p>Loading products...</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="amazon-card animate-pulse">
+                <div className="aspect-square bg-gray-200 mb-3"></div>
+                <div className="h-4 bg-gray-200 mb-2"></div>
+                <div className="h-3 bg-gray-200 mb-2 w-3/4"></div>
+                <div className="h-4 bg-gray-200 mb-2 w-1/2"></div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     )
   }
+
+  const productsToShow = products.length > 0 ? products : sampleProducts
 
 
   return (
@@ -148,40 +162,60 @@ export default function ProductsSection() {
         <h2 className="amazon-title text-2xl mb-4">Featured Products</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {productsToShow.slice(0, 8).map((product) => (
-            <div key={product.id} className="amazon-card">
-              <Link href={`/product/${product.id}`} className="block">
-                <div className="aspect-square relative mb-3">
-                  <Image src={product.image || "/placeholder.svg"} alt={product.name} fill className="object-contain" />
+          {productsToShow.slice(0, 8).map((product) => {
+            if (!product || !product.id) return null
+            
+            return (
+              <div key={product.id} className="amazon-card">
+                <Link href={`/product/${product.id}`} className="block">
+                  <div className="aspect-square relative mb-3">
+                    <Image 
+                      src={product.image || "/placeholder.svg"} 
+                      alt={product.name || "Product"} 
+                      fill 
+                      className="object-contain"
+                      onError={(e) => {
+                        e.currentTarget.src = "/placeholder.svg"
+                      }}
+                    />
+                  </div>
+                  <h3 className="text-base line-clamp-2 mb-1 hover:text-[#C7511F]">
+                    {product.name || "Product Name"}
+                  </h3>
+                </Link>
+
+                {renderRating(product.rating || 0, product)}
+
+                <div className="mt-2">
+                  <span className="amazon-price text-lg">
+                    ৳{(product.price || 0).toFixed(2)}
+                  </span>
+                  <div className="text-xs text-gray-500 flex items-center mt-1">
+                    <span>Includes 10% VAT</span>
+                    <span className="mx-1">•</span>
+                    <TaxInfo />
+                  </div>
                 </div>
-                <h3 className="text-base line-clamp-2 mb-1 hover:text-[#C7511F]">{product.name}</h3>
-              </Link>
 
-              {renderRating(product.rating, product)}
+                <div className="mt-3">
+                  <button 
+                    onClick={() => handleAddToCart(product)} 
+                    className="amazon-button w-full py-1 text-sm"
+                    disabled={!product.name}
+                  >
+                    Add to Cart
+                  </button>
+                </div>
 
-              <div className="mt-2">
-                <span className="amazon-price text-lg">৳{product.price.toFixed(2)}</span>
-                <div className="text-xs text-gray-500 flex items-center mt-1">
-                  <span>Includes 10% VAT</span>
-                  <span className="mx-1">•</span>
-                  <TaxInfo />
+                <div className="mt-2 text-xs">
+                  <span className="text-[#007600]">In Stock</span>
+                  <div className="mt-1">
+                    <span>Ships to Bangladesh</span>
+                  </div>
                 </div>
               </div>
-
-              <div className="mt-3">
-                <button onClick={() => handleAddToCart(product)} className="amazon-button w-full py-1 text-sm">
-                  Add to Cart
-                </button>
-              </div>
-
-              <div className="mt-2 text-xs">
-                <span className="text-[#007600]">In Stock</span>
-                <div className="mt-1">
-                  <span>Ships to Bangladesh</span>
-                </div>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
