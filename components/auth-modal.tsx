@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { authManager } from "@/lib/auth"
+import { useToast } from "@/hooks/use-toast"
 import { X, Eye, EyeOff } from "lucide-react"
 
 interface AuthModalProps {
@@ -25,6 +26,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const { toast } = useToast()
 
   if (!isOpen) return null
 
@@ -46,6 +48,11 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
 
         const result = await authManager.signUp(formData.email, formData.password, formData.name)
         if (result.success) {
+          toast({
+            title: "Account created successfully!",
+            description: "Welcome to Hasib Shop. You are now signed in.",
+            duration: 4000,
+          })
           onClose()
         } else {
           setError(result.error || 'Failed to create account')
@@ -53,6 +60,11 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
       } else {
         const result = await authManager.signIn(formData.email, formData.password)
         if (result.success) {
+          toast({
+            title: "Welcome back!",
+            description: "You have successfully signed in to your account.",
+            duration: 4000,
+          })
           onClose()
         } else {
           setError(result.error || 'Failed to sign in')

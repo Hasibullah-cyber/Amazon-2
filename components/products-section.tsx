@@ -16,36 +16,44 @@ export default function ProductsSection() {
   const [hasLoaded, setHasLoaded] = useState(false)
 
   useEffect(() => {
-    if (hasLoaded) return // Prevent multiple fetches
+    let isMounted = true
     
     const fetchProducts = async () => {
+      if (hasLoaded) return
+      
       try {
         setLoading(true)
         const response = await fetch('/api/products')
-        if (response.ok) {
+        if (response.ok && isMounted) {
           const productsData = await response.json()
           if (Array.isArray(productsData) && productsData.length > 0) {
             setProducts(productsData)
           } else {
-            // Use sample products if API returns empty or invalid data
             setProducts(sampleProducts)
           }
-        } else {
+        } else if (isMounted) {
           console.warn('API failed, using sample products')
           setProducts(sampleProducts)
         }
       } catch (error) {
         console.error('Error fetching products:', error)
-        // Fallback to sample products on error
-        setProducts(sampleProducts)
+        if (isMounted) {
+          setProducts(sampleProducts)
+        }
       } finally {
-        setLoading(false)
-        setHasLoaded(true)
+        if (isMounted) {
+          setLoading(false)
+          setHasLoaded(true)
+        }
       }
     }
 
     fetchProducts()
-  }, [hasLoaded])
+    
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   // Sample product data (fallback)
   const sampleProducts = [

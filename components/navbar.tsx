@@ -11,6 +11,7 @@ import { AuthModal } from "@/components/auth-modal"
 import { AdminLoginModal } from "@/components/admin-login-modal"
 import CartDrawer from "@/components/cart-drawer"
 import RegularSearch from "@/components/regular-search"
+import { useToast } from "@/hooks/use-toast"
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -22,6 +23,7 @@ export default function Navbar() {
   const { cartItems } = useCart()
   const { user, isAuthenticated, signOut } = useAuth()
   const { admin, isAdminAuthenticated, adminSignOut } = useAdminAuth()
+  const { toast } = useToast()
 
   const totalItems = cartItems.reduce((total, item) => total + item.quantity, 0)
 
@@ -33,6 +35,11 @@ export default function Navbar() {
   const handleSignOut = () => {
     signOut()
     setIsUserMenuOpen(false)
+    toast({
+      title: "Signed out successfully",
+      description: "You have been signed out of your account.",
+      duration: 3000,
+    })
   }
 
   return (
