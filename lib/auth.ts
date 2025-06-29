@@ -67,9 +67,13 @@ class AuthManager {
 
   async signUp(email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('Attempting sign up for:', email)
       // Check if user already exists
       const existingUsers = this.getAllUsers()
+      console.log('Existing users:', existingUsers.length)
+      
       if (existingUsers.find(u => u.email === email)) {
+        console.log('Email already exists')
         return { success: false, error: 'Email already registered' }
       }
 
@@ -82,10 +86,13 @@ class AuthManager {
         orders: []
       }
 
+      console.log('Creating new user:', newUser)
+
       // Save to users list
       const users = [...existingUsers, newUser]
       if (typeof window !== 'undefined') {
         localStorage.setItem('hasib_shop_users', JSON.stringify(users))
+        console.log('Saved users to localStorage')
       }
 
       // Sign in the user
@@ -93,21 +100,27 @@ class AuthManager {
       this.saveUserToStorage(newUser)
       this.notifyListeners()
 
+      console.log('User signed up and signed in successfully')
       return { success: true }
     } catch (error) {
+      console.error('Sign up error:', error)
       return { success: false, error: 'Failed to create account' }
     }
   }
 
   async signIn(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
+      console.log('Attempting sign in for:', email)
       const users = this.getAllUsers()
+      console.log('Available users:', users.length)
       const user = users.find(u => u.email === email)
 
       if (!user) {
+        console.log('User not found')
         return { success: false, error: 'Invalid email or password' }
       }
 
+      console.log('User found, signing in...')
       // In a real app, you'd verify the password hash here
       // For demo purposes, we'll just sign them in
       this.currentUser = user
@@ -116,6 +129,7 @@ class AuthManager {
 
       return { success: true }
     } catch (error) {
+      console.error('Sign in error:', error)
       return { success: false, error: 'Failed to sign in' }
     }
   }

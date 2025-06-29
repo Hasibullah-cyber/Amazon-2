@@ -1,4 +1,3 @@
-
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
@@ -10,6 +9,7 @@ import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import { Toaster } from '@/components/ui/toaster'
 import RealTimeNotifications from '@/components/real-time-notifications'
+import "@/lib/test-data"
 
 const inter = Inter({ subsets: ['latin'] })
 

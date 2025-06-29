@@ -21,7 +21,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true)
-    const unsubscribe = authManager.subscribe(setAuthState)
+    
+    // Initialize auth state immediately
+    const currentState = authManager.getAuthState()
+    setAuthState({ ...currentState, loading: false })
+    
+    // Subscribe to auth changes
+    const unsubscribe = authManager.subscribe((newState) => {
+      setAuthState({ ...newState, loading: false })
+    })
+    
     return unsubscribe
   }, [])
 

@@ -36,17 +36,34 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     setError('')
 
     try {
+      // Basic validation
+      if (!formData.email || !formData.password) {
+        setError('Please fill in all required fields')
+        setLoading(false)
+        return
+      }
+
       if (mode === 'signup') {
+        if (!formData.name) {
+          setError('Please enter your name')
+          setLoading(false)
+          return
+        }
         if (formData.password !== formData.confirmPassword) {
           setError('Passwords do not match')
+          setLoading(false)
           return
         }
         if (formData.password.length < 6) {
           setError('Password must be at least 6 characters')
+          setLoading(false)
           return
         }
 
+        console.log('Submitting signup form')
         const result = await authManager.signUp(formData.email, formData.password, formData.name)
+        console.log('Signup result:', result)
+        
         if (result.success) {
           toast({
             title: "Account created successfully!",
@@ -54,11 +71,16 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
             duration: 4000,
           })
           onClose()
+          // Reset form
+          setFormData({ email: '', password: '', name: '', confirmPassword: '' })
         } else {
           setError(result.error || 'Failed to create account')
         }
       } else {
+        console.log('Submitting signin form')
         const result = await authManager.signIn(formData.email, formData.password)
+        console.log('Signin result:', result)
+        
         if (result.success) {
           toast({
             title: "Welcome back!",
@@ -66,11 +88,14 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
             duration: 4000,
           })
           onClose()
+          // Reset form
+          setFormData({ email: '', password: '', name: '', confirmPassword: '' })
         } else {
           setError(result.error || 'Failed to sign in')
         }
       }
     } catch (err) {
+      console.error('Auth form error:', err)
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
