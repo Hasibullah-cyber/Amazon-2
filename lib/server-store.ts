@@ -352,6 +352,31 @@ class ServerStoreManager {
     }
   }
 
+  async updateProduct(productId: string, updates: Partial<Product>) {
+    try {
+      const client = await pool.connect()
+
+      try {
+        const setClause = Object.keys(updates)
+          .map((key, index) => `${key} = $${index + 2}`)
+          .join(', ')
+        
+        const values = [productId, ...Object.values(updates)]
+        
+        await client.query(`
+          UPDATE products 
+          SET ${setClause}, updated_at = NOW() 
+          WHERE id = $1
+        `, values)
+      } finally {
+        client.release()
+      }
+    } catch (error) {
+      console.error('Error updating product:', error)
+      throw error
+    }
+  }
+
   async updateProductStock(productId: string, quantity: number) {
     try {
       const client = await pool.connect()

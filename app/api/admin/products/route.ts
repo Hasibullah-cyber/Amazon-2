@@ -35,13 +35,36 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest) {
+export async function PATCH(request: Request) {
+  try {
+    const { productId, updates } = await request.json()
+
+    if (!productId || !updates) {
+      return NextResponse.json({ error: 'Product ID and updates are required' }, { status: 400 })
+    }
+
+    await serverStoreManager.updateProduct(productId, updates)
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error updating product:', error)
+    return NextResponse.json({ error: 'Failed to update product' }, { status: 500 })
+  }
+}
+
+export async function PUT(request: Request) {
   try {
     const { productId, quantity } = await request.json()
+
+    if (!productId || quantity === undefined) {
+      return NextResponse.json({ error: 'Product ID and quantity are required' }, { status: 400 })
+    }
+
     await serverStoreManager.updateProductStock(productId, quantity)
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error updating product stock:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to update product stock' }, { status: 500 })
   }
 }

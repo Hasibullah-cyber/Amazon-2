@@ -284,6 +284,34 @@ class StoreManager {
     }
   }
 
+  async updateProduct(productId: string, updates: Partial<Omit<Product, 'id'>>): Promise<void> {
+    try {
+      console.log('Updating product:', productId, updates)
+
+      const response = await fetch('/api/admin/products', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productId, updates }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update product')
+      }
+
+      // Immediately sync to update local state
+      await this.syncWithServer()
+
+      // Show notification
+      this.showNotification('Product updated successfully', 'success')
+    } catch (error) {
+      console.error('Failed to update product:', error)
+      this.showNotification('Failed to update product', 'error')
+      throw error
+    }
+  }
+
   async updateProductStock(productId: string, quantity: number): Promise<void> {
     try {
       const response = await fetch('/api/admin/products', {
