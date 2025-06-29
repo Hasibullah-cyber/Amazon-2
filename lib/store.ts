@@ -1,4 +1,3 @@
-
 interface Product {
   id: string
   name: string
@@ -49,6 +48,12 @@ interface StoreState {
 }
 
 type StoreListener = (state: StoreState) => void
+
+interface Category {
+  id: string
+  name: string
+  description: string
+}
 
 class StoreManager {
   private static instance: StoreManager | null = null
@@ -152,7 +157,7 @@ class StoreManager {
   async getProduct(id: string): Promise<Product | undefined> {
     const products = await this.getProducts()
     let product = products.find(p => p.id === id)
-    
+
     if (!product) {
       try {
         const response = await fetch(`/api/products?id=${id}`)
@@ -164,7 +169,7 @@ class StoreManager {
         console.error('Failed to fetch product:', error)
       }
     }
-    
+
     return product
   }
 
@@ -190,7 +195,7 @@ class StoreManager {
   async addOrder(order: Omit<Order, 'id' | 'createdAt'>): Promise<Order> {
     try {
       console.log('Adding new order:', order.orderId)
-      
+
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
@@ -222,7 +227,7 @@ class StoreManager {
   async updateOrderStatus(orderId: string, status: Order['status']): Promise<void> {
     try {
       console.log('Updating order status:', orderId, 'to', status)
-      
+
       const response = await fetch('/api/update-order-status', {
         method: 'POST',
         headers: {
@@ -250,7 +255,7 @@ class StoreManager {
   async addProduct(product: Omit<Product, 'id'>): Promise<Product> {
     try {
       console.log('Adding new product:', product.name)
-      
+
       const response = await fetch('/api/admin/products', {
         method: 'POST',
         headers: {
@@ -308,6 +313,26 @@ class StoreManager {
     return this.state.stats
   }
 
+  // Categories management
+  async getCategories(): Promise<Category[]> {
+    try {
+      const response = await fetch('/api/categories')
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories')
+      }
+      return await response.json()
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+      // Return default categories on error
+      return [
+        { id: 'electronics', name: 'Electronics', description: 'Latest gadgets and tech' },
+        { id: 'fashion', name: 'Fashion', description: 'Clothing and accessories' },
+        { id: 'home-living', name: 'Home & Living', description: 'Home decor and essentials' },
+        { id: 'beauty', name: 'Beauty', description: 'Beauty and personal care' }
+      ]
+    }
+  }
+
   // Subscription management
   subscribe(listener: StoreListener): () => void {
     this.listeners.add(listener)
@@ -347,4 +372,4 @@ class StoreManager {
 export const storeManager = StoreManager.getInstance()
 
 // Export types
-export type { Product, Order, StoreState, StoreListener }
+export type { Product, Order, StoreState, StoreListener, Category }
