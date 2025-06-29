@@ -1,9 +1,6 @@
 {
+  "/api/ai-search/route": "app/api/ai-search/route.js",
   "/api/products/route": "app/api/products/route.js",
   "/api/admin/orders/route": "app/api/admin/orders/route.js",
-  "/api/admin/stats/route": "app/api/admin/stats/route.js",
-  "/api/categories/route": "app/api/categories/route.js",
-  "/api/ai-search/route": "app/api/ai-search/route.js",
-  "/page": "app/page.js",
-  "/notifications/page": "app/notifications/page.js"
+  "/api/admin/stats/route": "app/api/admin/stats/route.js"
 }
