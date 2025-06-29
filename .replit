@@ -10,6 +10,7 @@ build = ["sh", "-c", "pnpm run build"]
 
 [[ports]]
 localPort = 3000
+externalPort = 80
 
 [workflows]
 runButton = "Run Next.js App"
