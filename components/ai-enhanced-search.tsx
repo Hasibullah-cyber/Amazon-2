@@ -106,27 +106,7 @@ export default function AIEnhancedSearch() {
     setIsOpen(true)
 
     try {
-      // AI-powered search with enhanced features
-      const aiResponse = await fetch("/api/ai-search", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          query: searchQuery,
-          category: selectedCategory !== "All" ? selectedCategory : undefined,
-          features: {
-            spellCheck: true,
-            autoComplete: true,
-            semanticSearch: true
-          }
-        }),
-      })
-
-      const aiData: AISearchResponse = await aiResponse.json()
-      setAiSuggestion(aiData.suggestion || "")
-
-      // Regular product search
+      // Focus on product search first
       const productsResponse = await fetch("/api/products")
       const allProducts = await productsResponse.json()
       
@@ -143,15 +123,17 @@ export default function AIEnhancedSearch() {
       const filteredProducts = products.filter(product => {
         const searchTerm = searchQuery.toLowerCase()
         const productMatch = product.name.toLowerCase().includes(searchTerm) ||
-                           product.category.toLowerCase().includes(searchTerm)
+                           product.category.toLowerCase().includes(searchTerm) ||
+                           product.name.toLowerCase().includes(searchTerm.replace(/s$/, '')) // Handle plurals
         
         const categoryMatch = selectedCategory === "All" || 
                              product.category.toLowerCase().includes(selectedCategory.toLowerCase())
         
         return productMatch && categoryMatch
-      }).slice(0, 6) // Show more results
+      }).slice(0, 8) // Show more results
 
       setResults(filteredProducts)
+      setAiSuggestion("") // Don't show AI suggestions
 
     } catch (error) {
       console.error("Search error:", error)
@@ -214,7 +196,7 @@ export default function AIEnhancedSearch() {
         <div className="relative flex-1">
           <Input
             type="text"
-            placeholder="Search with AI assistance..."
+            placeholder="Search products..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -296,18 +278,7 @@ export default function AIEnhancedSearch() {
             </div>
           )}
 
-          {/* AI Suggestion */}
-          {aiSuggestion && (
-            <div className="p-3 border-b bg-gradient-to-r from-purple-50 to-blue-50">
-              <div className="flex items-start space-x-2">
-                <Sparkles className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-xs font-medium text-purple-700 mb-1">AI Insight</p>
-                  <p className="text-sm text-gray-700">{aiSuggestion}</p>
-                </div>
-              </div>
-            </div>
-          )}
+          
 
           {/* Products */}
           {results.length > 0 && (
@@ -319,21 +290,22 @@ export default function AIEnhancedSearch() {
                     key={product.id}
                     href={`/product/${product.id}`}
                     onClick={() => setIsOpen(false)}
-                    className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded text-sm"
+                    className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded text-sm border-b border-gray-100"
                   >
-                    <div className="w-10 h-10 relative flex-shrink-0">
+                    <div className="w-12 h-12 relative flex-shrink-0">
                       <Image
-                        src={product.image}
+                        src={product.image || "/placeholder.svg"}
                         alt={product.name}
                         fill
                         className="object-contain rounded"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate text-xs">
+                      <p className="font-medium text-gray-900 truncate text-sm">
                         {product.name}
                       </p>
-                      <p className="text-xs text-gray-500">৳{product.price}</p>
+                      <p className="text-sm text-orange-600 font-semibold">৳{product.price}</p>
+                      <p className="text-xs text-gray-500 capitalize">{product.category}</p>
                     </div>
                   </Link>
                 ))}
@@ -342,21 +314,16 @@ export default function AIEnhancedSearch() {
           )}
 
           {/* No results */}
-          {query && !isLoading && results.length === 0 && !aiSuggestion && autocompleteSuggestions.length === 0 && (
+          {query && !isLoading && results.length === 0 && autocompleteSuggestions.length === 0 && (
             <div className="p-4 text-center text-gray-500">
               <p className="text-sm">No products found for "{query}"</p>
-              <p className="text-xs mt-1">Try different keywords or use voice search</p>
+              <p className="text-xs mt-1">Try different keywords or browse categories</p>
             </div>
           )}
         </Card>
       )}
 
-      {/* AI features indicator */}
-      <div className="absolute -bottom-4 left-0 text-xs text-gray-400 flex items-center">
-        <Sparkles className="h-3 w-3 mr-1" />
-        <span className="hidden sm:inline">AI • Voice • Smart Search</span>
-        <span className="sm:hidden">AI Enhanced</span>
-      </div>
+      
     </div>
   )
 }
