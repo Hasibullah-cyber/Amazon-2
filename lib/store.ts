@@ -17,6 +17,31 @@ interface Category {
   description: string
 }
 
+export interface Order {
+  id: string
+  orderId: string
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  address: string
+  city: string
+  items: Array<{
+    id: string
+    name: string
+    price: number
+    quantity: number
+    image: string
+  }>
+  subtotal: number
+  shipping: number
+  vat: number
+  totalAmount: number
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned'
+  paymentMethod: string
+  createdAt: string
+  estimatedDelivery: string
+}
+
 // Extended product database including mobile phones and other categories
 const products: Product[] = [
   // Electronics - Mobile Phones
@@ -549,10 +574,11 @@ const categories: Category[] = [
 class StoreManager {
   private products: Product[] = products
   private categories: Category[] = categories
-  private subscribers: (() => void)[] = []
+  private orders: Order[] = []
+  private subscribers: ((state: { products: Product[], categories: Category[], orders: Order[] }) => void)[] = []
 
   // Subscribe to store changes
-  subscribe(callback: () => void) {
+  subscribe(callback: (state: { products: Product[], categories: Category[], orders: Order[] }) => void) {
     this.subscribers.push(callback)
     return () => {
       this.subscribers = this.subscribers.filter(sub => sub !== callback)
@@ -560,7 +586,8 @@ class StoreManager {
   }
 
   private notifySubscribers() {
-    this.subscribers.forEach(callback => callback())
+    const state = { products: this.products, categories: this.categories, orders: this.orders }
+    this.subscribers.forEach(callback => callback(state))
   }
 
   // Product methods
@@ -615,6 +642,61 @@ class StoreManager {
     // In a real implementation, you might want to have a separate subcategories array
     console.log(`Adding subcategory ${subcategory.name} to category ${categoryId}`)
     this.notifySubscribers()
+  }
+
+  // Order methods
+  async getOrders(): Promise<Order[]> {
+    try {
+      const response = await fetch('/api/admin/orders')
+      if (response.ok) {
+        const orders = await response.json()
+        this.orders = orders
+        return orders
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+    }
+    return this.orders
+  }
+
+  async getUserOrders(email: string): Promise<Order[]> {
+    try {
+      const response = await fetch(`/api/user-orders?email=${encodeURIComponent(email)}`)
+      if (response.ok) {
+        return await response.json()
+      }
+    } catch (error) {
+      console.error('Error fetching user orders:', error)
+    }
+    return []
+  }
+
+  async updateOrderStatus(orderId: string, status: Order['status']): Promise<void> {
+    try {
+      const response = await fetch('/api/update-order-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId, status }),
+      })
+      
+      if (response.ok) {
+        // Update local order status
+        const orderIndex = this.orders.findIndex(order => order.id === orderId)
+        if (orderIndex !== -1) {
+          this.orders[orderIndex].status = status
+          this.notifySubscribers()
+        }
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error)
+      throw error
+    }
+  }
+
+  async refresh(): Promise<void> {
+    await this.getOrders()
   }
 }
 
