@@ -1,7 +1,3 @@
-The code is modified to include a product review system with submission and display functionalities.
-```
-
-```replit_final_file
 "use client"
 
 import { useState, useEffect } from "react"
