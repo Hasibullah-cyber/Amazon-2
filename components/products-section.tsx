@@ -60,7 +60,7 @@ export default function ProductsSection() {
   const [products, setProducts] = useState<Product[]>(sampleProducts)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { addItem } = useCart()
+  const { addToCart } = useCart()
 
   useEffect(() => {
     let isMounted = true
@@ -113,8 +113,8 @@ export default function ProductsSection() {
   }, [])
 
   const handleAddToCart = (product: Product) => {
-    addItem({
-      id: product.id,
+    addToCart({
+      id: parseInt(product.id),
       name: product.name,
       price: product.price,
       quantity: 1,
