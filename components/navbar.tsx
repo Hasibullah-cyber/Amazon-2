@@ -163,7 +163,6 @@ export default function Navbar() {
                   </span>
                 )}
               </div>
-              <span className="ml-1 font-bold">Wishlist</span>
             </Link>
 
             {/* Cart */}

@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server'
 import { storeManager } from '@/lib/store'
 import { pool } from '@/lib/database'
@@ -17,7 +16,7 @@ export async function POST(request: Request) {
   try {
     const order = await request.json()
     console.log('API: Creating new order:', order.orderId)
-    
+
     // First try to add to database
     try {
       const client = await pool.connect()
@@ -46,15 +45,33 @@ export async function POST(request: Request) {
           order.estimatedDelivery,
           new Date().toISOString()
         ])
-        
+
         const dbOrder = {
           ...result.rows[0],
           id: result.rows[0].id.toString(),
           items: JSON.parse(result.rows[0].items),
           createdAt: result.rows[0].created_at
         }
-        
+
         console.log('Order saved to database:', dbOrder.order_id)
+        
+         // Send confirmation email
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-confirmation`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: order.customerEmail,
+              orderDetails: dbOrder
+            })
+          })
+        } catch (emailError) {
+          console.error('Failed to send confirmation email:', emailError)
+          // Don't fail the order if email fails
+        }
+
         return NextResponse.json(dbOrder)
       } finally {
         client.release()
@@ -63,6 +80,23 @@ export async function POST(request: Request) {
       console.error('Database error, using store manager:', dbError)
       // Fallback to store manager
       const newOrder = await storeManager.addOrder(order)
+            // Send confirmation email
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-confirmation`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: order.customerEmail,
+              orderDetails: newOrder
+            })
+          })
+        } catch (emailError) {
+          console.error('Failed to send confirmation email:', emailError)
+          // Don't fail the order if email fails
+        }
+
       return NextResponse.json(newOrder)
     }
   } catch (error) {
