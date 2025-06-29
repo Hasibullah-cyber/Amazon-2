@@ -21,24 +21,29 @@ export default function ProductsSection() {
     const fetchProducts = async () => {
       try {
         setLoading(true)
+        console.log('Fetching products from API...')
         const response = await fetch('/api/products')
         
         if (response.ok && isMounted) {
           const productsData = await response.json()
+          console.log('Products data received:', productsData)
           if (Array.isArray(productsData) && productsData.length > 0) {
             setProducts(productsData)
             setError(null)
           } else {
+            console.log('No products from API, using sample products')
             setProducts(sampleProducts)
             setError(null)
           }
         } else if (isMounted) {
+          console.log('API response not ok, using sample products')
           setProducts(sampleProducts)
           setError(null)
         }
       } catch (error) {
         console.error('Error fetching products:', error)
         if (isMounted) {
+          console.log('Error occurred, falling back to sample products')
           setProducts(sampleProducts)
           setError(null)
         }
@@ -163,6 +168,8 @@ export default function ProductsSection() {
   }
 
   const productsToShow = products.length > 0 ? products : sampleProducts
+  
+  console.log('Products to show:', productsToShow)
 
 
   return (
