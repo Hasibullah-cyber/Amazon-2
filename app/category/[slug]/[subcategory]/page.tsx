@@ -476,18 +476,19 @@ const categorySlugMapping: Record<string, string> = {
   books: "Books",
 }
 
-export default function SubcategoryPage({
+export default async function SubcategoryPage({
   params,
 }: {
-  params: { slug: string; subcategory: string }
+  params: Promise<{ slug: string; subcategory: string }>
 }) {
-  const subcategory = subcategoryProducts[params.subcategory as keyof typeof subcategoryProducts]
+  const { slug, subcategory: subcategorySlug } = await params
+  const subcategory = subcategoryProducts[subcategorySlug as keyof typeof subcategoryProducts]
   
   if (!subcategory) {
     notFound()
   }
 
-  const categoryName = categorySlugMapping[params.slug] || params.slug
+  const categoryName = categorySlugMapping[slug] || slug
 
   const renderStars = (rating: number) => {
     const stars = []
@@ -518,7 +519,7 @@ export default function SubcategoryPage({
           <nav className="flex items-center space-x-2 text-sm text-gray-600">
             <Link href="/" className="hover:text-blue-600">Home</Link>
             <ChevronRight className="w-4 h-4" />
-            <Link href={`/category/${params.slug}`} className="hover:text-blue-600 capitalize">
+            <Link href={`/category/${slug}`} className="hover:text-blue-600 capitalize">
               {categoryName}
             </Link>
             <ChevronRight className="w-4 h-4" />
@@ -601,7 +602,7 @@ export default function SubcategoryPage({
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">No products found in this subcategory.</p>
             <Link 
-              href={`/category/${params.slug}`}
+              href={`/category/${slug}`}
               className="text-blue-600 hover:underline mt-2 inline-block"
             >
               Browse other subcategories
