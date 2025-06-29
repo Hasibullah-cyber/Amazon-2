@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ShoppingCart, Menu, X, User, MapPin, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
+import { useWishlist } from "@/components/wishlist-provider"
 import { useAuth } from "@/components/auth-provider"
 import { useAdminAuth } from "@/components/admin-auth-provider"
 import { AuthModal } from "@/components/auth-modal"
@@ -12,6 +13,8 @@ import { AdminLoginModal } from "@/components/admin-login-modal"
 import CartDrawer from "@/components/cart-drawer"
 import RegularSearch from "@/components/regular-search"
 import { useToast } from "@/hooks/use-toast"
+import { Heart } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -21,6 +24,7 @@ export default function Navbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false)
   const { cartItems } = useCart()
+  const { wishlistItems } = useWishlist()
   const { user, isAuthenticated, signOut } = useAuth()
   const { admin, isAdminAuthenticated, adminSignOut } = useAdminAuth()
   const { toast } = useToast()
@@ -86,7 +90,7 @@ export default function Navbar() {
                           <p className="font-medium">{user?.name}</p>
                           <p className="text-sm text-gray-500">{user?.email}</p>
                         </div>
-                        
+
                         {isAdminAuthenticated ? (
                           <Link
                             href="/admin"
@@ -143,6 +147,23 @@ export default function Navbar() {
             <Link href="/order-history" className="hidden md:block mr-4 text-sm hover:text-orange-300 transition-colors">
               <div className="text-gray-300 text-xs">Returns</div>
               <div className="font-bold">& Orders</div>
+            </Link>
+
+            {/* Wishlist */}
+            <Link
+              href="/wishlist"
+              className="flex items-center text-white mr-4"
+              aria-label="Wishlist"
+            >
+              <div className="relative">
+                <Heart className="h-6 w-6" />
+                {wishlistItems.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-[#f08804] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {wishlistItems.length}
+                  </span>
+                )}
+              </div>
+              <span className="ml-1 font-bold">Wishlist</span>
             </Link>
 
             {/* Cart */}

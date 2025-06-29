@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ShoppingCart, Star, Package, Truck, Shield, ArrowLeft } from "lucide-react"
+import { ShoppingCart, Star, Package, Truck, Shield, ArrowLeft, Heart } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCart } from "@/components/cart-provider"
+import { useWishlist } from "@/components/wishlist-provider"
 import { useToast } from "@/hooks/use-toast"
 import { storeManager, type Product } from "@/lib/store"
 
@@ -63,6 +64,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const [quantity, setQuantity] = useState(1)
   const [productId, setProductId] = useState<string>("")
   const { addToCart } = useCart()
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -102,14 +104,38 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
       id: parseInt(product.id),
       name: product.name,
       price: product.price,
-      quantity: quantity,
-      image: product.image
+      image: product.image,
+      quantity: quantity
     })
 
     toast({
       title: "Added to cart",
       description: `${product.name} has been added to your cart.`,
     })
+  }
+
+  const handleWishlistToggle = () => {
+    if (!product) return
+
+    if (isInWishlist(product.id)) {
+      removeFromWishlist(product.id)
+      toast({
+        title: "Removed from wishlist",
+        description: `${product.name} has been removed from your wishlist.`,
+      })
+    } else {
+      addToWishlist({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        category: product.category
+      })
+      toast({
+        title: "Added to wishlist",
+        description: `${product.name} has been added to your wishlist.`,
+      })
+    }
   }
 
   if (loading) {
@@ -226,14 +252,30 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             )}
 
             {/* Add to Cart Button */}
-            <Button
-              onClick={handleAddToCart}
-              className="w-full md:w-auto px-8 py-3 text-lg"
-              disabled={product.stock === 0}
-            >
-              <ShoppingCart className="h-5 w-5 mr-2" />
-              {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-            </Button>
+            <div className="flex space-x-4">
+                <Button 
+                  onClick={handleAddToCart}
+                  className="flex-1 amazon-button"
+                  disabled={!product.stock}
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  {product.stock ? 'Add to Cart' : 'Out of Stock'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleWishlistToggle}
+                  className={`px-4 ${isInWishlist(product.id) ? 'text-red-500 border-red-500' : ''}`}
+                >
+                  <Heart className={`h-4 w-4 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  disabled={!product.stock}
+                >
+                  Buy Now
+                </Button>
+              </div>
 
             {/* Features */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t">

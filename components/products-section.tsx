@@ -1,12 +1,12 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ShoppingCart, Star, Package } from "lucide-react"
+import { ShoppingCart, Star, Package, Heart } from "lucide-react"
 import Link from "next/link"
 import { useCart } from "@/components/cart-provider"
+import { useWishlist } from "./wishlist-provider"
 import { storeManager, type Product } from "@/lib/store"
 
 const sampleProducts: Product[] = [
@@ -61,6 +61,7 @@ export default function ProductsSection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { addToCart } = useCart()
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
 
   useEffect(() => {
     let isMounted = true
@@ -70,7 +71,7 @@ export default function ProductsSection() {
         console.log('ProductsSection: Loading products...')
         setLoading(true)
         const productsData = await storeManager.getProducts()
-        
+
         if (isMounted) {
           if (productsData && productsData.length > 0) {
             console.log('ProductsSection: Loaded', productsData.length, 'products from store')
@@ -117,9 +118,23 @@ export default function ProductsSection() {
       id: parseInt(product.id),
       name: product.name,
       price: product.price,
-      quantity: 1,
-      image: product.image
+      image: product.image,
+      quantity: 1
     })
+  }
+
+  const handleWishlistToggle = (product: Product) => {
+    if (isInWishlist(product.id)) {
+      removeFromWishlist(product.id)
+    } else {
+      addToWishlist({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        category: product.category
+      })
+    }
   }
 
   const productsToShow = products.length > 0 ? products.slice(0, 8) : sampleProducts.slice(0, 8)
@@ -173,7 +188,7 @@ export default function ProductsSection() {
               <div className="p-4">
                 <h3 className="font-semibold text-lg mb-2 line-clamp-2">{product.name}</h3>
                 <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
-                
+
                 <div className="flex items-center mb-3">
                   <div className="flex items-center">
                     {[...Array(5)].map((_, i) => (
