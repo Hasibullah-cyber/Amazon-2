@@ -5,7 +5,8 @@ run = "npm run dev"
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "npm run dev"]
+run = ["sh", "-c", "npm start"]
+build = ["sh", "-c", "npm run build"]
 
 [[ports]]
 localPort = 3000
@@ -26,3 +27,12 @@ args = "pnpm install"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm run dev"
+
+[[workflows.workflow]]
+name = "Initialize Database"
+author = 44234686
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "curl -X POST http://localhost:3000/api/init-db"
