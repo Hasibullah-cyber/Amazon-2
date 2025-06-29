@@ -13,7 +13,6 @@ import CartDrawer from "@/components/cart-drawer"
 import RegularSearch from "@/components/regular-search"
 import { useToast } from "@/hooks/use-toast"
 
-export function Navbar() {
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
