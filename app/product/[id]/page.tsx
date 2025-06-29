@@ -90,10 +90,11 @@ export default function ProductPage() {
     if (!product) return
 
     addToWishlist({
-      id: parseInt(product.id),
+      id: product.id,
       name: product.name,
       price: product.price,
-      image: product.image
+      image: product.image,
+      category: product.category
     })
 
     toast({
