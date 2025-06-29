@@ -333,6 +333,60 @@ class StoreManager {
     }
   }
 
+  async addCategory(category: Omit<Category, 'id'>): Promise<Category> {
+    try {
+      console.log('Adding new category:', category.name)
+
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(category),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to add category')
+      }
+
+      const newCategory = await response.json()
+
+      // Show notification
+      this.showNotification(`Category added: ${newCategory.name}`, 'success')
+
+      return newCategory
+    } catch (error) {
+      console.error('Failed to add category:', error)
+      this.showNotification('Failed to add category', 'error')
+      throw error
+    }
+  }
+
+  async addSubcategory(categoryId: string, subcategory: Omit<Category, 'id'>): Promise<void> {
+    try {
+      console.log('Adding subcategory to:', categoryId, subcategory.name)
+
+      const response = await fetch('/api/categories', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ categoryId, subcategory }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to add subcategory')
+      }
+
+      // Show notification
+      this.showNotification(`Subcategory added: ${subcategory.name}`, 'success')
+    } catch (error) {
+      console.error('Failed to add subcategory:', error)
+      this.showNotification('Failed to add subcategory', 'error')
+      throw error
+    }
+  }
+
   // Subscription management
   subscribe(listener: StoreListener): () => void {
     this.listeners.add(listener)
