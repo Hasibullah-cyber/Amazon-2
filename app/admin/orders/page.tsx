@@ -1,41 +1,50 @@
+
 "use client"
 
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { storeManager } from "@/lib/store"
-import { Search, Eye, Package, Truck, CheckCircle, X, Filter } from "lucide-react"
+import { storeManager, type Order } from "@/lib/store"
+import { Search, Eye, Package, Truck, CheckCircle, X, Filter, RefreshCw } from "lucide-react"
 
 export const dynamic = 'force-dynamic'
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<any[]>([])
-  const [filteredOrders, setFilteredOrders] = useState<any[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [selectedOrder, setSelectedOrder] = useState<any>(null)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [updating, setUpdating] = useState<string | null>(null)
 
   useEffect(() => {
-    const updateOrders = async () => {
+    const loadOrders = async () => {
       try {
+        setLoading(true)
         const allOrders = await storeManager.getOrders()
         setOrders(allOrders)
         filterOrders(allOrders, searchTerm, statusFilter)
       } catch (error) {
-        console.error('Error fetching orders:', error)
+        console.error('Error loading orders:', error)
+      } finally {
+        setLoading(false)
       }
     }
 
-    updateOrders()
-    const unsubscribe = storeManager.subscribe(() => {
-      updateOrders()
+    // Subscribe to real-time updates
+    const unsubscribe = storeManager.subscribe((state) => {
+      setOrders(state.orders)
+      filterOrders(state.orders, searchTerm, statusFilter)
     })
+
+    loadOrders()
 
     return unsubscribe
   }, [searchTerm, statusFilter])
 
-  const filterOrders = (ordersList: any[], search: string, status: string) => {
+  const filterOrders = (ordersList: Order[], search: string, status: string) => {
     let filtered = ordersList
 
     if (search) {
@@ -53,8 +62,20 @@ export default function OrdersPage() {
     setFilteredOrders(filtered)
   }
 
-  const handleStatusChange = (orderId: string, newStatus: string) => {
-    storeManager.updateOrderStatus(orderId, newStatus as any)
+  const handleStatusChange = async (orderId: string, newStatus: string) => {
+    try {
+      setUpdating(orderId)
+      await storeManager.updateOrderStatus(orderId, newStatus as Order['status'])
+      console.log('Order status updated successfully')
+    } catch (error) {
+      console.error('Failed to update order status:', error)
+    } finally {
+      setUpdating(null)
+    }
+  }
+
+  const handleRefresh = async () => {
+    await storeManager.refresh()
   }
 
   const getStatusIcon = (status: string) => {
@@ -81,170 +102,138 @@ export default function OrdersPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Orders Management</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Orders Management</h1>
+        <Button onClick={handleRefresh} variant="outline" size="sm">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
 
-      {/* Filters and Search */}
-      <Card className="p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search by Order ID, Customer Name, or Phone..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-500" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="border rounded-md px-3 py-2"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-        </div>
-      </Card>
-
-      {/* Orders Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-        <Card className="p-4 text-center">
-          <div className="text-2xl font-bold">{orders.length}</div>
-          <div className="text-sm text-gray-600">Total Orders</div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card className="p-4">
+          <h3 className="text-sm font-medium text-gray-600">Total Orders</h3>
+          <p className="text-2xl font-bold">{orders.length}</p>
         </Card>
-        <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-gray-600">
+        <Card className="p-4">
+          <h3 className="text-sm font-medium text-gray-600">Pending</h3>
+          <p className="text-2xl font-bold text-yellow-600">
             {orders.filter(o => o.status === 'pending').length}
-          </div>
-          <div className="text-sm text-gray-600">Pending</div>
+          </p>
         </Card>
-        <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-yellow-600">
+        <Card className="p-4">
+          <h3 className="text-sm font-medium text-gray-600">Processing</h3>
+          <p className="text-2xl font-bold text-blue-600">
             {orders.filter(o => o.status === 'processing').length}
-          </div>
-          <div className="text-sm text-gray-600">Processing</div>
+          </p>
         </Card>
-        <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-blue-600">
-            {orders.filter(o => o.status === 'shipped').length}
-          </div>
-          <div className="text-sm text-gray-600">Shipped</div>
-        </Card>
-        <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-green-600">
+        <Card className="p-4">
+          <h3 className="text-sm font-medium text-gray-600">Delivered</h3>
+          <p className="text-2xl font-bold text-green-600">
             {orders.filter(o => o.status === 'delivered').length}
-          </div>
-          <div className="text-sm text-gray-600">Delivered</div>
+          </p>
         </Card>
       </div>
 
-      {/* Orders Table */}
-      <Card className="p-6">
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left p-3">Order ID</th>
-                <th className="text-left p-3">Customer</th>
-                <th className="text-left p-3">Contact</th>
-                <th className="text-left p-3">Items</th>
-                <th className="text-left p-3">Total</th>
-                <th className="text-left p-3">Status</th>
-                <th className="text-left p-3">Date</th>
-                <th className="text-left p-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.map((order) => (
-                <tr key={order.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3">
-                    <div className="font-mono text-sm font-medium">{order.orderId}</div>
-                  </td>
-                  <td className="p-3">
-                    <div>
-                      <div className="font-medium">{order.customerName}</div>
-                      <div className="text-sm text-gray-500">{order.customerEmail}</div>
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <div className="text-sm">{order.customerPhone}</div>
-                    <div className="text-xs text-gray-500">{order.city}</div>
-                  </td>
-                  <td className="p-3">
-                    <div className="text-sm">{order.items.length} items</div>
-                  </td>
-                  <td className="p-3">
-                    <div className="font-medium">৳{order.totalAmount.toFixed(2)}</div>
-                  </td>
-                  <td className="p-3">
-                    <select
-                      value={order.status}
-                      onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                      className={`px-2 py-1 rounded-full text-xs border flex items-center gap-1 ${getStatusColor(order.status)}`}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="processing">Processing</option>
-                      <option value="shipped">Shipped</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </td>
-                  <td className="p-3">
-                    <div className="text-sm">
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(order.createdAt).toLocaleTimeString()}
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setSelectedOrder(order)}
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      View
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search by order ID, customer name, or phone"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Filter className="h-4 w-4 text-gray-600" />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border rounded-md px-3 py-2"
+          >
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2">Loading orders...</span>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {filteredOrders.map((order) => (
+            <Card key={order.id} className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-4">
+                    <div>
+                      <h3 className="font-semibold">{order.orderId}</h3>
+                      <p className="text-sm text-gray-600">{order.customerName}</p>
+                    </div>
+                    <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                      {getStatusIcon(order.status)}
+                      <span className="ml-1 capitalize">{order.status}</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">৳{order.totalAmount.toFixed(2)}</p>
+                      <p className="text-sm text-gray-600">{new Date(order.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <select
+                    value={order.status}
+                    onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                    disabled={updating === order.id}
+                    className="border rounded-md px-2 py-1 text-sm"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="processing">Processing</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedOrder(order)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
           {filteredOrders.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              No orders found matching your criteria
+              No orders found matching your criteria.
             </div>
           )}
         </div>
-      </Card>
+      )}
 
       {/* Order Details Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <Card className="max-w-2xl w-full max-h-[80vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold">Order Details</h2>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setSelectedOrder(null)}
-                >
+                <Button variant="outline" onClick={() => setSelectedOrder(null)}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-
+              
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -269,22 +258,22 @@ export default function OrdersPage() {
                 </div>
 
                 <div>
-                  <h3 className="font-medium mb-2">Order Items</h3>
+                  <h3 className="font-medium mb-2">Items</h3>
                   <div className="space-y-2">
-                    {selectedOrder.items.map((item: any, index: number) => (
-                      <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    {selectedOrder.items.map((item, index) => (
+                      <div key={index} className="flex justify-between items-center py-2 border-b">
                         <div>
                           <div className="font-medium">{item.name}</div>
                           <div className="text-sm text-gray-600">Qty: {item.quantity}</div>
                         </div>
-                        <div className="font-medium">৳{(item.price * item.quantity).toFixed(2)}</div>
+                        <div className="text-right">
+                          <div>৳{(item.price * item.quantity).toFixed(2)}</div>
+                          <div className="text-sm text-gray-600">৳{item.price.toFixed(2)} each</div>
+                        </div>
                       </div>
                     ))}
                   </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="space-y-2 text-sm">
+                  <div className="mt-4 space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
                       <span>৳{selectedOrder.subtotal.toFixed(2)}</span>

@@ -1,16 +1,17 @@
 
-import { NextRequest, NextResponse } from 'next/server'
-import { serverStoreManager } from '@/lib/server-store'
+import { NextResponse } from 'next/server'
+import { storeManager } from '@/lib/store'
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const { orderId, status } = await request.json()
     
     if (!orderId || !status) {
       return NextResponse.json({ error: 'Order ID and status are required' }, { status: 400 })
     }
-    
-    await serverStoreManager.updateOrderStatus(orderId, status)
+
+    console.log('API: Updating order status:', orderId, 'to', status)
+    await storeManager.updateOrderStatus(orderId, status)
     
     return NextResponse.json({ success: true })
   } catch (error) {

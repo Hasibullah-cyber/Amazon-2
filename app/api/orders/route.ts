@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server'
 import { storeManager } from '@/lib/store'
 
@@ -14,6 +15,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const order = await request.json()
+    console.log('API: Creating new order:', order.orderId)
     const newOrder = await storeManager.addOrder(order)
     return NextResponse.json(newOrder)
   } catch (error) {
