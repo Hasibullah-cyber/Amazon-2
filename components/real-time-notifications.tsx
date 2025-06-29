@@ -27,6 +27,18 @@ export default function RealTimeNotifications() {
 
       setNotifications(prev => [...prev, notification])
 
+      // Also dispatch to navbar notifications
+      window.dispatchEvent(new CustomEvent('navbar-notification', {
+        detail: {
+          id: Date.now(),
+          title: type === 'success' ? 'Order Update' : type === 'error' ? 'Alert' : 'Notification',
+          message,
+          time: 'Just now',
+          read: false,
+          type: 'general'
+        }
+      }))
+
       // Auto remove after 5 seconds
       setTimeout(() => {
         setNotifications(prev => prev.filter(n => n.id !== notification.id))
