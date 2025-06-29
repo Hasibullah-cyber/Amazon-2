@@ -8,6 +8,7 @@ import { AdminAuthProvider } from "@/components/admin-auth-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import RealTimeNotifications from "@/components/real-time-notifications"
+import Navbar from "@/components/navbar"
 import { cn } from "@/lib/utils"
 import "@/lib/test-data"
 
@@ -36,6 +37,7 @@ export default function RootLayout({
             <AdminAuthProvider>
               <WishlistProvider>
                 <CartProvider>
+                  <Navbar />
                   {children}
                   <Toaster />
                   <RealTimeNotifications />
