@@ -609,6 +609,14 @@ class StoreManager {
     return newProduct
   }
 
+  async updateProduct(productId: string, updates: Partial<Product>): Promise<void> {
+    const productIndex = this.products.findIndex(p => p.id === productId)
+    if (productIndex !== -1) {
+      this.products[productIndex] = { ...this.products[productIndex], ...updates }
+      this.notifySubscribers()
+    }
+  }
+
   async searchProducts(query: string): Promise<Product[]> {
     const searchTerm = query.toLowerCase()
     return this.products.filter(product =>
