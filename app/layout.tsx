@@ -12,6 +12,7 @@ import Navbar from "@/components/navbar"
 import AIChatAssistant from "@/components/ai-chat-assistant"
 import { cn } from "@/lib/utils"
 import "@/lib/test-data"
+import Footer from "@/components/footer" // Assuming Footer component exists
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn(inter.className, "antialiased")}>
+      <body className={cn(inter.className, "antialiased min-h-screen flex flex-col")}>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -39,7 +40,8 @@ export default function RootLayout({
               <WishlistProvider>
                 <CartProvider>
                   <Navbar />
-                  {children}
+                  <main className="flex-1">{children}</main>
+                  <Footer />
                   <AIChatAssistant />
                   <Toaster />
                   <RealTimeNotifications />

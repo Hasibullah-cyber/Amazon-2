@@ -6,8 +6,8 @@ interface Product {
   category: string
   image: string
   description: string
-  rating?: number
-  reviews?: number
+  rating: number
+  reviews: number
 }
 
 interface Order {
@@ -54,6 +54,144 @@ interface Category {
   name: string
   description: string
 }
+
+// Extended product database including mobile phones and other categories
+const products: Product[] = [
+  // Mobile Phones
+  {
+    id: "1001",
+    name: "iPhone 15 Pro Max",
+    description: "Latest Apple smartphone with advanced camera system, titanium design, and A17 Pro chip. Features 6.7-inch Super Retina XDR display with ProMotion technology.",
+    price: 1299.99,
+    image: "/placeholder.svg?height=300&width=300",
+    rating: 4.8,
+    reviews: 245,
+    stock: 15,
+    category: "electronics"
+  },
+  {
+    id: "1002",
+    name: "Samsung Galaxy S24 Ultra",
+    description: "Premium Android phone with S Pen, 200MP camera, and AI features. Built-in S Pen for productivity and creativity.",
+    price: 1199.99,
+    image: "/placeholder.svg?height=300&width=300",
+    rating: 4.7,
+    reviews: 189,
+    stock: 22,
+    category: "electronics"
+  },
+  {
+    id: "1003",
+    name: "Google Pixel 8 Pro",
+    description: "AI-powered photography smartphone with Magic Eraser, Night Sight, and computational photography features.",
+    price: 899.99,
+    image: "/placeholder.svg?height=300&width=300",
+    rating: 4.6,
+    reviews: 156,
+    stock: 8,
+    category: "electronics"
+  },
+  {
+    id: "1004",
+    name: "OnePlus 12",
+    description: "Flagship killer with Snapdragon 8 Gen 3, 120Hz display, and 100W fast charging. Premium build quality at competitive price.",
+    price: 799.99,
+    image: "/placeholder.svg?height=300&width=300",
+    rating: 4.5,
+    reviews: 98,
+    stock: 12,
+    category: "electronics"
+  },
+  {
+    id: "1005",
+    name: "iPhone 14",
+    description: "Previous generation iPhone with A15 Bionic chip, dual-camera system, and all-day battery life. Great value option.",
+    price: 699.99,
+    image: "/placeholder.svg?height=300&width=300",
+    rating: 4.4,
+    reviews: 324,
+    stock: 25,
+    category: "electronics"
+  },
+  {
+    id: "1006",
+    name: "Xiaomi 14 Ultra",
+    description: "Photography-focused flagship with Leica cameras, Snapdragon 8 Gen 3, and premium design.",
+    price: 999.99,
+    image: "/placeholder.svg?height=300&width=300",
+    rating: 4.6,
+    reviews: 76,
+    stock: 18,
+    category: "electronics"
+  },
+  {
+    id: "1007",
+    name: "Nothing Phone (2)",
+    description: "Unique transparent design with Glyph interface, flagship performance, and clean Android experience.",
+    price: 599.99,
+    image: "/placeholder.svg?height=300&width=300",
+    rating: 4.3,
+    reviews: 145,
+    stock: 14,
+    category: "electronics"
+  },
+  {
+    id: "1008",
+    name: "Samsung Galaxy A54",
+    description: "Mid-range smartphone with excellent camera, 5000mAh battery, and premium design at affordable price.",
+    price: 449.99,
+    image: "/placeholder.svg?height=300&width=300",
+    rating: 4.2,
+    reviews: 203,
+    stock: 30,
+    category: "electronics"
+  },
+  // Other existing products
+  {
+    id: "1",
+    name: "Premium Wireless Headphones",
+    price: 199.99,
+    stock: 50,
+    category: "electronics",
+    image: "/placeholder.svg?height=300&width=300",
+    description: "Immersive sound quality with noise cancellation technology.",
+    rating: 4.5,
+    reviews: 128
+  },
+  {
+    id: "2",
+    name: "Designer Sunglasses",
+    price: 79.99,
+    stock: 30,
+    category: "fashion",
+    image: "/placeholder.svg?height=300&width=300",
+    description: "Protect your eyes with style and elegance.",
+    rating: 4.0,
+    reviews: 85
+  },
+  {
+    id: "3",
+    name: "Scented Candle Set",
+    price: 34.99,
+    stock: 100,
+    category: "home-living",
+    image: "/placeholder.svg?height=300&width=300",
+    description: "Set of 3 premium scented candles for a relaxing atmosphere.",
+    rating: 4.7,
+    reviews: 203
+  },
+  {
+    id: "4",
+    name: "Luxury Skincare Set",
+    price: 129.99,
+    stock: 25,
+    category: "beauty",
+    image: "/placeholder.svg?height=300&width=300",
+    description: "Complete skincare routine with premium ingredients.",
+    rating: 4.2,
+    reviews: 156
+  }
+]
 
 class StoreManager {
   private static instance: StoreManager | null = null
@@ -104,12 +242,14 @@ class StoreManager {
         fetch('/api/admin/stats').catch(() => null)
       ])
 
-      let products: Product[] = []
+      let productsData: Product[] = []
       let orders: Order[] = []
       let stats = this.state.stats
 
       if (productsResponse?.ok) {
-        products = await productsResponse.json()
+        productsData = await productsResponse.json()
+      } else {
+        productsData = products
       }
 
       if (ordersResponse?.ok) {
@@ -122,12 +262,12 @@ class StoreManager {
 
       // Update state
       this.state = {
-        products,
+        products: productsData,
         orders,
         stats
       }
 
-      console.log('Store synced - Products:', products.length, 'Orders:', orders.length)
+      console.log('Store synced - Products:', productsData.length, 'Orders:', orders.length)
 
       // Notify all listeners
       this.notifyListeners()
@@ -146,31 +286,25 @@ class StoreManager {
     })
   }
 
-  // Public API methods
   async getProducts(): Promise<Product[]> {
-    if (this.state.products.length === 0) {
-      await this.syncWithServer()
-    }
-    return this.state.products
+    return products
   }
 
   async getProduct(id: string): Promise<Product | undefined> {
-    const products = await this.getProducts()
-    let product = products.find(p => p.id === id)
+    return products.find(p => p.id === id)
+  }
 
-    if (!product) {
-      try {
-        const response = await fetch(`/api/products?id=${id}`)
-        if (response.ok) {
-          const data = await response.json()
-          product = data.find((p: Product) => p.id === id)
-        }
-      } catch (error) {
-        console.error('Failed to fetch product:', error)
-      }
-    }
+  async getProductsByCategory(category: string): Promise<Product[]> {
+    return products.filter(p => p.category === category)
+  }
 
-    return product
+  async searchProducts(query: string): Promise<Product[]> {
+    const lowercaseQuery = query.toLowerCase()
+    return products.filter(p =>
+      p.name.toLowerCase().includes(lowercaseQuery) ||
+      p.description.toLowerCase().includes(lowercaseQuery) ||
+      p.category.toLowerCase().includes(lowercaseQuery)
+    )
   }
 
   async getOrders(): Promise<Order[]> {

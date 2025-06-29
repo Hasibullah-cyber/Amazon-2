@@ -128,7 +128,16 @@ export default function AIEnhancedSearch() {
 
       // Regular product search
       const productsResponse = await fetch("/api/products")
-      const products: SearchResult[] = await productsResponse.json()
+      const allProducts = await productsResponse.json()
+      
+      // Convert products to search result format and enhance filtering
+      const products: SearchResult[] = allProducts.map((p: any) => ({
+        id: p.id.toString(),
+        name: p.name,
+        price: p.price,
+        image: p.image,
+        category: p.category
+      }))
 
       // Enhanced filtering with fuzzy matching
       const filteredProducts = products.filter(product => {
