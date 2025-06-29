@@ -74,7 +74,9 @@ export default function ProductsPage() {
       price: parseFloat(formData.price),
       stock: parseInt(formData.stock),
       category: formData.category,
-      image: "/placeholder.svg?height=400&width=400"
+      image: "/placeholder.svg?height=400&width=400",
+      rating: 4.0,
+      reviews: 0
     }
 
     if (editingProduct) {
