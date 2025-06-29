@@ -95,7 +95,7 @@ export default function AIChatAssistant() {
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsOpen(true)}
-          className="w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg animate-pulse"
+          className="w-14 h-14 rounded-full bg-black hover:bg-gray-800 shadow-lg animate-pulse"
           size="lg"
         >
           <MessageCircle className="w-6 h-6 text-white" />
@@ -108,7 +108,7 @@ export default function AIChatAssistant() {
     <div className="fixed bottom-6 right-6 z-50">
       <Card className="w-80 h-96 flex flex-col shadow-2xl border">
         {/* Header */}
-        <div className="bg-blue-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+        <div className="bg-black text-white p-4 rounded-t-lg flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Bot className="w-5 h-5" />
             <span className="font-medium">Shopping Assistant</span>
@@ -117,7 +117,7 @@ export default function AIChatAssistant() {
             variant="ghost"
             size="sm"
             onClick={() => setIsOpen(false)}
-            className="text-white hover:bg-blue-700 p-1"
+            className="text-white hover:bg-gray-800 p-1"
           >
             <X className="w-4 h-4" />
           </Button>
@@ -133,7 +133,7 @@ export default function AIChatAssistant() {
               <div
                 className={`max-w-xs px-3 py-2 rounded-lg text-sm ${
                   message.isUser
-                    ? 'bg-blue-600 text-white rounded-br-none'
+                    ? 'bg-black text-white rounded-br-none'
                     : 'bg-gray-100 text-gray-800 rounded-bl-none'
                 }`}
               >
@@ -170,7 +170,7 @@ export default function AIChatAssistant() {
               onClick={handleSendMessage}
               disabled={!inputText.trim() || isLoading}
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-black hover:bg-gray-800"
             >
               <Send className="w-4 h-4" />
             </Button>

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ShoppingCart, Menu, X, User, MapPin, LogOut } from "lucide-react"
+import { ShoppingCart, Menu, X, User, MapPin, LogOut, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
 import { useWishlist } from "@/components/wishlist-provider"
@@ -11,7 +11,7 @@ import { useAdminAuth } from "@/components/admin-auth-provider"
 import { AuthModal } from "@/components/auth-modal"
 import { AdminLoginModal } from "@/components/admin-login-modal"
 import CartDrawer from "@/components/cart-drawer"
-import RegularSearch from "@/components/regular-search"
+import AIEnhancedSearch from "@/components/ai-enhanced-search"
 import { useToast } from "@/hooks/use-toast"
 import { Heart } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -68,7 +68,7 @@ export default function Navbar() {
 
             {/* Search bar */}
             <div className="flex flex-1 mx-4">
-              <RegularSearch />
+              <AIEnhancedSearch />
             </div>
 
             {/* Account & Orders */}
