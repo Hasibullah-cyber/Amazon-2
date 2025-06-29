@@ -1,56 +1,53 @@
 
-'use client'
+"use client"
 
-import React, { useState, useRef, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { X, Send, MessageCircle, Minimize2, Maximize2 } from 'lucide-react'
+import { useState, useRef, useEffect } from "react"
+import { MessageCircle, X, Send, Bot } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 
 interface Message {
   id: string
-  content: string
-  sender: 'user' | 'assistant'
+  text: string
+  isUser: boolean
   timestamp: Date
 }
 
-interface AIChatAssistantProps {
-  isOpen: boolean
-  onToggle: () => void
-}
-
-export default function AIChatAssistant({ isOpen, onToggle }: AIChatAssistantProps) {
+export default function AIChatAssistant() {
+  const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: 'Hello! I\'m your AI shopping assistant. I can help you find products, answer questions about our store, and assist with your shopping experience. How can I help you today?',
-      sender: 'assistant',
+      text: "Hi! I'm your shopping assistant. How can I help you today?",
+      isUser: false,
       timestamp: new Date()
     }
   ])
-  const [inputMessage, setInputMessage] = useState('')
+  const [inputText, setInputText] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [isMinimized, setIsMinimized] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [messages, isOpen])
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
 
-  const sendMessage = async () => {
-    if (!inputMessage.trim()) return
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const handleSendMessage = async () => {
+    if (!inputText.trim() || isLoading) return
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputMessage,
-      sender: 'user',
+      text: inputText,
+      isUser: true,
       timestamp: new Date()
     }
 
     setMessages(prev => [...prev, userMessage])
-    setInputMessage('')
+    setInputText("")
     setIsLoading(true)
 
     try {
@@ -59,28 +56,25 @@ export default function AIChatAssistant({ isOpen, onToggle }: AIChatAssistantPro
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message: inputMessage,
-          context: 'shopping_assistant'
-        }),
+        body: JSON.stringify({ message: inputText })
       })
 
       const data = await response.json()
-
-      const assistantMessage: Message = {
+      
+      const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: data.response || 'I apologize, but I\'m having trouble responding right now. Please try again.',
-        sender: 'assistant',
+        text: data.response || "I'm sorry, I couldn't process that request.",
+        isUser: false,
         timestamp: new Date()
       }
 
-      setMessages(prev => [...prev, assistantMessage])
+      setMessages(prev => [...prev, aiMessage])
     } catch (error) {
       console.error('Error sending message:', error)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: 'Sorry, I\'m having trouble connecting right now. Please try again later.',
-        sender: 'assistant',
+        text: "I'm sorry, I'm having trouble connecting right now. Please try again later.",
+        isUser: false,
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMessage])
@@ -92,97 +86,96 @@ export default function AIChatAssistant({ isOpen, onToggle }: AIChatAssistantPro
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage()
+      handleSendMessage()
     }
   }
 
-  if (!isOpen) return null
+  if (!isOpen) {
+    return (
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          onClick={() => setIsOpen(true)}
+          className="w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg animate-pulse"
+          size="lg"
+        >
+          <MessageCircle className="w-6 h-6 text-white" />
+        </Button>
+      </div>
+    )
+  }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      <Card className={`w-80 ${isMinimized ? 'h-14' : 'h-96'} shadow-lg transition-all duration-200`}>
-        <CardHeader className="p-3 bg-[#232f3e] text-white rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <MessageCircle className="h-5 w-5" />
-              <CardTitle className="text-sm font-medium">Shopping Assistant</CardTitle>
-            </div>
-            <div className="flex items-center space-x-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsMinimized(!isMinimized)}
-                className="h-6 w-6 p-0 text-white hover:bg-white/20"
-              >
-                {isMinimized ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onToggle}
-                className="h-6 w-6 p-0 text-white hover:bg-white/20"
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
+    <div className="fixed bottom-6 right-6 z-50">
+      <Card className="w-80 h-96 flex flex-col shadow-2xl border">
+        {/* Header */}
+        <div className="bg-blue-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Bot className="w-5 h-5" />
+            <span className="font-medium">Shopping Assistant</span>
           </div>
-        </CardHeader>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsOpen(false)}
+            className="text-white hover:bg-blue-700 p-1"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
 
-        {!isMinimized && (
-          <CardContent className="p-0 flex flex-col h-80">
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[75%] p-2 rounded-lg text-sm ${
-                      message.sender === 'user'
-                        ? 'bg-[#febd69] text-black'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {message.content}
-                  </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-gray-100 text-gray-800 p-2 rounded-lg text-sm">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            <div className="p-3 border-t">
-              <div className="flex space-x-2">
-                <Input
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Ask me anything about our products..."
-                  className="flex-1 text-sm"
-                  disabled={isLoading}
-                />
-                <Button
-                  onClick={sendMessage}
-                  disabled={isLoading || !inputMessage.trim()}
-                  size="sm"
-                  className="bg-[#febd69] hover:bg-[#f3a847] text-black"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+        {/* Messages */}
+        <div className="flex-1 p-4 overflow-y-auto space-y-3">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-xs px-3 py-2 rounded-lg text-sm ${
+                  message.isUser
+                    ? 'bg-blue-600 text-white rounded-br-none'
+                    : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                }`}
+              >
+                {message.text}
               </div>
             </div>
-          </CardContent>
-        )}
+          ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-gray-100 px-3 py-2 rounded-lg rounded-bl-none">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <div className="p-4 border-t">
+          <div className="flex space-x-2">
+            <Input
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask about products..."
+              className="flex-1"
+              disabled={isLoading}
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!inputText.trim() || isLoading}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
       </Card>
     </div>
   )

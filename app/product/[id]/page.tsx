@@ -1,8 +1,15 @@
+The code is modified to include a product review system with submission and display functionalities.
+```
+
+```replit_final_file
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { ShoppingCart, Star, Package, Truck, Shield, ArrowLeft, Heart } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -63,6 +70,9 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
   const [productId, setProductId] = useState<string>("")
+  const [reviews, setReviews] = useState<any[]>([])
+  const [newReview, setNewReview] = useState({ rating: 5, comment: "", name: "" })
+  const [showReviewForm, setShowReviewForm] = useState(false)
   const { addToCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
   const { toast } = useToast()
@@ -136,6 +146,65 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         description: `${product.name} has been added to your wishlist.`,
       })
     }
+  }
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: product?.name,
+        text: product?.description,
+        url: window.location.href,
+      })
+    } else {
+      navigator.clipboard.writeText(window.location.href)
+      toast({
+        title: "Link copied!",
+        description: "Product link has been copied to clipboard.",
+      })
+    }
+  }
+
+  const handleSubmitReview = () => {
+    if (!newReview.name.trim() || !newReview.comment.trim()) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    const review = {
+      id: Date.now(),
+      name: newReview.name,
+      rating: newReview.rating,
+      comment: newReview.comment,
+      date: new Date().toISOString().split('T')[0]
+    }
+
+    setReviews(prev => [review, ...prev])
+    setNewReview({ rating: 5, comment: "", name: "" })
+    setShowReviewForm(false)
+    toast({
+      title: "Review submitted!",
+      description: "Thank you for your feedback.",
+    })
+  }
+
+  const renderStars = (rating: number, interactive = false, onRatingChange?: (rating: number) => void) => {
+    return (
+      <div className="flex space-x-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`w-4 h-4 ${
+              star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+            } ${interactive ? 'cursor-pointer hover:text-yellow-400' : ''}`}
+            onClick={() => interactive && onRatingChange && onRatingChange(star)}
+          />
+        ))}
+      </div>
+    )
   }
 
   if (loading) {
@@ -301,6 +370,75 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="mt-12">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">Customer Reviews</h2>
+            <Button 
+              onClick={() => setShowReviewForm(!showReviewForm)}
+              variant="outline"
+            >
+              Write a Review
+            </Button>
+          </div>
+
+          {/* Review Form */}
+          {showReviewForm && (
+            <Card className="p-6 mb-6">
+              <h3 className="text-lg font-semibold mb-4">Write Your Review</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Your Name</label>
+                  <Input
+                    value={newReview.name}
+                    onChange={(e) => setNewReview(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter your name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Rating</label>
+                  {renderStars(newReview.rating, true, (rating) => 
+                    setNewReview(prev => ({ ...prev, rating }))
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Your Review</label>
+                  <Textarea
+                    value={newReview.comment}
+                    onChange={(e) => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
+                    placeholder="Share your experience with this product..."
+                    rows={4}
+                  />
+                </div>
+                <div className="flex space-x-3">
+                  <Button onClick={handleSubmitReview}>Submit Review</Button>
+                  <Button variant="outline" onClick={() => setShowReviewForm(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Reviews List */}
+          <div className="space-y-4">
+            {reviews.map((review) => (
+              <Card key={review.id} className="p-6">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h4 className="font-semibold">{review.name}</h4>
+                    <div className="flex items-center space-x-2 mt-1">
+                      {renderStars(review.rating)}
+                      <span className="text-sm text-gray-500">{review.date}</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-gray-700">{review.comment}</p>
+              </Card>
+            ))}
           </div>
         </div>
 

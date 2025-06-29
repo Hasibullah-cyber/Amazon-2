@@ -9,7 +9,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import RealTimeNotifications from "@/components/real-time-notifications"
 import Navbar from "@/components/navbar"
-import AIChatWrapper from "@/components/ai-chat-wrapper"
+import AIChatAssistant from "@/components/ai-chat-assistant"
 import { cn } from "@/lib/utils"
 import "@/lib/test-data"
 
@@ -40,7 +40,7 @@ export default function RootLayout({
                 <CartProvider>
                   <Navbar />
                   {children}
-                  <AIChatWrapper />
+                  <AIChatAssistant />
                   <Toaster />
                   <RealTimeNotifications />
                 </CartProvider>
