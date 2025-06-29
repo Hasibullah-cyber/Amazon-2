@@ -57,10 +57,11 @@ const sampleProducts: Product[] = [
   }
 ]
 
-export default function ProductPage({ params }: { params: { id: string } }) {
+export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
+  const [productId, setProductId] = useState<string>("")
   const { addToCart } = useCart()
   const { toast } = useToast()
   const router = useRouter()
@@ -69,19 +70,22 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     const loadProduct = async () => {
       try {
         setLoading(true)
+        const resolvedParams = await params
+        setProductId(resolvedParams.id)
         const products = await storeManager.getProducts()
-        const foundProduct = products.find(p => p.id === params.id)
+        const foundProduct = products.find(p => p.id === resolvedParams.id)
 
         if (foundProduct) {
           setProduct(foundProduct)
         } else {
           // Fallback to sample products
-          const sampleProduct = sampleProducts.find(p => p.id === params.id)
+          const sampleProduct = sampleProducts.find(p => p.id === resolvedParams.id)
           setProduct(sampleProduct || null)
         }
       } catch (error) {
         console.error('Error loading product:', error)
-        const sampleProduct = sampleProducts.find(p => p.id === params.id)
+        const resolvedParams = await params
+        const sampleProduct = sampleProducts.find(p => p.id === resolvedParams.id)
         setProduct(sampleProduct || null)
       } finally {
         setLoading(false)
@@ -89,7 +93,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     }
 
     loadProduct()
-  }, [params.id])
+  }, [params])
 
   const handleAddToCart = () => {
     if (!product) return
