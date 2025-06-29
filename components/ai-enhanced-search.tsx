@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useRef, useEffect } from "react"
@@ -109,7 +108,7 @@ export default function AIEnhancedSearch() {
       // Focus on product search first
       const productsResponse = await fetch("/api/products")
       const allProducts = await productsResponse.json()
-      
+
       // Convert products to search result format and enhance filtering
       const products: SearchResult[] = allProducts.map((p: any) => ({
         id: p.id.toString(),
@@ -125,10 +124,10 @@ export default function AIEnhancedSearch() {
         const productMatch = product.name.toLowerCase().includes(searchTerm) ||
                            product.category.toLowerCase().includes(searchTerm) ||
                            product.name.toLowerCase().includes(searchTerm.replace(/s$/, '')) // Handle plurals
-        
+
         const categoryMatch = selectedCategory === "All" || 
                              product.category.toLowerCase().includes(selectedCategory.toLowerCase())
-        
+
         return productMatch && categoryMatch
       }).slice(0, 8) // Show more results
 
@@ -163,20 +162,184 @@ export default function AIEnhancedSearch() {
   // Smart auto-complete suggestions
   const getAutocompleteSuggestions = () => {
     if (!query || query.length < 2) return []
-    
+
     const suggestions = [
       "smartphone", "laptop", "headphones", "watch", "camera",
       "dress", "shirt", "shoes", "bag", "jacket",
       "sofa", "table", "lamp", "pillow", "curtain",
       "lipstick", "cream", "perfume", "shampoo", "makeup"
     ]
-    
+
     return suggestions
       .filter(suggestion => suggestion.toLowerCase().includes(query.toLowerCase()))
       .slice(0, 3)
   }
 
   const autocompleteSuggestions = getAutocompleteSuggestions()
+
+  // Helper function to calculate similarity between two strings
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const s1 = str1.toLowerCase()
+    const s2 = str2.toLowerCase()
+
+    // Exact match
+    if (s1 === s2) return 1.0
+
+    // Contains match
+    if (s1.includes(s2) || s2.includes(s1)) return 0.8
+
+    // Word boundary matches
+    const words1 = s1.split(/\s+/)
+    const words2 = s2.split(/\s+/)
+
+    let wordMatches = 0
+    for (const word1 of words1) {
+      for (const word2 of words2) {
+        if (word1.includes(word2) || word2.includes(word1)) {
+          wordMatches++
+          break
+        }
+      }
+    }
+
+    if (wordMatches > 0) {
+      return 0.6 + (wordMatches / Math.max(words1.length, words2.length)) * 0.2
+    }
+
+    // Character similarity (Levenshtein-based)
+    const maxLen = Math.max(s1.length, s2.length)
+    if (maxLen === 0) return 1.0
+
+    const distance = levenshteinDistance(s1, s2)
+    const similarity = (maxLen - distance) / maxLen
+
+    return similarity > 0.3 ? similarity : 0
+  }
+
+  // Levenshtein distance for fuzzy matching
+  const levenshteinDistance = (str1: string, str2: string): number => {
+    const matrix = []
+
+    for (let i = 0; i <= str2.length; i++) {
+      matrix[i] = [i]
+    }
+
+    for (let j = 0; j <= str1.length; j++) {
+      matrix[0][j] = j
+    }
+
+    for (let i = 1; i <= str2.length; i++) {
+      for (let j = 1; j <= str1.length; j++) {
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1]
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          )
+        }
+      }
+    }
+
+    return matrix[str2.length][str1.length]
+  }
+
+  const searchProducts = async (searchQuery: string, category: string = "All") => {
+    if (!searchQuery.trim()) {
+      setResults([])
+      setIsOpen(false)
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const productsResponse = await fetch("/api/products")
+      const allProducts = await productsResponse.json()
+
+      // Convert products to search result format and enhance filtering
+      const products: SearchResult[] = allProducts.map((p: any) => ({
+        id: p.id.toString(),
+        name: p.name,
+        price: p.price,
+        image: p.image,
+        category: p.category
+      }))
+
+
+      // Calculate similarity scores for all products
+      const scoredProducts = products.map(product => {
+        const nameScore = calculateSimilarity(product.name, searchQuery)
+        // const descScore = calculateSimilarity(product.description, searchQuery) * 0.7 //Product doesn't have description
+        const descScore = 0;
+        const categoryScore = calculateSimilarity(product.category, searchQuery) * 0.5
+
+        // Check for partial word matches
+        const searchWords = searchQuery.toLowerCase().split(/\s+/)
+        let partialScore = 0
+
+        for (const word of searchWords) {
+          if (word.length >= 2) {
+            if (product.name.toLowerCase().includes(word)) partialScore += 0.3
+            // if (product.description.toLowerCase().includes(word)) partialScore += 0.2 //Product doesn't have description
+            if (product.category.toLowerCase().includes(word)) partialScore += 0.1
+          }
+        }
+
+        const totalScore = Math.max(nameScore, descScore, categoryScore) + partialScore
+
+        return {
+          ...product,
+          similarity: totalScore
+        }
+      })
+
+      // Filter by category if specified
+      let filtered = scoredProducts.filter(product => {
+        const matchesCategory = category === "All" || product.category.toLowerCase() === category.toLowerCase()
+        const hasRelevance = product.similarity > 0.1 // Lower threshold for better results
+        return matchesCategory && hasRelevance
+      })
+
+      // Sort by similarity score (highest first)
+      filtered.sort((a, b) => b.similarity - a.similarity)
+
+      // If no good matches found, show products with any partial matches
+      if (filtered.length === 0) {
+        const fallbackProducts = products.filter(product => {
+          const matchesCategory = category === "All" || product.category.toLowerCase() === category.toLowerCase()
+          const searchLower = searchQuery.toLowerCase()
+
+          // Very loose matching for fallback
+          const hasAnyMatch = searchLower.split('').some(char => 
+            product.name.toLowerCase().includes(char) || 
+            // product.description.toLowerCase().includes(char)  || //Product doesn't have description
+            product.category.toLowerCase().includes(char)
+          ) || searchLower.length <= 2
+
+          return matchesCategory && hasAnyMatch
+        }).slice(0, 6)
+
+        setResults(fallbackProducts)
+      } else {
+        setResults(filtered.slice(0, 8))
+      }
+
+      setAiSuggestion("") // Don't show AI suggestions
+
+      setIsOpen(true)
+    } catch (error) {
+      console.error('Search failed:', error)
+      toast({
+        title: "Search Error",
+        description: "Failed to search products. Please try again.",
+        variant: "destructive",
+      })
+      setResults([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div className="relative w-full" ref={searchRef}>
@@ -191,7 +354,7 @@ export default function AIEnhancedSearch() {
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
-        
+
         {/* Search Input */}
         <div className="relative flex-1">
           <Input
@@ -203,7 +366,7 @@ export default function AIEnhancedSearch() {
             onFocus={() => query && setIsOpen(true)}
             className="rounded-none border-0 text-gray-900 focus:outline-none focus:ring-0 pr-16 text-sm"
           />
-          
+
           {/* Voice and Clear buttons */}
           <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
             {query && (
@@ -214,7 +377,7 @@ export default function AIEnhancedSearch() {
                 <X className="h-3 w-3" />
               </button>
             )}
-            
+
             <button
               onClick={handleVoiceSearch}
               className={`p-1 rounded transition-colors ${
@@ -231,7 +394,7 @@ export default function AIEnhancedSearch() {
 
         {/* Search Button */}
         <Button
-          onClick={() => handleSearch()}
+          onClick={() => searchProducts(query, selectedCategory)}
           disabled={isLoading}
           className="rounded-none bg-[#febd69] hover:bg-[#f3a847] text-black border-0 px-3 sm:px-4"
           size="sm"
@@ -267,7 +430,7 @@ export default function AIEnhancedSearch() {
                     key={index}
                     onClick={() => {
                       setQuery(suggestion)
-                      handleSearch(suggestion)
+                      searchProducts(suggestion, selectedCategory)
                     }}
                     className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded text-gray-700"
                   >
@@ -278,7 +441,7 @@ export default function AIEnhancedSearch() {
             </div>
           )}
 
-          
+
 
           {/* Products */}
           {results.length > 0 && (
@@ -323,7 +486,7 @@ export default function AIEnhancedSearch() {
         </Card>
       )}
 
-      
+
     </div>
   )
 }

@@ -65,27 +65,117 @@ export default function RegularSearch() {
     }
   }
 
-  const applyFilters = () => {
-    let filtered = products.filter(product => {
-      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           product.description.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesCategory = !filters.category || product.category === filters.category
-      const matchesPrice = product.price >= filters.minPrice && product.price <= filters.maxPrice
-      
-      return matchesSearch && matchesCategory && matchesPrice
-    })
+  // Helper function for similarity calculation
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const s1 = str1.toLowerCase()
+    const s2 = str2.toLowerCase()
+    
+    if (s1 === s2) return 1.0
+    if (s1.includes(s2) || s2.includes(s1)) return 0.8
+    
+    const words1 = s1.split(/\s+/)
+    const words2 = s2.split(/\s+/)
+    
+    let wordMatches = 0
+    for (const word1 of words1) {
+      for (const word2 of words2) {
+        if (word1.includes(word2) || word2.includes(word1)) {
+          wordMatches++
+          break
+        }
+      }
+    }
+    
+    if (wordMatches > 0) {
+      return 0.6 + (wordMatches / Math.max(words1.length, words2.length)) * 0.2
+    }
+    
+    // Character-level similarity for typos
+    const maxLen = Math.max(s1.length, s2.length)
+    if (maxLen === 0) return 1.0
+    
+    let commonChars = 0
+    for (let i = 0; i < Math.min(s1.length, s2.length); i++) {
+      if (s1[i] === s2[i]) commonChars++
+    }
+    
+    const similarity = commonChars / maxLen
+    return similarity > 0.3 ? similarity : 0
+  }
 
-    // Apply sorting
-    switch (filters.sortBy) {
-      case 'price-low':
-        filtered.sort((a, b) => a.price - b.price)
-        break
-      case 'price-high':
-        filtered.sort((a, b) => b.price - a.price)
-        break
-      case 'name':
-        filtered.sort((a, b) => a.name.localeCompare(b.name))
-        break
+  const applyFilters = () => {
+    let filtered: any[] = []
+    
+    if (searchTerm.trim()) {
+      // Use intelligent search when there's a search term
+      const scoredProducts = products.map(product => {
+        const nameScore = calculateSimilarity(product.name, searchTerm)
+        const descScore = calculateSimilarity(product.description, searchTerm) * 0.7
+        const categoryScore = calculateSimilarity(product.category, searchTerm) * 0.5
+        
+        // Check for partial word matches
+        const searchWords = searchTerm.toLowerCase().split(/\s+/)
+        let partialScore = 0
+        
+        for (const word of searchWords) {
+          if (word.length >= 2) {
+            if (product.name.toLowerCase().includes(word)) partialScore += 0.3
+            if (product.description.toLowerCase().includes(word)) partialScore += 0.2
+            if (product.category.toLowerCase().includes(word)) partialScore += 0.1
+          }
+        }
+        
+        const totalScore = Math.max(nameScore, descScore, categoryScore) + partialScore
+        
+        return {
+          ...product,
+          similarity: totalScore
+        }
+      }).filter(product => {
+        const matchesCategory = !filters.category || product.category === filters.category
+        const matchesPrice = product.price >= filters.minPrice && product.price <= filters.maxPrice
+        const hasRelevance = product.similarity > 0.1
+        
+        return matchesCategory && matchesPrice && hasRelevance
+      })
+      
+      // Sort by similarity first, then by selected sort option
+      scoredProducts.sort((a, b) => {
+        // First sort by similarity
+        if (b.similarity !== a.similarity) {
+          return b.similarity - a.similarity
+        }
+        
+        // Then by selected sort option
+        switch (filters.sortBy) {
+          case 'price-low': return a.price - b.price
+          case 'price-high': return b.price - a.price
+          case 'name': return a.name.localeCompare(b.name)
+          default: return 0
+        }
+      })
+      
+      filtered = scoredProducts
+    } else {
+      // No search term, use regular filtering
+      filtered = products.filter(product => {
+        const matchesCategory = !filters.category || product.category === filters.category
+        const matchesPrice = product.price >= filters.minPrice && product.price <= filters.maxPrice
+        return matchesCategory && matchesPrice
+      })
+      
+      // Apply sorting
+      switch (filters.sortBy) {
+        case 'price-low':
+          filtered.sort((a, b) => a.price - b.price)
+          break
+        case 'price-high':
+          filtered.sort((a, b) => b.price - a.price)
+          break
+        case 'name':
+          filtered.sort((a, b) => a.name.localeCompare(b.name))
+          break
+      }
     }
 
     setFilteredProducts(filtered)
