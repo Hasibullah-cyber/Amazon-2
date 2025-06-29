@@ -1,4 +1,3 @@
-import { serverStoreManager } from './server-store'
 
 interface Product {
   id: string
@@ -93,12 +92,28 @@ class StoreManager {
     try {
       console.log('Syncing store data with server...')
 
-      // Fetch fresh data from server
-      const [products, orders, stats] = await Promise.all([
-        serverStoreManager.getProducts(),
-        serverStoreManager.getOrders(),
-        serverStoreManager.getStats()
+      // Fetch fresh data from API endpoints
+      const [productsResponse, ordersResponse, statsResponse] = await Promise.all([
+        fetch('/api/products').catch(() => null),
+        fetch('/api/admin/orders').catch(() => null),
+        fetch('/api/admin/stats').catch(() => null)
       ])
+
+      let products: Product[] = []
+      let orders: Order[] = []
+      let stats = this.state.stats
+
+      if (productsResponse?.ok) {
+        products = await productsResponse.json()
+      }
+
+      if (ordersResponse?.ok) {
+        orders = await ordersResponse.json()
+      }
+
+      if (statsResponse?.ok) {
+        stats = await statsResponse.json()
+      }
 
       // Update state
       this.state = {
@@ -136,7 +151,21 @@ class StoreManager {
 
   async getProduct(id: string): Promise<Product | undefined> {
     const products = await this.getProducts()
-    return products.find(p => p.id === id) || await serverStoreManager.getProduct(id)
+    let product = products.find(p => p.id === id)
+    
+    if (!product) {
+      try {
+        const response = await fetch(`/api/products?id=${id}`)
+        if (response.ok) {
+          const data = await response.json()
+          product = data.find((p: Product) => p.id === id)
+        }
+      } catch (error) {
+        console.error('Failed to fetch product:', error)
+      }
+    }
+    
+    return product
   }
 
   async getOrders(): Promise<Order[]> {
@@ -147,14 +176,34 @@ class StoreManager {
   }
 
   async getUserOrders(userEmail: string): Promise<Order[]> {
-    const orders = await this.getOrders()
-    return orders.filter(order => order.customerEmail === userEmail)
+    try {
+      const response = await fetch(`/api/user-orders?email=${encodeURIComponent(userEmail)}`)
+      if (response.ok) {
+        return await response.json()
+      }
+    } catch (error) {
+      console.error('Failed to fetch user orders:', error)
+    }
+    return []
   }
 
   async addOrder(order: Omit<Order, 'id' | 'createdAt'>): Promise<Order> {
     try {
       console.log('Adding new order:', order.orderId)
-      const newOrder = await serverStoreManager.addOrder(order)
+      
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(order),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create order')
+      }
+
+      const newOrder = await response.json()
 
       // Immediately sync to update local state
       await this.syncWithServer()
@@ -173,7 +222,18 @@ class StoreManager {
   async updateOrderStatus(orderId: string, status: Order['status']): Promise<void> {
     try {
       console.log('Updating order status:', orderId, 'to', status)
-      await serverStoreManager.updateOrderStatus(orderId, status)
+      
+      const response = await fetch('/api/update-order-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId, status }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update order status')
+      }
 
       // Immediately sync to update local state
       await this.syncWithServer()
@@ -190,7 +250,20 @@ class StoreManager {
   async addProduct(product: Omit<Product, 'id'>): Promise<Product> {
     try {
       console.log('Adding new product:', product.name)
-      const newProduct = await serverStoreManager.addProduct(product)
+      
+      const response = await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(product),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to add product')
+      }
+
+      const newProduct = await response.json()
 
       // Immediately sync to update local state
       await this.syncWithServer()
@@ -208,7 +281,17 @@ class StoreManager {
 
   async updateProductStock(productId: string, quantity: number): Promise<void> {
     try {
-      await serverStoreManager.updateProductStock(productId, quantity)
+      const response = await fetch('/api/admin/products', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productId, quantity }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update product stock')
+      }
 
       // Immediately sync to update local state
       await this.syncWithServer()
