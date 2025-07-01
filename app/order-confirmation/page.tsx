@@ -167,10 +167,10 @@ export default function OrderConfirmationPage() {
             orderDetails: notificationOrder
           })
         })
-        
+
         const result = await response.json()
         setEmailSent(result.success)
-        
+
         if (result.success) {
           console.log('✅ Email sent successfully:', result.message)
         } else {
@@ -185,13 +185,13 @@ export default function OrderConfirmationPage() {
       }
 
       // Send SMS notification
-      try {
-        const smsResult = await notificationService.sendOrderConfirmationSMS(notificationOrder)
-        setSmsSent(smsResult)
-      } catch (error) {
-        console.error("Failed to send SMS:", error)
-        setSmsSent(false)
-      }
+      // try {
+      //   const smsResult = await notificationService.sendOrderConfirmationSMS(notificationOrder)
+      //   setSmsSent(smsResult)
+      // } catch (error) {
+      //   console.error("Failed to send SMS:", error)
+      //   setSmsSent(false)
+      // }
 
     } catch (error) {
       console.error("Error sending notifications:", error)
@@ -255,12 +255,12 @@ export default function OrderConfirmationPage() {
                       Email confirmation sent to {user?.email || order.email || "your email"}
                     </div>
                   )}
-                  {smsSent && (
-                    <div className="flex items-center text-green-700">
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      SMS confirmation sent to {order.phone}
-                    </div>
-                  )}
+                  {/*{smsSent && (*/}
+                  {/*  <div className="flex items-center text-green-700">*/}
+                  {/*    <MessageSquare className="h-4 w-4 mr-2" />*/}
+                  {/*    SMS confirmation sent to {order.phone}*/}
+                  {/*  </div>*/}
+                  {/*)}*/}
                 </div>
               </div>
             )}

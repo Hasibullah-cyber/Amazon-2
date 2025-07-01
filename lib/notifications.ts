@@ -1,24 +1,8 @@
-
 // Notification system for order confirmations
 interface EmailTemplate {
   subject: string
   html: string
   text: string
-}
-
-interface SMSTemplate {
-  message: string
-}
-
-// Notification system for order confirmations
-interface EmailTemplate {
-  subject: string
-  html: string
-  text: string
-}
-
-interface SMSTemplate {
-  message: string
 }
 
 class NotificationService {
@@ -26,37 +10,18 @@ class NotificationService {
   async sendOrderConfirmationEmail(order: any): Promise<boolean> {
     try {
       const emailTemplate = this.generateOrderConfirmationEmail(order)
-      
+
       // Mock email sending - replace with actual email service like SendGrid, AWS SES, etc.
       console.log('Sending email to:', order.customerEmail)
       console.log('Subject:', emailTemplate.subject)
       console.log('HTML:', emailTemplate.html)
-      
+
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       return true
     } catch (error) {
       console.error('Failed to send email:', error)
-      return false
-    }
-  }
-
-  // SMS service (using a mock implementation - replace with your preferred service)
-  async sendOrderConfirmationSMS(order: any): Promise<boolean> {
-    try {
-      const smsTemplate = this.generateOrderConfirmationSMS(order)
-      
-      // Mock SMS sending - replace with actual SMS service like Twilio, AWS SNS, etc.
-      console.log('Sending SMS to:', order.customerPhone)
-      console.log('Message:', smsTemplate.message)
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      return true
-    } catch (error) {
-      console.error('Failed to send SMS:', error)
       return false
     }
   }
@@ -72,11 +37,8 @@ class NotificationService {
 
     const message = statusMessages[newStatus as keyof typeof statusMessages]
     if (message) {
-      // Send both email and SMS notifications
-      await Promise.all([
-        this.sendStatusUpdateEmail(order, newStatus, message),
-        this.sendStatusUpdateSMS(order, message)
-      ])
+      // Send only email notifications
+      await this.sendStatusUpdateEmail(order, newStatus, message)
     }
   }
 
@@ -97,62 +59,80 @@ class NotificationService {
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Order Confirmation</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 5px; }
-          .order-info { background: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin: 20px 0; }
-          .total { font-weight: bold; font-size: 18px; color: #28a745; }
-          table { width: 100%; border-collapse: collapse; }
+          .header { background: #f8f9fa; padding: 30px 20px; text-align: center; border-radius: 8px; margin-bottom: 30px; }
+          .header h1 { color: #007bff; margin: 0 0 10px 0; font-size: 28px; }
+          .order-info { background: #fff; border: 2px solid #e9ecef; border-radius: 8px; padding: 30px; margin: 20px 0; }
+          .order-info h2 { color: #495057; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+          .order-info h3 { color: #6c757d; margin-top: 25px; }
+          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+          td { padding: 12px; border-bottom: 1px solid #dee2e6; }
+          .total-row { background: #f8f9fa; font-weight: bold; }
+          .final-total { background: #e3f2fd; color: #1976d2; font-size: 18px; font-weight: bold; }
+          .footer { background: #f8f9fa; padding: 25px; text-align: center; border-radius: 8px; margin-top: 30px; }
+          .footer p { margin: 8px 0; }
+          .footer a { color: #007bff; text-decoration: none; font-weight: bold; }
+          .footer a:hover { text-decoration: underline; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
             <h1>Order Confirmation</h1>
-            <p>Thank you for your order, ${order.customerName}!</p>
+            <p>Thank you for your order, ${order.customerName || 'Customer'}!</p>
           </div>
-          
+
           <div class="order-info">
             <h2>Order Details</h2>
-            <p><strong>Order ID:</strong> ${order.orderId}</p>
-            <p><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
-            <p><strong>Estimated Delivery:</strong> ${order.estimatedDelivery}</p>
-            
+            <p><strong>Order ID:</strong> ${order.orderId || order.id}</p>
+            <p><strong>Order Date:</strong> ${new Date(order.createdAt || Date.now()).toLocaleDateString()}</p>
+            <p><strong>Estimated Delivery:</strong> ${order.estimatedDelivery || 'To be confirmed'}</p>
+
             <h3>Items Ordered:</h3>
             <table>
               ${itemsHtml}
-              <tr>
-                <td style="padding: 10px;"><strong>Subtotal:</strong></td>
-                <td style="padding: 10px; text-align: right;"><strong>৳${order.subtotal.toFixed(2)}</strong></td>
+              <tr class="total-row">
+                <td>Subtotal:</td>
+                <td style="text-align: right;">৳${order.subtotal ? order.subtotal.toFixed(2) : '0.00'}</td>
               </tr>
-              <tr>
-                <td style="padding: 10px;">Shipping:</td>
-                <td style="padding: 10px; text-align: right;">৳${order.shipping.toFixed(2)}</td>
+              <tr class="total-row">
+                <td>Shipping:</td>
+                <td style="text-align: right;">৳${order.shipping ? order.shipping.toFixed(2) : '0.00'}</td>
               </tr>
-              <tr>
-                <td style="padding: 10px;">VAT:</td>
-                <td style="padding: 10px; text-align: right;">৳${order.vat.toFixed(2)}</td>
+              <tr class="total-row">
+                <td>VAT:</td>
+                <td style="text-align: right;">৳${order.vat ? order.vat.toFixed(2) : '0.00'}</td>
               </tr>
-              <tr class="total">
-                <td style="padding: 15px; border-top: 2px solid #333;"><strong>Total:</strong></td>
-                <td style="padding: 15px; text-align: right; border-top: 2px solid #333;"><strong>৳${order.totalAmount.toFixed(2)}</strong></td>
+              <tr class="final-total">
+                <td>Total Amount:</td>
+                <td style="text-align: right;">৳${order.totalAmount ? order.totalAmount.toFixed(2) : order.total ? order.total.toFixed(2) : '0.00'}</td>
               </tr>
             </table>
-            
+
+            ${order.address ? `
             <h3>Delivery Address:</h3>
             <p>
-              ${order.customerName}<br>
+              <strong>${order.customerName}</strong><br>
               ${order.address}<br>
-              ${order.city}<br>
-              Phone: ${order.customerPhone}
+              ${order.city || ''}<br>
+              ${order.customerPhone ? `Phone: ${order.customerPhone}` : ''}
             </p>
-            
-            <p><strong>Payment Method:</strong> ${order.paymentMethod}</p>
+            ` : ''}
+
+            <h3>Payment Information:</h3>
+            <p><strong>Payment Method:</strong> ${order.paymentMethod || 'Not specified'}</p>
           </div>
-          
-          <p>You can track your order status at any time by visiting our website.</p>
-          <p>Thank you for shopping with us!</p>
+
+          <div class="footer">
+            <p>We'll send you another email when your order ships.</p>
+            <p>You can track your order at: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/track-order">Track Your Order</a></p>
+            <p><strong>Thank you for shopping with Hasib Shop!</strong></p>
+          </div>
         </div>
       </body>
       </html>
@@ -193,62 +173,17 @@ Thank you for shopping with us!
     }
   }
 
-  private generateOrderConfirmationSMS(order: any): SMSTemplate {
-    return {
-      message: `Hi ${order.customerName}! Your order ${order.orderId} has been confirmed. Total: ৳${order.totalAmount.toFixed(2)}. Expected delivery: ${order.estimatedDelivery}. Track your order on our website. Thank you!`
-    }
-  }
-
-  private async sendStatusUpdateEmail(order: any, status: string, message: string): Promise<void> {
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 5px; }
-          .status-update { background: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Order Status Update</h1>
-          </div>
-          
-          <div class="status-update">
-            <h2>Hi ${order.customerName},</h2>
-            <p>${message}</p>
-            <p><strong>Order ID:</strong> ${order.orderId}</p>
-            <p><strong>Current Status:</strong> ${status.toUpperCase()}</p>
-            <p>You can track your order status at any time by visiting our website.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
-
+  private async sendStatusUpdateEmail(order: any, newStatus: string, message: string): Promise<void> {
     console.log('Sending status update email to:', order.customerEmail)
-    console.log('Status:', status, 'Message:', message)
+    console.log('Status update message:', message)
   }
 
-  private async sendStatusUpdateSMS(order: any, message: string): Promise<void> {
-    const smsMessage = `Order Update: ${message} Order ID: ${order.orderId}. Track your order on our website.`
-    console.log('Sending status update SMS to:', order.customerPhone)
-    console.log('Message:', smsMessage)
-  }
+  // Convenience method for sending email confirmation only
+  async sendOrderConfirmation(order: any): Promise<{email: boolean}> {
+    const emailResult = await this.sendOrderConfirmationEmail(order)
 
-  // Convenience method for sending both email and SMS confirmations
-  async sendOrderConfirmation(order: any): Promise<{email: boolean, sms: boolean}> {
-    const [emailResult, smsResult] = await Promise.all([
-      this.sendOrderConfirmationEmail(order),
-      this.sendOrderConfirmationSMS(order)
-    ])
-    
     return {
-      email: emailResult,
-      sms: smsResult
+      email: emailResult
     }
   }
 }
