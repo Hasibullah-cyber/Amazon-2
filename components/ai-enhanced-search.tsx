@@ -118,25 +118,137 @@ export default function AIEnhancedSearch() {
         category: p.category
       }))
 
-      // Enhanced filtering with fuzzy matching
+      // Enhanced search with brand and product type matching
       const searchTerm = searchQuery.toLowerCase()
-      const filteredProducts = products.filter(product => {
-        // Check if search term matches product name, description, or category
-        const nameMatch = product.name.toLowerCase().includes(searchTerm)
-        const categoryMatch = product.category.toLowerCase().includes(searchTerm)
+      
+      // Create comprehensive product database with brands and types
+      const brandMappings = {
+        'fair': 'beauty',
+        'lovely': 'beauty',
+        'fairandlovely': 'beauty',
+        'fair and lovely': 'beauty',
+        'ponds': 'beauty',
+        'loreal': 'beauty',
+        'lakme': 'beauty',
+        'nivea': 'beauty',
+        'olay': 'beauty',
+        'garnier': 'beauty',
+        'maybelline': 'beauty',
+        'revlon': 'beauty',
+        'samsung': 'electronics',
+        'apple': 'electronics',
+        'iphone': 'electronics',
+        'xiaomi': 'electronics',
+        'oneplus': 'electronics',
+        'vivo': 'electronics',
+        'oppo': 'electronics',
+        'realme': 'electronics',
+        'nokia': 'electronics',
+        'huawei': 'electronics',
+        'sony': 'electronics',
+        'lg': 'electronics',
+        'nike': 'fashion',
+        'adidas': 'fashion',
+        'puma': 'fashion',
+        'zara': 'fashion',
+        'h&m': 'fashion',
+        'levis': 'fashion',
+        'calvin': 'fashion'
+      }
 
-        // Handle partial word matches and plurals
-        const nameWords = product.name.toLowerCase().split(' ')
-        const categoryWords = product.category.toLowerCase().split(' ')
+      const productTypeMappings = {
+        'cream': 'beauty',
+        'moisturizer': 'beauty',
+        'foundation': 'beauty',
+        'lipstick': 'beauty',
+        'makeup': 'beauty',
+        'skincare': 'beauty',
+        'perfume': 'beauty',
+        'shampoo': 'beauty',
+        'cosmetic': 'beauty',
+        'beauty': 'beauty',
+        'phone': 'electronics',
+        'mobile': 'electronics',
+        'smartphone': 'electronics',
+        'laptop': 'electronics',
+        'computer': 'electronics',
+        'headphone': 'electronics',
+        'earphone': 'electronics',
+        'speaker': 'electronics',
+        'camera': 'electronics',
+        'watch': 'electronics',
+        'shirt': 'fashion',
+        'dress': 'fashion',
+        'jeans': 'fashion',
+        'shoes': 'fashion',
+        'bag': 'fashion',
+        'handbag': 'fashion',
+        'sunglasses': 'fashion',
+        'saree': 'fashion',
+        'furniture': 'home-living',
+        'chair': 'home-living',
+        'table': 'home-living',
+        'sofa': 'home-living',
+        'bed': 'home-living',
+        'lamp': 'home-living',
+        'pillow': 'home-living',
+        'curtain': 'home-living'
+      }
+
+      // Score products based on relevance
+      const scoredProducts = products.map(product => {
+        let score = 0
+        const productName = product.name.toLowerCase()
+        const productCategory = product.category.toLowerCase()
+        
+        // Exact matches get highest score
+        if (productName.includes(searchTerm)) score += 100
+        if (productCategory.includes(searchTerm)) score += 80
+        
+        // Brand matching
+        for (const [brand, category] of Object.entries(brandMappings)) {
+          if (searchTerm.includes(brand)) {
+            if (productCategory.includes(category)) score += 90
+            if (productName.includes(brand)) score += 95
+          }
+        }
+        
+        // Product type matching
+        for (const [type, category] of Object.entries(productTypeMappings)) {
+          if (searchTerm.includes(type)) {
+            if (productCategory.includes(category)) score += 85
+            if (productName.includes(type)) score += 90
+          }
+        }
+        
+        // Word matching
         const searchWords = searchTerm.split(' ')
+        const nameWords = productName.split(' ')
+        const categoryWords = productCategory.split(' ')
+        
+        searchWords.forEach(searchWord => {
+          if (searchWord.length > 2) {
+            nameWords.forEach(nameWord => {
+              if (nameWord.includes(searchWord) || searchWord.includes(nameWord)) {
+                score += 30
+              }
+            })
+            categoryWords.forEach(catWord => {
+              if (catWord.includes(searchWord) || searchWord.includes(catWord)) {
+                score += 25
+              }
+            })
+          }
+        })
+        
+        return { ...product, score }
+      })
 
-        const wordMatch = searchWords.some(searchWord => 
-          nameWords.some(nameWord => nameWord.includes(searchWord) || searchWord.includes(nameWord)) ||
-          categoryWords.some(catWord => catWord.includes(searchWord) || searchWord.includes(catWord))
-        )
-
-        return nameMatch || categoryMatch || wordMatch
-      }).slice(0, 10) // Show more results
+      // Filter and sort by score
+      const filteredProducts = scoredProducts
+        .filter(product => product.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 12) // Show top 12 results
 
       setResults(filteredProducts)
       setAiSuggestion("") // Don't show AI suggestions
@@ -369,25 +481,137 @@ export default function AIEnhancedSearch() {
         category: p.category
       }))
 
-      // Enhanced filtering with fuzzy matching - search all categories
+      // Enhanced search with brand and product type matching
       const searchTerm = searchQuery.toLowerCase()
-      const filteredProducts = products.filter(product => {
-        // Check if search term matches product name, description, or category
-        const nameMatch = product.name.toLowerCase().includes(searchTerm)
-        const categoryMatch = product.category.toLowerCase().includes(searchTerm)
+      
+      // Create comprehensive product database with brands and types
+      const brandMappings = {
+        'fair': 'beauty',
+        'lovely': 'beauty',
+        'fairandlovely': 'beauty',
+        'fair and lovely': 'beauty',
+        'ponds': 'beauty',
+        'loreal': 'beauty',
+        'lakme': 'beauty',
+        'nivea': 'beauty',
+        'olay': 'beauty',
+        'garnier': 'beauty',
+        'maybelline': 'beauty',
+        'revlon': 'beauty',
+        'samsung': 'electronics',
+        'apple': 'electronics',
+        'iphone': 'electronics',
+        'xiaomi': 'electronics',
+        'oneplus': 'electronics',
+        'vivo': 'electronics',
+        'oppo': 'electronics',
+        'realme': 'electronics',
+        'nokia': 'electronics',
+        'huawei': 'electronics',
+        'sony': 'electronics',
+        'lg': 'electronics',
+        'nike': 'fashion',
+        'adidas': 'fashion',
+        'puma': 'fashion',
+        'zara': 'fashion',
+        'h&m': 'fashion',
+        'levis': 'fashion',
+        'calvin': 'fashion'
+      }
 
-        // Handle partial word matches and plurals
-        const nameWords = product.name.toLowerCase().split(' ')
-        const categoryWords = product.category.toLowerCase().split(' ')
+      const productTypeMappings = {
+        'cream': 'beauty',
+        'moisturizer': 'beauty',
+        'foundation': 'beauty',
+        'lipstick': 'beauty',
+        'makeup': 'beauty',
+        'skincare': 'beauty',
+        'perfume': 'beauty',
+        'shampoo': 'beauty',
+        'cosmetic': 'beauty',
+        'beauty': 'beauty',
+        'phone': 'electronics',
+        'mobile': 'electronics',
+        'smartphone': 'electronics',
+        'laptop': 'electronics',
+        'computer': 'electronics',
+        'headphone': 'electronics',
+        'earphone': 'electronics',
+        'speaker': 'electronics',
+        'camera': 'electronics',
+        'watch': 'electronics',
+        'shirt': 'fashion',
+        'dress': 'fashion',
+        'jeans': 'fashion',
+        'shoes': 'fashion',
+        'bag': 'fashion',
+        'handbag': 'fashion',
+        'sunglasses': 'fashion',
+        'saree': 'fashion',
+        'furniture': 'home-living',
+        'chair': 'home-living',
+        'table': 'home-living',
+        'sofa': 'home-living',
+        'bed': 'home-living',
+        'lamp': 'home-living',
+        'pillow': 'home-living',
+        'curtain': 'home-living'
+      }
+
+      // Score products based on relevance
+      const scoredProducts = products.map(product => {
+        let score = 0
+        const productName = product.name.toLowerCase()
+        const productCategory = product.category.toLowerCase()
+        
+        // Exact matches get highest score
+        if (productName.includes(searchTerm)) score += 100
+        if (productCategory.includes(searchTerm)) score += 80
+        
+        // Brand matching
+        for (const [brand, category] of Object.entries(brandMappings)) {
+          if (searchTerm.includes(brand)) {
+            if (productCategory.includes(category)) score += 90
+            if (productName.includes(brand)) score += 95
+          }
+        }
+        
+        // Product type matching
+        for (const [type, category] of Object.entries(productTypeMappings)) {
+          if (searchTerm.includes(type)) {
+            if (productCategory.includes(category)) score += 85
+            if (productName.includes(type)) score += 90
+          }
+        }
+        
+        // Word matching
         const searchWords = searchTerm.split(' ')
+        const nameWords = productName.split(' ')
+        const categoryWords = productCategory.split(' ')
+        
+        searchWords.forEach(searchWord => {
+          if (searchWord.length > 2) {
+            nameWords.forEach(nameWord => {
+              if (nameWord.includes(searchWord) || searchWord.includes(nameWord)) {
+                score += 30
+              }
+            })
+            categoryWords.forEach(catWord => {
+              if (catWord.includes(searchWord) || searchWord.includes(catWord)) {
+                score += 25
+              }
+            })
+          }
+        })
+        
+        return { ...product, score }
+      })
 
-        const wordMatch = searchWords.some(searchWord => 
-          nameWords.some(nameWord => nameWord.includes(searchWord) || searchWord.includes(nameWord)) ||
-          categoryWords.some(catWord => catWord.includes(searchWord) || searchWord.includes(catWord))
-        )
-
-        return nameMatch || categoryMatch || wordMatch
-      }).slice(0, 10) // Show more results
+      // Filter and sort by score
+      const filteredProducts = scoredProducts
+        .filter(product => product.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 12) // Show top 12 results
 
       setResults(filteredProducts)
       setAiSuggestion("") // Don't show AI suggestions

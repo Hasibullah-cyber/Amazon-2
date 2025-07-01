@@ -89,18 +89,18 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               {/* Profile Icon */}
               {isAuthenticated ? (
-                <div className="flex items-center text-white p-2 hover:bg-gray-700 rounded-md transition-colors">
-                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                <div className="flex items-center text-white p-3 hover:bg-gray-700 rounded-md transition-colors min-w-[44px] min-h-[44px]">
+                  <div className="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
                     {user?.name?.charAt(0).toUpperCase() || 'U'}
                   </div>
                 </div>
               ) : (
                 <button
                   onClick={() => openAuthModal('signin')}
-                  className="flex items-center text-white p-2 hover:bg-gray-700 rounded-md transition-colors"
+                  className="flex items-center text-white p-3 hover:bg-gray-700 rounded-md transition-colors min-w-[44px] min-h-[44px]"
                   aria-label="Profile"
                 >
-                  <User className="h-5 w-5" />
+                  <User className="h-6 w-6" />
                 </button>
               )}
 
@@ -108,13 +108,13 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="flex items-center text-white p-2 hover:bg-gray-700 rounded-md transition-colors"
+                  className="flex items-center text-white p-3 hover:bg-gray-700 rounded-md transition-colors min-w-[44px] min-h-[44px]"
                   aria-label="Notifications"
                 >
                   <div className="relative">
-                    <Bell className="h-5 w-5" />
+                    <Bell className="h-6 w-6" />
                     {unreadNotifications > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center text-[10px]">
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-bold">
                         {unreadNotifications}
                       </span>
                     )}
@@ -191,13 +191,13 @@ export default function Navbar() {
               {/* Wishlist */}
               <Link
                 href="/wishlist"
-                className="flex items-center text-white p-2 hover:bg-gray-700 rounded-md transition-colors"
+                className="flex items-center text-white p-3 hover:bg-gray-700 rounded-md transition-colors min-w-[44px] min-h-[44px]"
                 aria-label="Wishlist"
               >
                 <div className="relative">
-                  <Heart className="h-5 w-5" />
+                  <Heart className="h-6 w-6" />
                   {wishlistItems.length > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-[#f08804] text-white text-xs rounded-full h-4 w-4 flex items-center justify-center text-[10px]">
+                    <span className="absolute -top-2 -right-2 bg-[#f08804] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-bold">
                       {wishlistItems.length}
                     </span>
                   )}
@@ -206,14 +206,14 @@ export default function Navbar() {
 
               {/* Cart */}
               <button
-                className="flex items-center text-white p-2 hover:bg-gray-700 rounded-md transition-colors"
+                className="flex items-center text-white p-3 hover:bg-gray-700 rounded-md transition-colors min-w-[44px] min-h-[44px]"
                 onClick={() => setIsCartOpen(true)}
                 aria-label="Shopping cart"
               >
                 <div className="relative">
-                  <ShoppingCart className="h-5 w-5" />
+                  <ShoppingCart className="h-6 w-6" />
                   {totalItems > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-[#f08804] text-white text-xs rounded-full h-4 w-4 flex items-center justify-center text-[10px]">
+                    <span className="absolute -top-2 -right-2 bg-[#f08804] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-bold">
                       {totalItems}
                     </span>
                   )}
@@ -224,10 +224,14 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center text-white p-2 hover:bg-gray-700 rounded-md transition-colors"
+                  className="flex items-center text-white p-3 hover:bg-gray-700 rounded-md transition-colors min-w-[44px] min-h-[44px]"
                   aria-label="Menu"
                 >
-                  <Menu className="h-5 w-5" />
+                  <div className="flex flex-col space-y-1">
+                    <div className="w-5 h-0.5 bg-white"></div>
+                    <div className="w-5 h-0.5 bg-white"></div>
+                    <div className="w-5 h-0.5 bg-white"></div>
+                  </div>
                 </button>
 
                 {isUserMenuOpen && (
