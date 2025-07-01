@@ -703,6 +703,17 @@ class StoreManager {
     }
   }
 
+  async addOrder(order: Omit<Order, 'id' | 'createdAt'>): Promise<Order> {
+    const newOrder: Order = {
+      ...order,
+      id: (Date.now() + Math.random()).toString(),
+      createdAt: new Date().toISOString()
+    }
+    this.orders.push(newOrder)
+    this.notifySubscribers()
+    return newOrder
+  }
+
   async refresh(): Promise<void> {
     await this.getOrders()
   }
