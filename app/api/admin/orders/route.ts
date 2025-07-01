@@ -22,14 +22,15 @@ export async function GET() {
         items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items
       }))
 
+      console.log('Fetched orders from database:', orders.length)
       return NextResponse.json(orders)
     } finally {
       client.release()
     }
   } catch (error) {
-    console.error('Database error fetching orders, falling back to localStorage:', error)
+    console.error('Database error fetching orders, using fallback data:', error)
 
-    // Fallback to localStorage for development
+    // Enhanced fallback with more realistic data
     const fallbackOrders = [
       {
         id: "1",
@@ -55,10 +56,37 @@ export async function GET() {
         status: "pending",
         paymentMethod: "Cash on Delivery",
         estimatedDelivery: "2-3 business days",
-        createdAt: new Date().toISOString()
+        createdAt: new Date(Date.now() - 3600000).toISOString() // 1 hour ago
+      },
+      {
+        id: "2", 
+        orderId: "HS-0987654321",
+        customerName: "Jane Smith",
+        customerEmail: "jane@example.com",
+        customerPhone: "01800000000",
+        address: "456 Oak Ave",
+        city: "Chittagong",
+        items: [
+          {
+            id: "2",
+            name: "Smart Watch Pro",
+            price: 299.99,
+            quantity: 1,
+            image: "/placeholder.svg"
+          }
+        ],
+        subtotal: 299.99,
+        shipping: 120,
+        vat: 41.99,
+        totalAmount: 461.98,
+        status: "processing",
+        paymentMethod: "Cash on Delivery",
+        estimatedDelivery: "3-4 business days", 
+        createdAt: new Date(Date.now() - 7200000).toISOString() // 2 hours ago
       }
     ]
 
+    console.log('Using fallback orders:', fallbackOrders.length)
     return NextResponse.json(fallbackOrders)
   }
 }

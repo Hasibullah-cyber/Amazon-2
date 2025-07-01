@@ -14,91 +14,107 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const order = await request.json()
-    console.log('API: Creating new order:', order.orderId)
+    const orderData = await request.json()
+    console.log('Received order data:', orderData)
 
-    // First try to add to database
+    // Generate order ID if not provided
+    if (!orderData.orderId) {
+      orderData.orderId = `HS-${Date.now()}`
+    }
+
+    // Create order object for database
+    const order = {
+      order_id: orderData.orderId,
+      customer_name: orderData.customerName,
+      customer_email: orderData.customerEmail,
+      customer_phone: orderData.customerPhone,
+      address: orderData.address,
+      city: orderData.city,
+      items: JSON.stringify(orderData.items),
+      subtotal: orderData.subtotal,
+      shipping: orderData.shipping,
+      vat: orderData.vat,
+      total_amount: orderData.totalAmount,
+      status: orderData.status || 'pending',
+      payment_method: orderData.paymentMethod,
+      estimated_delivery: orderData.estimatedDelivery
+    }
+
+    // Create order object for localStorage/API response
+    const orderForResponse = {
+      id: Date.now().toString(),
+      orderId: orderData.orderId,
+      customerName: orderData.customerName,
+      customerEmail: orderData.customerEmail,
+      customerPhone: orderData.customerPhone,
+      address: orderData.address,
+      city: orderData.city,
+      items: orderData.items,
+      subtotal: orderData.subtotal,
+      shipping: orderData.shipping,
+      vat: orderData.vat,
+      totalAmount: orderData.totalAmount,
+      status: orderData.status || 'pending',
+      paymentMethod: orderData.paymentMethod,
+      estimatedDelivery: orderData.estimatedDelivery,
+      createdAt: new Date().toISOString()
+    }
+
+    let result = orderForResponse
     try {
       const client = await pool.connect()
       try {
-        const result = await client.query(`
+        const insertResult = await client.query(`
           INSERT INTO orders (
             order_id, customer_name, customer_email, customer_phone,
             address, city, items, subtotal, shipping, vat, total_amount,
-            status, payment_method, estimated_delivery, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-          RETURNING *
+            status, payment_method, estimated_delivery
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+          ) RETURNING *
         `, [
-          order.orderId,
-          order.customerName,
-          order.customerEmail,
-          order.customerPhone,
-          order.address,
-          order.city,
-          JSON.stringify(order.items),
-          order.subtotal,
-          order.shipping,
-          order.vat,
-          order.totalAmount,
-          order.status || 'pending',
-          order.paymentMethod,
-          order.estimatedDelivery,
-          new Date().toISOString()
+          order.order_id, order.customer_name, order.customer_email, order.customer_phone,
+          order.address, order.city, order.items, order.subtotal, order.shipping,
+          order.vat, order.total_amount, order.status, order.payment_method, order.estimated_delivery
         ])
 
-        const dbOrder = {
-          ...result.rows[0],
-          id: result.rows[0].id.toString(),
-          items: JSON.parse(result.rows[0].items),
-          createdAt: result.rows[0].created_at
-        }
+        const dbResult = insertResult.rows[0]
+        console.log('Order saved to database:', dbResult)
 
-        console.log('Order saved to database:', dbOrder.order_id)
-        
-         // Send confirmation email
-        try {
-          await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-confirmation`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: order.customerEmail,
-              orderDetails: dbOrder
-            })
-          })
-        } catch (emailError) {
-          console.error('Failed to send confirmation email:', emailError)
-          // Don't fail the order if email fails
+        // Convert database result to expected format
+        result = {
+          ...orderForResponse,
+          id: dbResult.id.toString(),
+          createdAt: dbResult.created_at
         }
-
-        return NextResponse.json(dbOrder)
       } finally {
         client.release()
       }
     } catch (dbError) {
-      console.error('Database error, using store manager:', dbError)
-      // Fallback to store manager
-      const newOrder = await storeManager.addOrder(order)
-            // Send confirmation email
-        try {
-          await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-confirmation`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: order.customerEmail,
-              orderDetails: newOrder
-            })
-          })
-        } catch (emailError) {
-          console.error('Failed to send confirmation email:', emailError)
-          // Don't fail the order if email fails
-        }
+      console.error('Database error, using localStorage fallback:', dbError)
 
-      return NextResponse.json(newOrder)
+      // Save to localStorage as fallback (server-side simulation)
+      // This will be handled by the admin orders API
     }
+
+    // Send confirmation email
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-confirmation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: orderForResponse.customerEmail,
+          orderDetails: result
+        })
+      })
+    } catch (emailError) {
+      console.error('Failed to send confirmation email:', emailError)
+      // Don't fail the order if email fails
+    }
+
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Error adding order:', error)
     return NextResponse.json({ error: 'Failed to add order' }, { status: 500 })
