@@ -1,5 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
+import nodemailer from 'nodemailer'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,13 +14,92 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`📧 Sending confirmation email to: ${email}`)
-    console.log('Order Details:', orderDetails)
 
-    // Simulate email sending delay
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // Create transporter with Gmail SMTP
+    const transporter = nodemailer.createTransporter({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    })
 
-    // Create detailed email content
+    // Create detailed HTML email content
     const emailContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 5px; margin-bottom: 20px; }
+          .order-info { background: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 20px; margin: 20px 0; }
+          .total { font-weight: bold; font-size: 18px; color: #28a745; }
+          table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+          td { padding: 10px; border-bottom: 1px solid #eee; }
+          .footer { background: #f8f9fa; padding: 15px; text-align: center; border-radius: 5px; margin-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="color: #007bff; margin: 0;">Order Confirmation</h1>
+            <p style="margin: 10px 0 0 0;">Thank you for your order, ${orderDetails.customerName || 'Customer'}!</p>
+          </div>
+          
+          <div class="order-info">
+            <h2>Order Details</h2>
+            <p><strong>Order ID:</strong> ${orderDetails.orderId || orderDetails.id}</p>
+            <p><strong>Order Date:</strong> ${new Date().toLocaleDateString()}</p>
+            
+            <h3>Items Ordered:</h3>
+            <table>
+              ${orderDetails.items ? orderDetails.items.map((item: any) => `
+                <tr>
+                  <td><strong>${item.name}</strong><br>Quantity: ${item.quantity}</td>
+                  <td style="text-align: right;">৳${(item.price * item.quantity).toFixed(2)}</td>
+                </tr>
+              `).join('') : '<tr><td colspan="2">Order items not available</td></tr>'}
+              <tr style="border-top: 2px solid #007bff;">
+                <td><strong>Subtotal:</strong></td>
+                <td style="text-align: right;"><strong>৳${orderDetails.subtotal ? orderDetails.subtotal.toFixed(2) : '0.00'}</strong></td>
+              </tr>
+              <tr>
+                <td><strong>Shipping:</strong></td>
+                <td style="text-align: right;"><strong>৳${orderDetails.shipping ? orderDetails.shipping.toFixed(2) : '0.00'}</strong></td>
+              </tr>
+              <tr>
+                <td><strong>VAT:</strong></td>
+                <td style="text-align: right;"><strong>৳${orderDetails.vat ? orderDetails.vat.toFixed(2) : '0.00'}</strong></td>
+              </tr>
+              <tr style="background: #f8f9fa;">
+                <td class="total">Total Amount:</td>
+                <td class="total" style="text-align: right;">৳${orderDetails.totalAmount ? orderDetails.totalAmount.toFixed(2) : orderDetails.total ? orderDetails.total.toFixed(2) : '0.00'}</td>
+              </tr>
+            </table>
+            
+            ${orderDetails.address ? `
+            <h3>Delivery Address:</h3>
+            <p>
+              ${orderDetails.address}<br>
+              ${orderDetails.city || ''}<br>
+              ${orderDetails.phone ? `Phone: ${orderDetails.phone}` : ''}
+            </p>
+            ` : ''}
+          </div>
+          
+          <div class="footer">
+            <p>We'll send you another email when your order ships.</p>
+            <p>You can track your order at: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/track-order">Track Your Order</a></p>
+            <p><strong>Thank you for shopping with Hasib Shop!</strong></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+
+    // Plain text version
+    const textContent = `
       Order Confirmation - Hasib Shop
       
       Dear ${orderDetails.customerName || 'Customer'},
@@ -36,26 +116,35 @@ export async function POST(request: NextRequest) {
       VAT: ৳${orderDetails.vat ? orderDetails.vat.toFixed(2) : '0.00'}
       Total: ৳${orderDetails.totalAmount ? orderDetails.totalAmount.toFixed(2) : orderDetails.total ? orderDetails.total.toFixed(2) : '0.00'}
       
+      ${orderDetails.address ? `
       Delivery Address:
-      ${orderDetails.address || 'Not provided'}
+      ${orderDetails.address}
       ${orderDetails.city || ''}
+      ${orderDetails.phone ? `Phone: ${orderDetails.phone}` : ''}
+      ` : ''}
       
       We'll send you another email when your order ships.
-      You can track your order at: https://yoursite.com/track-order
+      You can track your order at: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/track-order
       
       Thank you for shopping with Hasib Shop!
     `
 
-    console.log('Email Content:', emailContent)
+    // Send the email
+    const mailOptions = {
+      from: `"Hasib Shop" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: `Order Confirmation - ${orderDetails.orderId || orderDetails.id}`,
+      text: textContent,
+      html: emailContent
+    }
 
-    // In a real application, you would send the actual email here
-    // For demo purposes, we'll store the email attempt in the console
+    await transporter.sendMail(mailOptions)
+
     console.log('✅ Email sent successfully to:', email)
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Confirmation email sent successfully',
-      emailContent: emailContent.trim()
+      message: 'Confirmation email sent successfully'
     })
 
   } catch (error) {
