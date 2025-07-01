@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ShoppingCart, Menu, X, User, MapPin, LogOut, Search, MoreVertical, Bell } from "lucide-react"
+import { ShoppingCart, Menu, X, User, MapPin, LogOut, Search, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
 import { useWishlist } from "@/components/wishlist-provider"
@@ -220,14 +220,14 @@ export default function Navbar() {
                 </div>
               </button>
 
-              {/* Three dots menu */}
+              {/* Three bars menu */}
               <div className="relative">
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center text-white p-2 hover:bg-gray-700 rounded-md transition-colors"
                   aria-label="Menu"
                 >
-                  <MoreVertical className="h-5 w-5" />
+                  <Menu className="h-5 w-5" />
                 </button>
 
                 {isUserMenuOpen && (

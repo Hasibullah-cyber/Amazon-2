@@ -119,17 +119,24 @@ export default function AIEnhancedSearch() {
       }))
 
       // Enhanced filtering with fuzzy matching
+      const searchTerm = searchQuery.toLowerCase()
       const filteredProducts = products.filter(product => {
-        const searchTerm = searchQuery.toLowerCase()
-        const productMatch = product.name.toLowerCase().includes(searchTerm) ||
-                           product.category.toLowerCase().includes(searchTerm) ||
-                           product.name.toLowerCase().includes(searchTerm.replace(/s$/, '')) // Handle plurals
+        // Check if search term matches product name, description, or category
+        const nameMatch = product.name.toLowerCase().includes(searchTerm)
+        const categoryMatch = product.category.toLowerCase().includes(searchTerm)
 
-        const categoryMatch = selectedCategory === "All" || 
-                             product.category.toLowerCase().includes(selectedCategory.toLowerCase())
+        // Handle partial word matches and plurals
+        const nameWords = product.name.toLowerCase().split(' ')
+        const categoryWords = product.category.toLowerCase().split(' ')
+        const searchWords = searchTerm.split(' ')
 
-        return productMatch && categoryMatch
-      }).slice(0, 8) // Show more results
+        const wordMatch = searchWords.some(searchWord => 
+          nameWords.some(nameWord => nameWord.includes(searchWord) || searchWord.includes(nameWord)) ||
+          categoryWords.some(catWord => catWord.includes(searchWord) || searchWord.includes(catWord))
+        )
+
+        return nameMatch || categoryMatch || wordMatch
+      }).slice(0, 10) // Show more results
 
       setResults(filteredProducts)
       setAiSuggestion("") // Don't show AI suggestions
@@ -245,6 +252,102 @@ export default function AIEnhancedSearch() {
     return matrix[str2.length][str1.length]
   }
 
+  // const searchProducts = async (searchQuery: string, category: string = "All") => {
+  //   if (!searchQuery.trim()) {
+  //     setResults([])
+  //     setIsOpen(false)
+  //     return
+  //   }
+
+  //   setIsLoading(true)
+  //   try {
+  //     const productsResponse = await fetch("/api/products")
+  //     const allProducts = await productsResponse.json()
+
+  //     // Convert products to search result format and enhance filtering
+  //     const products: SearchResult[] = allProducts.map((p: any) => ({
+  //       id: p.id.toString(),
+  //       name: p.name,
+  //       price: p.price,
+  //       image: p.image,
+  //       category: p.category
+  //     }))
+
+
+  //     // Calculate similarity scores for all products
+  //     const scoredProducts = products.map(product => {
+  //       const nameScore = calculateSimilarity(product.name, searchQuery)
+  //       // const descScore = calculateSimilarity(product.description, searchQuery) * 0.7 //Product doesn't have description
+  //       const descScore = 0;
+  //       const categoryScore = calculateSimilarity(product.category, searchQuery) * 0.5
+
+  //       // Check for partial word matches
+  //       const searchWords = searchQuery.toLowerCase().split(/\s+/)
+  //       let partialScore = 0
+
+  //       for (const word of searchWords) {
+  //         if (word.length >= 2) {
+  //           if (product.name.toLowerCase().includes(word)) partialScore += 0.3
+  //           // if (product.description.toLowerCase().includes(word)) partialScore += 0.2 //Product doesn't have description
+  //           if (product.category.toLowerCase().includes(word)) partialScore += 0.1
+  //         }
+  //       }
+
+  //       const totalScore = Math.max(nameScore, descScore, categoryScore) + partialScore
+
+  //       return {
+  //         ...product,
+  //         similarity: totalScore
+  //       }
+  //     })
+
+  //     // Filter by category if specified
+  //     let filtered = scoredProducts.filter(product => {
+  //       const matchesCategory = category === "All" || product.category.toLowerCase() === category.toLowerCase()
+  //       const hasRelevance = product.similarity > 0.1 // Lower threshold for better results
+  //       return matchesCategory && hasRelevance
+  //     })
+
+  //     // Sort by similarity score (highest first)
+  //     filtered.sort((a, b) => b.similarity - a.similarity)
+
+  //     // If no good matches found, show products with any partial matches
+  //     if (filtered.length === 0) {
+  //       const fallbackProducts = products.filter(product => {
+  //         const matchesCategory = category === "All" || product.category.toLowerCase() === category.toLowerCase()
+  //         const searchLower = searchQuery.toLowerCase()
+
+  //         // Very loose matching for fallback
+  //         const hasAnyMatch = searchLower.split('').some(char => 
+  //           product.name.toLowerCase().includes(char) || 
+  //           // product.description.toLowerCase().includes(char)  || //Product doesn't have description
+  //           product.category.toLowerCase().includes(char)
+  //         ) || searchLower.length <= 2
+
+  //         return matchesCategory && hasAnyMatch
+  //       }).slice(0, 6)
+
+  //       setResults(fallbackProducts)
+  //     } else {
+  //       setResults(filtered.slice(0, 8))
+  //     }
+
+  //     setAiSuggestion("") // Don't show AI suggestions
+
+  //     setIsOpen(true)
+  //   } catch (error) {
+  //     console.error('Search failed:', error)
+  //     toast({
+  //       title: "Search Error",
+  //       description: "Failed to search products. Please try again.",
+  //       variant: "destructive",
+  //     })
+  //     setResults([])
+  //   } finally {
+  //     setIsLoading(false)
+  //   }
+  // }
+
   const searchProducts = async (searchQuery: string, category: string = "All") => {
     if (!searchQuery.trim()) {
       setResults([])
@@ -266,76 +369,36 @@ export default function AIEnhancedSearch() {
         category: p.category
       }))
 
+      // Enhanced filtering with fuzzy matching - search all categories
+      const searchTerm = searchQuery.toLowerCase()
+      const filteredProducts = products.filter(product => {
+        // Check if search term matches product name, description, or category
+        const nameMatch = product.name.toLowerCase().includes(searchTerm)
+        const categoryMatch = product.category.toLowerCase().includes(searchTerm)
 
-      // Calculate similarity scores for all products
-      const scoredProducts = products.map(product => {
-        const nameScore = calculateSimilarity(product.name, searchQuery)
-        // const descScore = calculateSimilarity(product.description, searchQuery) * 0.7 //Product doesn't have description
-        const descScore = 0;
-        const categoryScore = calculateSimilarity(product.category, searchQuery) * 0.5
+        // Handle partial word matches and plurals
+        const nameWords = product.name.toLowerCase().split(' ')
+        const categoryWords = product.category.toLowerCase().split(' ')
+        const searchWords = searchTerm.split(' ')
 
-        // Check for partial word matches
-        const searchWords = searchQuery.toLowerCase().split(/\s+/)
-        let partialScore = 0
+        const wordMatch = searchWords.some(searchWord => 
+          nameWords.some(nameWord => nameWord.includes(searchWord) || searchWord.includes(nameWord)) ||
+          categoryWords.some(catWord => catWord.includes(searchWord) || searchWord.includes(catWord))
+        )
 
-        for (const word of searchWords) {
-          if (word.length >= 2) {
-            if (product.name.toLowerCase().includes(word)) partialScore += 0.3
-            // if (product.description.toLowerCase().includes(word)) partialScore += 0.2 //Product doesn't have description
-            if (product.category.toLowerCase().includes(word)) partialScore += 0.1
-          }
-        }
+        return nameMatch || categoryMatch || wordMatch
+      }).slice(0, 10) // Show more results
 
-        const totalScore = Math.max(nameScore, descScore, categoryScore) + partialScore
-
-        return {
-          ...product,
-          similarity: totalScore
-        }
-      })
-
-      // Filter by category if specified
-      let filtered = scoredProducts.filter(product => {
-        const matchesCategory = category === "All" || product.category.toLowerCase() === category.toLowerCase()
-        const hasRelevance = product.similarity > 0.1 // Lower threshold for better results
-        return matchesCategory && hasRelevance
-      })
-
-      // Sort by similarity score (highest first)
-      filtered.sort((a, b) => b.similarity - a.similarity)
-
-      // If no good matches found, show products with any partial matches
-      if (filtered.length === 0) {
-        const fallbackProducts = products.filter(product => {
-          const matchesCategory = category === "All" || product.category.toLowerCase() === category.toLowerCase()
-          const searchLower = searchQuery.toLowerCase()
-
-          // Very loose matching for fallback
-          const hasAnyMatch = searchLower.split('').some(char => 
-            product.name.toLowerCase().includes(char) || 
-            // product.description.toLowerCase().includes(char)  || //Product doesn't have description
-            product.category.toLowerCase().includes(char)
-          ) || searchLower.length <= 2
-
-          return matchesCategory && hasAnyMatch
-        }).slice(0, 6)
-
-        setResults(fallbackProducts)
-      } else {
-        setResults(filtered.slice(0, 8))
-      }
-
+      setResults(filteredProducts)
       setAiSuggestion("") // Don't show AI suggestions
 
-      setIsOpen(true)
     } catch (error) {
-      console.error('Search failed:', error)
+      console.error("Search error:", error)
       toast({
         title: "Search Error",
         description: "Failed to search products. Please try again.",
         variant: "destructive",
       })
-      setResults([])
     } finally {
       setIsLoading(false)
     }
@@ -345,15 +408,7 @@ export default function AIEnhancedSearch() {
     <div className="relative w-full" ref={searchRef}>
       <div className="flex w-full bg-white rounded-md overflow-hidden shadow-sm">
         {/* Compact Category Selector */}
-        <select 
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="bg-gray-50 border-r border-gray-200 text-gray-700 px-2 py-2 text-xs focus:outline-none focus:bg-gray-100 min-w-0 w-16 sm:w-20"
-        >
-          {categories.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
+        {/* Removed category selection */}
 
         {/* Search Input */}
         <div className="relative flex-1">
