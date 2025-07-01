@@ -4,11 +4,11 @@ import { pool } from '@/lib/database'
 
 export async function PUT(
   request: Request,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     const product = await request.json()
-    const productId = params.productId
+    const { productId } = await params
     
     const client = await pool.connect()
     try {
@@ -47,10 +47,10 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
-    const productId = params.productId
+    const { productId } = await params
     
     const client = await pool.connect()
     try {
