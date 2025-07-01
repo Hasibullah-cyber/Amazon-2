@@ -64,53 +64,25 @@ export default function ProductsSection() {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
 
   useEffect(() => {
-    let isMounted = true
-
     const loadProducts = async () => {
       try {
         console.log('ProductsSection: Loading products...')
-        setLoading(true)
-        const productsData = await storeManager.getProducts()
-
-        if (isMounted) {
-          if (productsData && productsData.length > 0) {
-            console.log('ProductsSection: Loaded', productsData.length, 'products from store')
-            setProducts(productsData)
-            setError(null)
-          } else {
-            console.log('ProductsSection: No products from store, using sample products')
-            setProducts(sampleProducts)
-            setError(null)
-          }
-        }
+        const allProducts = await storeManager.getProducts()
+        console.log('ProductsSection: Loaded', allProducts.length, 'products from store')
+        setProducts(allProducts)
       } catch (error) {
-        console.error('ProductsSection: Error loading products:', error)
-        if (isMounted) {
-          setProducts(sampleProducts)
-          setError(null)
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
+        console.error('Error loading products:', error)
       }
     }
 
-    // Subscribe to store updates for real-time data
+    // Subscribe to store changes to reflect admin updates
     const unsubscribe = storeManager.subscribe((state) => {
-      if (isMounted && state.products.length > 0) {
-        console.log('ProductsSection: Store updated with', state.products.length, 'products')
-        setProducts(state.products)
-        setError(null)
-      }
+      setProducts(state.products)
     })
 
     loadProducts()
 
-    return () => {
-      isMounted = false
-      unsubscribe()
-    }
+    return unsubscribe
   }, [])
 
   const handleAddToCart = (product: Product) => {

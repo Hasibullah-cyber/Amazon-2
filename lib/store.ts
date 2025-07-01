@@ -659,6 +659,7 @@ class StoreManager {
       if (response.ok) {
         const orders = await response.json()
         this.orders = orders
+        this.notifySubscribers()
         return orders
       }
     } catch (error) {
@@ -716,6 +717,13 @@ class StoreManager {
 
   async refresh(): Promise<void> {
     await this.getOrders()
+    await this.getProducts()
+    await this.getCategories()
+  }
+
+  // Method to force sync with database
+  async syncWithDatabase(): Promise<void> {
+    await this.refresh()
   }
 }
 

@@ -65,10 +65,26 @@ export default function OrdersPage() {
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
       setUpdating(orderId)
-      await storeManager.updateOrderStatus(orderId, newStatus as Order['status'])
-      console.log('Order status updated successfully')
+      
+      // Update via API
+      const response = await fetch(`/api/admin/orders/${orderId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      if (response.ok) {
+        // Refresh the orders to show updated status
+        await storeManager.refresh()
+        console.log('Order status updated successfully')
+      } else {
+        throw new Error('Failed to update order status')
+      }
     } catch (error) {
       console.error('Failed to update order status:', error)
+      alert('Failed to update order status. Please try again.')
     } finally {
       setUpdating(null)
     }
@@ -209,6 +225,26 @@ export default function OrdersPage() {
                     onClick={() => setSelectedOrder(order)}
                   >
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={async () => {
+                      if (confirm('Are you sure you want to delete this order?')) {
+                        try {
+                          const response = await fetch(`/api/admin/orders/${order.id}`, {
+                            method: 'DELETE'
+                          })
+                          if (response.ok) {
+                            await storeManager.refresh()
+                          }
+                        } catch (error) {
+                          console.error('Error deleting order:', error)
+                        }
+                      }
+                    }}
+                  >
+                    Delete
                   </Button>
                 </div>
               </div>
