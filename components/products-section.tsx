@@ -58,7 +58,7 @@ const sampleProducts: Product[] = [
 
 export default function ProductsSection() {
   const [products, setProducts] = useState<Product[]>(sampleProducts)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { addToCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
@@ -66,18 +66,26 @@ export default function ProductsSection() {
   useEffect(() => {
     const loadProducts = async () => {
       try {
+        setLoading(true)
         console.log('ProductsSection: Loading products...')
         const allProducts = await storeManager.getProducts()
         console.log('ProductsSection: Loaded', allProducts.length, 'products from store')
-        setProducts(allProducts)
+        if (allProducts && allProducts.length > 0) {
+          setProducts(allProducts)
+        }
       } catch (error) {
         console.error('Error loading products:', error)
+        setError('Failed to load products')
+      } finally {
+        setLoading(false)
       }
     }
 
     // Subscribe to store changes to reflect admin updates
     const unsubscribe = storeManager.subscribe((state) => {
-      setProducts(state.products)
+      if (state.products && state.products.length > 0) {
+        setProducts(state.products)
+      }
     })
 
     loadProducts()

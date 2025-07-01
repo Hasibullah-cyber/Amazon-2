@@ -1,4 +1,3 @@
-
 export interface Product {
   id: string
   name: string
@@ -689,7 +688,7 @@ class StoreManager {
         },
         body: JSON.stringify({ orderId, status }),
       })
-      
+
       if (response.ok) {
         // Update local order status
         const orderIndex = this.orders.findIndex(order => order.id === orderId)

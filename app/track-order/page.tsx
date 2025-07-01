@@ -18,36 +18,24 @@ export default function TrackOrderPage() {
   const [error, setError] = useState("")
 
   const handleTrackOrder = async () => {
-    if (!trackingId.trim()) {
-      setError("Please enter an order ID")
-      return
-    }
+    if (!trackingId.trim()) return
 
     setLoading(true)
     setError("")
+    setOrder(null)
 
     try {
-      // Search for order by ID via API
-      const response = await fetch('/api/orders')
-      if (response.ok) {
-        const orders = await response.json()
-        const foundOrder = orders.find((order: any) => 
-          order.orderId.toLowerCase() === trackingId.toLowerCase() ||
-          order.id === trackingId
-        )
+      const response = await fetch(`/api/track-order?orderId=${encodeURIComponent(trackingId.trim())}`)
+      const data = await response.json()
 
-        if (foundOrder) {
-          setOrder(foundOrder)
-          setError("")
-        } else {
-          setOrder(null)
-          setError("Order not found. Please check your order ID and try again.")
-        }
+      if (data.success && data.order) {
+        setOrder(data.order)
       } else {
-        setError("Failed to fetch orders. Please try again.")
+        setError(data.error || "Order not found. Please check your tracking ID and try again.")
       }
     } catch (error) {
-      setError("Failed to fetch orders. Please try again.")
+      console.error('Error tracking order:', error)
+      setError("An error occurred while tracking your order. Please try again.")
     } finally {
       setLoading(false)
     }

@@ -95,7 +95,7 @@ export default function AIChatAssistant() {
       <div className="fixed bottom-6 right-6 z-50">
         <Button
           onClick={() => setIsOpen(true)}
-          className="w-14 h-14 rounded-full bg-black hover:bg-gray-800 shadow-lg animate-pulse"
+          className="w-14 h-14 rounded-full bg-black hover:bg-gray-800 shadow-lg"
           size="lg"
         >
           <MessageCircle className="w-6 h-6 text-white" />

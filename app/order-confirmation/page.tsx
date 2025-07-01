@@ -157,8 +157,25 @@ export default function OrderConfirmationPage() {
 
       // Send email notification
       try {
-        const emailResult = await notificationService.sendOrderConfirmationEmail(notificationOrder)
-        setEmailSent(emailResult)
+        const response = await fetch('/api/send-confirmation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: user?.email || order.email || order.customerEmail,
+            orderDetails: notificationOrder
+          })
+        })
+        
+        const result = await response.json()
+        setEmailSent(result.success)
+        
+        if (result.success) {
+          console.log('Email sent successfully:', result.message)
+        } else {
+          console.error('Email sending failed:', result.error)
+        }
       } catch (error) {
         console.error("Failed to send email:", error)
         setEmailSent(false)

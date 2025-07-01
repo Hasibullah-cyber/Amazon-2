@@ -1,11 +1,10 @@
-
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
 export async function GET() {
   try {
     const client = await pool.connect()
-    
+
     try {
       const result = await client.query(`
         SELECT 
@@ -17,7 +16,7 @@ export async function GET() {
         FROM orders 
         ORDER BY created_at DESC
       `)
-      
+
       const orders = result.rows.map(row => ({
         ...row,
         items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items
@@ -29,7 +28,7 @@ export async function GET() {
     }
   } catch (error) {
     console.error('Database error fetching orders, falling back to localStorage:', error)
-    
+
     // Fallback to localStorage for development
     const fallbackOrders = [
       {
@@ -59,7 +58,7 @@ export async function GET() {
         createdAt: new Date().toISOString()
       }
     ]
-    
+
     return NextResponse.json(fallbackOrders)
   }
 }

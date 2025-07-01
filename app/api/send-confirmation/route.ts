@@ -5,42 +5,57 @@ export async function POST(request: NextRequest) {
   try {
     const { email, orderDetails } = await request.json()
 
-    // For demo purposes, we'll simulate sending an email
-    // In production, you would integrate with a service like:
-    // - SendGrid
-    // - Nodemailer with SMTP
-    // - Resend
-    // - AWS SES
+    if (!email || !orderDetails) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Email and order details are required' 
+      }, { status: 400 })
+    }
 
     console.log(`📧 Sending confirmation email to: ${email}`)
     console.log('Order Details:', orderDetails)
 
     // Simulate email sending delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise(resolve => setTimeout(resolve, 500))
 
-    // For now, we'll just log the email content that would be sent
+    // Create detailed email content
     const emailContent = `
-      Dear Customer,
+      Order Confirmation - Hasib Shop
       
-      Thank you for your order! Your order #${orderDetails.id} has been confirmed.
+      Dear ${orderDetails.customerName || 'Customer'},
+      
+      Thank you for your order! Your order #${orderDetails.orderId || orderDetails.id} has been confirmed.
       
       Order Summary:
-      ${orderDetails.items.map((item: any) => 
+      ${orderDetails.items ? orderDetails.items.map((item: any) => 
         `- ${item.name} x ${item.quantity} = ৳${(item.price * item.quantity).toFixed(2)}`
-      ).join('\n')}
+      ).join('\n') : 'Order items not available'}
       
-      Total: ৳${orderDetails.total.toFixed(2)}
+      Subtotal: ৳${orderDetails.subtotal ? orderDetails.subtotal.toFixed(2) : '0.00'}
+      Shipping: ৳${orderDetails.shipping ? orderDetails.shipping.toFixed(2) : '0.00'}
+      VAT: ৳${orderDetails.vat ? orderDetails.vat.toFixed(2) : '0.00'}
+      Total: ৳${orderDetails.totalAmount ? orderDetails.totalAmount.toFixed(2) : orderDetails.total ? orderDetails.total.toFixed(2) : '0.00'}
+      
+      Delivery Address:
+      ${orderDetails.address || 'Not provided'}
+      ${orderDetails.city || ''}
       
       We'll send you another email when your order ships.
+      You can track your order at: https://yoursite.com/track-order
       
       Thank you for shopping with Hasib Shop!
     `
 
     console.log('Email Content:', emailContent)
 
+    // In a real application, you would send the actual email here
+    // For demo purposes, we'll store the email attempt in the console
+    console.log('✅ Email sent successfully to:', email)
+
     return NextResponse.json({ 
       success: true, 
-      message: 'Confirmation email sent successfully' 
+      message: 'Confirmation email sent successfully',
+      emailContent: emailContent.trim()
     })
 
   } catch (error) {
