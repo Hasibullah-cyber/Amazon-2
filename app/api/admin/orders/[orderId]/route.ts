@@ -4,11 +4,11 @@ import { pool } from '@/lib/database'
 
 export async function PUT(
   request: Request,
-  { params }: { params: { orderId: string } }
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   try {
     const { status } = await request.json()
-    const orderId = params.orderId
+    const { orderId } = await params
     
     const client = await pool.connect()
     try {
@@ -48,10 +48,10 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { orderId: string } }
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   try {
-    const orderId = params.orderId
+    const { orderId } = await params
     
     const client = await pool.connect()
     try {
