@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 
@@ -15,6 +14,17 @@ export async function POST(request: NextRequest) {
 
     console.log(`📧 Sending confirmation email to: ${email}`)
 
+    // Validate environment variables
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.error('❌ Missing email credentials in environment variables')
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Email service not configured' 
+      }, { status: 500 })
+    }
+
+    console.log(`🔧 Using email: ${process.env.EMAIL_USER}`)
+
     // Create transporter with Gmail SMTP
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -23,6 +33,18 @@ export async function POST(request: NextRequest) {
         pass: process.env.EMAIL_PASS
       }
     })
+
+    // Verify connection
+    try {
+      await transporter.verify()
+      console.log('✅ Email transporter verified successfully')
+    } catch (verifyError) {
+      console.error('❌ Email transporter verification failed:', verifyError)
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Email service authentication failed' 
+      }, { status: 500 })
+    }
 
     // Create detailed HTML email content
     const emailContent = `
@@ -46,12 +68,12 @@ export async function POST(request: NextRequest) {
             <h1 style="color: #007bff; margin: 0;">Order Confirmation</h1>
             <p style="margin: 10px 0 0 0;">Thank you for your order, ${orderDetails.customerName || 'Customer'}!</p>
           </div>
-          
+
           <div class="order-info">
             <h2>Order Details</h2>
             <p><strong>Order ID:</strong> ${orderDetails.orderId || orderDetails.id}</p>
             <p><strong>Order Date:</strong> ${new Date().toLocaleDateString()}</p>
-            
+
             <h3>Items Ordered:</h3>
             <table>
               ${orderDetails.items ? orderDetails.items.map((item: any) => `
@@ -77,7 +99,7 @@ export async function POST(request: NextRequest) {
                 <td class="total" style="text-align: right;">৳${orderDetails.totalAmount ? orderDetails.totalAmount.toFixed(2) : orderDetails.total ? orderDetails.total.toFixed(2) : '0.00'}</td>
               </tr>
             </table>
-            
+
             ${orderDetails.address ? `
             <h3>Delivery Address:</h3>
             <p>
@@ -87,7 +109,7 @@ export async function POST(request: NextRequest) {
             </p>
             ` : ''}
           </div>
-          
+
           <div class="footer">
             <p>We'll send you another email when your order ships.</p>
             <p>You can track your order at: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/track-order">Track Your Order</a></p>
@@ -101,31 +123,31 @@ export async function POST(request: NextRequest) {
     // Plain text version
     const textContent = `
       Order Confirmation - Hasib Shop
-      
+
       Dear ${orderDetails.customerName || 'Customer'},
-      
+
       Thank you for your order! Your order #${orderDetails.orderId || orderDetails.id} has been confirmed.
-      
+
       Order Summary:
       ${orderDetails.items ? orderDetails.items.map((item: any) => 
         `- ${item.name} x ${item.quantity} = ৳${(item.price * item.quantity).toFixed(2)}`
       ).join('\n') : 'Order items not available'}
-      
+
       Subtotal: ৳${orderDetails.subtotal ? orderDetails.subtotal.toFixed(2) : '0.00'}
       Shipping: ৳${orderDetails.shipping ? orderDetails.shipping.toFixed(2) : '0.00'}
       VAT: ৳${orderDetails.vat ? orderDetails.vat.toFixed(2) : '0.00'}
       Total: ৳${orderDetails.totalAmount ? orderDetails.totalAmount.toFixed(2) : orderDetails.total ? orderDetails.total.toFixed(2) : '0.00'}
-      
+
       ${orderDetails.address ? `
       Delivery Address:
       ${orderDetails.address}
       ${orderDetails.city || ''}
       ${orderDetails.phone ? `Phone: ${orderDetails.phone}` : ''}
       ` : ''}
-      
+
       We'll send you another email when your order ships.
       You can track your order at: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/track-order
-      
+
       Thank you for shopping with Hasib Shop!
     `
 

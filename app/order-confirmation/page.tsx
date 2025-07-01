@@ -172,9 +172,12 @@ export default function OrderConfirmationPage() {
         setEmailSent(result.success)
         
         if (result.success) {
-          console.log('Email sent successfully:', result.message)
+          console.log('✅ Email sent successfully:', result.message)
         } else {
-          console.error('Email sending failed:', result.error)
+          console.error('❌ Email sending failed:', result.error)
+          // Log more details for debugging
+          console.error('Response status:', response.status)
+          console.error('Full response:', result)
         }
       } catch (error) {
         console.error("Failed to send email:", error)
