@@ -24,7 +24,9 @@ interface CheckoutData {
 function PaymentContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { items, total, clearCart } = useCart()
+  const { cartItems, totalPrice, clearCart } = useCart()
+  const items = cartItems || []
+  const total = totalPrice || 0
   const { user } = useAuth()
   const { toast } = useToast()
   

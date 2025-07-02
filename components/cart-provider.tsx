@@ -12,11 +12,14 @@ export interface CartItem {
 
 interface CartContextType {
   cartItems: CartItem[]
+  cart: CartItem[] // Alias for backward compatibility
+  items: CartItem[] // Another alias
   addToCart: (item: CartItem) => void
   removeFromCart: (id: number) => void
   updateQuantity: (id: number, quantity: number) => void
   clearCart: () => void
   totalPrice: number
+  total: number // Alias for backward compatibility
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -90,11 +93,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     <CartContext.Provider
       value={{
         cartItems,
+        cart: cartItems, // Alias for backward compatibility
+        items: cartItems, // Another alias
         addToCart,
         removeFromCart,
         updateQuantity,
         clearCart,
         totalPrice,
+        total: totalPrice, // Alias for backward compatibility
       }}
     >
       {children}

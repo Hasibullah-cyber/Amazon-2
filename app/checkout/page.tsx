@@ -12,13 +12,13 @@ import { useToast } from '@/hooks/use-toast'
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { cart } = useCart()
+  const { cartItems } = useCart()
   const { user } = useAuth()
   const { toast } = useToast()
 
-  // Ensure cart is an array to prevent length errors
-  const cartItems = Array.isArray(cart) ? cart : []
-  const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  // Ensure cartItems is an array to prevent length errors
+  const safeCartItems = Array.isArray(cartItems) ? cartItems : []
+  const total = safeCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -82,12 +82,12 @@ export default function CheckoutPage() {
 
   // Redirect if cart is empty
   useEffect(() => {
-    if (cartItems.length === 0) {
+    if (safeCartItems.length === 0) {
       router.push('/')
     }
-  }, [cartItems.length, router])
+  }, [safeCartItems.length, router])
 
-  if (cartItems.length === 0) {
+  if (safeCartItems.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card>
@@ -202,7 +202,7 @@ export default function CheckoutPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {cartItems.map((item) => (
+                  {safeCartItems.map((item) => (
                     <div key={item.id} className="flex justify-between items-center">
                       <div className="flex-1">
                         <h4 className="font-medium">{item.name}</h4>
