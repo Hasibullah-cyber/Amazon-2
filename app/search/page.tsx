@@ -62,9 +62,49 @@ function SearchResults() {
     }
   }
 
-  const calculateSimilarity = (str1: string, str2: string): number => {
+  // Enhanced search mappings for better product discovery
+  const searchMappings = {
+    // Beauty/Skincare brands and terms
+    'fair': ['beauty', 'skincare', 'cosmetics'],
+    'lovely': ['beauty', 'skincare', 'cosmetics'],
+    'fairandlovely': ['beauty', 'skincare'],
+    'fair and lovely': ['beauty', 'skincare'],
+    'ponds': ['beauty', 'skincare'],
+    'loreal': ['beauty', 'cosmetics'],
+    'nivea': ['beauty', 'skincare'],
+    'olay': ['beauty', 'skincare'],
+    'garnier': ['beauty', 'skincare'],
+    'cream': ['beauty', 'skincare'],
+    'moisturizer': ['beauty', 'skincare'],
+    
+    // Electronics brands and terms
+    'samsung': ['electronics'],
+    'apple': ['electronics'],
+    'iphone': ['electronics'],
+    'headphone': ['electronics'],
+    'phone': ['electronics'],
+    'mobile': ['electronics'],
+    
+    // Fashion terms
+    'nike': ['fashion'],
+    'adidas': ['fashion'],
+    'shirt': ['fashion'],
+    'shoes': ['fashion']
+  }
+
+  const calculateSimilarity = (str1: string, str2: string, searchTerm: string): number => {
     const s1 = str1.toLowerCase()
     const s2 = str2.toLowerCase()
+    const search = searchTerm.toLowerCase()
+    
+    // Check search mappings first
+    for (const [key, categories] of Object.entries(searchMappings)) {
+      if (search.includes(key) || key.includes(search)) {
+        if (categories.some(cat => s1.includes(cat) || s2.includes(cat))) {
+          return 0.9 // High relevance for mapped terms
+        }
+      }
+    }
 
     if (s1 === s2) return 1.0
     if (s1.includes(s2) || s2.includes(s1)) return 0.8
@@ -103,9 +143,23 @@ function SearchResults() {
 
     if (searchTerm.trim()) {
       const scoredProducts = products.map(product => {
-        const nameScore = calculateSimilarity(product.name, searchTerm)
-        const descScore = calculateSimilarity(product.description, searchTerm) * 0.7
-        const categoryScore = calculateSimilarity(product.category, searchTerm) * 0.5
+        const nameScore = calculateSimilarity(product.name, searchTerm, searchTerm)
+        const descScore = calculateSimilarity(product.description, searchTerm, searchTerm) * 0.7
+        const categoryScore = calculateSimilarity(product.category, searchTerm, searchTerm) * 0.8
+
+        // Enhanced mapping-based scoring
+        let mappingScore = 0
+        const search = searchTerm.toLowerCase()
+        for (const [key, categories] of Object.entries(searchMappings)) {
+          if (search.includes(key) || key.includes(search)) {
+            if (categories.includes(product.category.toLowerCase())) {
+              mappingScore = 0.95 // Very high relevance for category matches
+            }
+            if (product.name.toLowerCase().includes(key)) {
+              mappingScore = Math.max(mappingScore, 0.9)
+            }
+          }
+        }
 
         const searchWords = searchTerm.toLowerCase().split(/\s+/)
         let partialScore = 0
@@ -114,11 +168,11 @@ function SearchResults() {
           if (word.length >= 2) {
             if (product.name.toLowerCase().includes(word)) partialScore += 0.3
             if (product.description.toLowerCase().includes(word)) partialScore += 0.2
-            if (product.category.toLowerCase().includes(word)) partialScore += 0.1
+            if (product.category.toLowerCase().includes(word)) partialScore += 0.4
           }
         }
 
-        const totalScore = Math.max(nameScore, descScore, categoryScore) + partialScore
+        const totalScore = Math.max(nameScore, descScore, categoryScore, mappingScore) + partialScore
 
         return {
           ...product,
@@ -127,7 +181,7 @@ function SearchResults() {
       }).filter(product => {
         const matchesCategory = !filters.category || product.category === filters.category
         const matchesPrice = product.price >= filters.minPrice && product.price <= filters.maxPrice
-        const hasRelevance = product.similarity > 0.1
+        const hasRelevance = product.similarity > 0.05
 
         return matchesCategory && matchesPrice && hasRelevance
       })

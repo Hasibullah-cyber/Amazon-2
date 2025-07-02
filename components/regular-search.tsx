@@ -65,10 +65,62 @@ export default function RegularSearch() {
     }
   }
 
-  // Helper function for similarity calculation
-  const calculateSimilarity = (str1: string, str2: string): number => {
+  // Enhanced search mappings for better product discovery
+  const searchMappings = {
+    // Beauty/Skincare brands and terms
+    'fair': ['beauty', 'skincare', 'cosmetics'],
+    'lovely': ['beauty', 'skincare', 'cosmetics'],
+    'fairandlovely': ['beauty', 'skincare'],
+    'fair and lovely': ['beauty', 'skincare'],
+    'ponds': ['beauty', 'skincare'],
+    'loreal': ['beauty', 'cosmetics'],
+    'nivea': ['beauty', 'skincare'],
+    'olay': ['beauty', 'skincare'],
+    'garnier': ['beauty', 'skincare'],
+    'cream': ['beauty', 'skincare'],
+    'moisturizer': ['beauty', 'skincare'],
+    'serum': ['beauty', 'skincare'],
+    'foundation': ['beauty', 'cosmetics'],
+    'lipstick': ['beauty', 'cosmetics'],
+    
+    // Electronics brands and terms
+    'samsung': ['electronics'],
+    'apple': ['electronics'],
+    'iphone': ['electronics'],
+    'android': ['electronics'],
+    'headphone': ['electronics'],
+    'earphone': ['electronics'],
+    'speaker': ['electronics'],
+    'phone': ['electronics'],
+    'mobile': ['electronics'],
+    'laptop': ['electronics'],
+    'computer': ['electronics'],
+    
+    // Fashion terms
+    'nike': ['fashion'],
+    'adidas': ['fashion'],
+    'shirt': ['fashion'],
+    'dress': ['fashion'],
+    'shoes': ['fashion'],
+    'bag': ['fashion'],
+    'watch': ['fashion'],
+    'sunglasses': ['fashion']
+  }
+
+  // Helper function for enhanced similarity calculation
+  const calculateSimilarity = (str1: string, str2: string, searchTerm: string): number => {
     const s1 = str1.toLowerCase()
     const s2 = str2.toLowerCase()
+    const search = searchTerm.toLowerCase()
+    
+    // Check search mappings first
+    for (const [key, categories] of Object.entries(searchMappings)) {
+      if (search.includes(key) || key.includes(search)) {
+        if (categories.some(cat => s1.includes(cat) || s2.includes(cat))) {
+          return 0.9 // High relevance for mapped terms
+        }
+      }
+    }
     
     if (s1 === s2) return 1.0
     if (s1.includes(s2) || s2.includes(s1)) return 0.8
@@ -109,9 +161,23 @@ export default function RegularSearch() {
     if (searchTerm.trim()) {
       // Use intelligent search when there's a search term
       const scoredProducts = products.map(product => {
-        const nameScore = calculateSimilarity(product.name, searchTerm)
-        const descScore = calculateSimilarity(product.description, searchTerm) * 0.7
-        const categoryScore = calculateSimilarity(product.category, searchTerm) * 0.5
+        const nameScore = calculateSimilarity(product.name, searchTerm, searchTerm)
+        const descScore = calculateSimilarity(product.description, searchTerm, searchTerm) * 0.7
+        const categoryScore = calculateSimilarity(product.category, searchTerm, searchTerm) * 0.8
+        
+        // Enhanced mapping-based scoring
+        let mappingScore = 0
+        const search = searchTerm.toLowerCase()
+        for (const [key, categories] of Object.entries(searchMappings)) {
+          if (search.includes(key) || key.includes(search)) {
+            if (categories.includes(product.category.toLowerCase())) {
+              mappingScore = 0.95 // Very high relevance for category matches
+            }
+            if (product.name.toLowerCase().includes(key)) {
+              mappingScore = Math.max(mappingScore, 0.9)
+            }
+          }
+        }
         
         // Check for partial word matches
         const searchWords = searchTerm.toLowerCase().split(/\s+/)
@@ -121,11 +187,11 @@ export default function RegularSearch() {
           if (word.length >= 2) {
             if (product.name.toLowerCase().includes(word)) partialScore += 0.3
             if (product.description.toLowerCase().includes(word)) partialScore += 0.2
-            if (product.category.toLowerCase().includes(word)) partialScore += 0.1
+            if (product.category.toLowerCase().includes(word)) partialScore += 0.4
           }
         }
         
-        const totalScore = Math.max(nameScore, descScore, categoryScore) + partialScore
+        const totalScore = Math.max(nameScore, descScore, categoryScore, mappingScore) + partialScore
         
         return {
           ...product,
@@ -134,7 +200,7 @@ export default function RegularSearch() {
       }).filter(product => {
         const matchesCategory = !filters.category || product.category === filters.category
         const matchesPrice = product.price >= filters.minPrice && product.price <= filters.maxPrice
-        const hasRelevance = product.similarity > 0.1
+        const hasRelevance = product.similarity > 0.05 // Lower threshold for better discovery
         
         return matchesCategory && matchesPrice && hasRelevance
       })
@@ -197,23 +263,37 @@ export default function RegularSearch() {
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <Input
               type="text"
-              placeholder="Search products..."
+              placeholder="Search for products, brands, categories..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 amazon-input"
+              className="pl-11 h-12 text-base border-2 border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-lg shadow-sm"
             />
           </div>
           <Button
             variant="outline"
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 h-12 px-6 border-2 border-gray-200 hover:border-orange-500 hover:bg-orange-50 transition-colors"
           >
             <SlidersHorizontal className="w-4 h-4" />
             Filters
           </Button>
+        </div>
+        
+        {/* Search suggestions */}
+        <div className="mt-2 flex flex-wrap gap-2">
+          <span className="text-sm text-gray-500">Try searching:</span>
+          {['fair cream', 'headphones', 'samsung', 'beauty products', 'fashion'].map((suggestion) => (
+            <button
+              key={suggestion}
+              onClick={() => setSearchTerm(suggestion)}
+              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-colors"
+            >
+              {suggestion}
+            </button>
+          ))}
         </div>
       </div>
 

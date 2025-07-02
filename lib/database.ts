@@ -64,14 +64,13 @@ export async function initializeDatabase() {
         stock INTEGER DEFAULT 0,
         rating DECIMAL(3,2) DEFAULT 0,
         reviews INTEGER DEFAULT 0,
-        featured BOOLEAN DEFAULT FALSE,
         tags TEXT[],
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `)
 
-    
+
 
     // Create users table
     await client.query(`
@@ -228,23 +227,41 @@ async function insertSampleData(client: any) {
       }
     }
 
-    // Insert sample products
-    await client.query(`
-      INSERT INTO products (name, description, price, category, image, stock, featured) VALUES
-      ('Premium Wireless Headphones', 'High-quality wireless headphones with noise cancellation', 199.99, 'electronics', '/placeholder.svg', 50, true),
-      ('Smart Watch Pro', 'Advanced smartwatch with health monitoring', 299.99, 'electronics', '/placeholder.svg', 30, true),
-      ('Casual T-Shirt', 'Comfortable cotton t-shirt for everyday wear', 29.99, 'fashion', '/placeholder.svg', 100, false),
-      ('Running Shoes', 'Professional running shoes for athletes', 129.99, 'fashion', '/placeholder.svg', 25, true),
-      ('Samsung Galaxy S24', 'Latest Samsung flagship smartphone with advanced camera', 899.99, 'electronics', '/placeholder.svg', 20, true),
-      ('MacBook Air M3', 'Lightweight laptop with Apple M3 chip', 1299.99, 'electronics', '/placeholder.svg', 15, true),
-      ('Nike Air Max', 'Popular athletic shoes for running and casual wear', 149.99, 'fashion', '/placeholder.svg', 35, false),
-      ('Levi''s Jeans', 'Classic denim jeans in various sizes', 79.99, 'fashion', '/placeholder.svg', 50, false),
-      ('Face Cream SPF 30', 'Moisturizing face cream with sun protection', 24.99, 'beauty', '/placeholder.svg', 80, false),
-      ('Lipstick Set', 'Set of 5 popular lipstick shades', 39.99, 'beauty', '/placeholder.svg', 60, false),
-      ('Table Lamp', 'Modern LED table lamp for home office', 89.99, 'home-living', '/placeholder.svg', 25, false),
-      ('Throw Pillow Set', 'Decorative pillows for living room', 49.99, 'home-living', '/placeholder.svg', 40, false)
-      ON CONFLICT DO NOTHING
-    `)
+    // Insert sample data with proper error handling
+    const sampleProducts = [
+      {
+        name: 'Premium Wireless Headphones',
+        description: 'High-quality wireless headphones with noise cancellation',
+        price: 99.99,
+        image: '/placeholder.svg?height=300&width=300',
+        category: 'electronics',
+        stock: 50
+      },
+      {
+        name: 'Organic Face Cream',
+        description: 'Natural skincare with organic ingredients',
+        price: 29.99,
+        image: '/placeholder.svg?height=300&width=300',
+        category: 'beauty',
+        stock: 30
+      },
+      {
+        name: 'Cotton T-Shirt',
+        description: 'Comfortable cotton t-shirt in various colors',
+        price: 19.99,
+        image: '/placeholder.svg?height=300&width=300',
+        category: 'fashion',
+        stock: 100
+      }
+    ]
+
+    for (const product of sampleProducts) {
+      await client.query(`
+        INSERT INTO products (name, description, price, image, category, stock)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (name) DO NOTHING
+      `, [product.name, product.description, product.price, product.image, product.category, product.stock])
+    }
 
     // Insert sample users
     await client.query(`
