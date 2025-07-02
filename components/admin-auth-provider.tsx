@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { adminAuthManager, AdminAuthState } from "@/lib/admin-auth"
+import { adminAuthManager, AdminAuthState } from "@/lib/admin-auth-client"
 
 const AdminAuthContext = createContext<AdminAuthState & {
   adminSignIn: (username: string, password: string) => Promise<{ success: boolean; error?: string }>
