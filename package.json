@@ -37,7 +37,7 @@
     "@radix-ui/react-toggle": "1.1.1",
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "latest",
-    "@supabase/supabase-js": "^2.50.0",
+    
     "@types/bcryptjs": "^3.0.0",
     "@types/nodemailer": "^6.4.17",
     "@types/pg": "^8.15.4",
