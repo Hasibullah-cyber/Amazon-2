@@ -236,21 +236,30 @@ function SearchResults() {
       <div className="max-w-7xl mx-auto p-4">
         {/* Search Header */}
         <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                type="text"
-                placeholder="Search products..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex-1 relative bg-white rounded-md shadow-sm border border-gray-300 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500">
+              <div className="flex items-center">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
+                <Input
+                  type="text"
+                  placeholder="Search for products, brands, categories..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-11 pr-12 h-12 text-base border-0 rounded-md focus:ring-0 focus:border-0 w-full"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => applyFilters()}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-10 px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-md"
+                >
+                  Search
+                </Button>
+              </div>
             </div>
             <Button
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 h-12 px-4 border border-gray-300 hover:border-orange-500 hover:bg-orange-50 transition-colors rounded-md"
             >
               <SlidersHorizontal className="w-4 h-4" />
               Filters

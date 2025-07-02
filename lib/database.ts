@@ -64,6 +64,7 @@ export async function initializeDatabase() {
         stock INTEGER DEFAULT 0,
         rating DECIMAL(3,2) DEFAULT 0,
         reviews INTEGER DEFAULT 0,
+        featured BOOLEAN DEFAULT FALSE,
         tags TEXT[],
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -259,7 +260,7 @@ async function insertSampleData(client: any) {
       await client.query(`
         INSERT INTO products (name, description, price, image, category, stock)
         VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT (name) DO NOTHING
+        ON CONFLICT DO NOTHING
       `, [product.name, product.description, product.price, product.image, product.category, product.stock])
     }
 
@@ -267,7 +268,7 @@ async function insertSampleData(client: any) {
     await client.query(`
       INSERT INTO users (user_id, name, email, phone, address, city) VALUES
       ('user_1', 'John Doe', 'john@example.com', '01700000000', '123 Main St', 'Dhaka'),
-      ('user_2', 'Jane Smith', 'jane@example.com', 'jane@example.com', '01800000000', '456 Oak Ave', 'Chittagong')
+      ('user_2', 'Jane Smith', 'jane@example.com', '01800000000', '456 Oak Ave', 'Chittagong')
       ON CONFLICT (user_id) DO NOTHING
     `)
 

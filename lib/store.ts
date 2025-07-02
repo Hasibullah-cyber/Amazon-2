@@ -204,6 +204,28 @@ const products: Product[] = [
   // Beauty Products
   {
     id: "3001",
+    name: "Fair and Lovely Advanced Multi-Vitamin Cream",
+    description: "Advanced fairness cream with multi-vitamins and natural extracts. Brightens skin and provides deep nourishment for a radiant glow.",
+    price: 18.99,
+    image: "/placeholder.svg?height=300&width=300",
+    reviews: 456,
+    stock: 120,
+    category: "beauty",
+    rating: 4.4
+  },
+  {
+    id: "3001b",
+    name: "Fair & Lovely Natural Glow Cream",
+    description: "Natural fairness cream with turmeric and lemon extracts. Gentle formula for daily use that brightens skin naturally.",
+    price: 16.99,
+    image: "/placeholder.svg?height=300&width=300",
+    reviews: 334,
+    stock: 89,
+    category: "beauty",
+    rating: 4.2
+  },
+  {
+    id: "3001c",
     name: "Nivea Daily Moisturizer SPF 30",
     description: "Lightweight daily moisturizer with broad-spectrum SPF 30 protection. Hydrates skin while protecting from harmful UV rays. Suitable for all skin types.",
     price: 24.99,
