@@ -11,11 +11,31 @@ interface AdminUser {
 
 // Initialize default admin user if none exists
 export async function initializeDefaultAdmin() {
-  try {
-    const result = await executeQuery('SELECT COUNT(*) as count FROM admin_users')
-    const adminCount = parseInt(result.rows[0].count)
+  if (!pool) {
+    console.log('No database connection available')
+    return false
+  }
 
-    if (adminCount === 0) {
+  const client = await pool.connect()
+  try {
+    // Check if admin table exists first
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'admin_users'
+      )
+    `)
+
+    if (!tableExists.rows[0].exists) {
+      console.log('Admin users table does not exist yet')
+      return false
+    }
+
+    // Check if admin table has any users
+    const adminCheck = await client.query('SELECT COUNT(*) FROM admin_users')
+
+    if (parseInt(adminCheck.rows[0].count) === 0) {
       const defaultPassword = 'admin123' // Change this in production
       const hashedPassword = await bcrypt.hash(defaultPassword, 10)
 
