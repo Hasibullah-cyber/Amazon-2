@@ -7,6 +7,25 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const orderId = searchParams.get('orderId')
 
+    return await handleTrackOrder(orderId)
+  } catch (error) {
+    console.error('Error tracking order:', error)
+    return NextResponse.json({ error: 'Failed to track order' }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { orderId } = await request.json()
+    return await handleTrackOrder(orderId)
+  } catch (error) {
+    console.error('Error tracking order:', error)
+    return NextResponse.json({ error: 'Failed to track order' }, { status: 500 })
+  }
+}
+
+async function handleTrackOrder(orderId: string | null) {
+  try {
     if (!orderId) {
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 })
     }
@@ -97,5 +116,6 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error tracking order:', error)
     return NextResponse.json({ error: 'Failed to track order' }, { status: 500 })
-  }
+
+    }
 }

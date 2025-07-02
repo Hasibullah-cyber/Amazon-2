@@ -538,6 +538,33 @@ class StoreManager {
     }
     this.orders.push(newOrder)
     this.notifySubscribers()
+    
+    // Send confirmation email
+    if (order.customerEmail) {
+      try {
+        console.log('Attempting to send confirmation email to:', order.customerEmail)
+        const response = await fetch('/api/send-confirmation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: order.customerEmail,
+            orderDetails: newOrder
+          }),
+        })
+
+        const result = await response.json()
+        if (response.ok && result.success) {
+          console.log('✅ Confirmation email sent successfully')
+        } else {
+          console.error('❌ Failed to send confirmation email:', result.error)
+        }
+      } catch (error) {
+        console.error('❌ Error sending confirmation email:', error)
+      }
+    }
+
     return newOrder
   }
 

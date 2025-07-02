@@ -1,39 +1,21 @@
 
 import { NextResponse } from 'next/server'
-import { pool } from '@/lib/database'
+import { storeManager } from '@/lib/store'
 
 export async function GET() {
   try {
-    const client = await pool.connect()
-
-    try {
-      const result = await client.query(`
-        SELECT 
-          id, order_id as "orderId", user_id as "userId", customer_name as "customerName",
-          customer_email as "customerEmail", customer_phone as "customerPhone",
-          address, city, items, subtotal, shipping, vat, total_amount as "totalAmount",
-          status, payment_method as "paymentMethod", payment_status as "paymentStatus",
-          estimated_delivery as "estimatedDelivery", tracking_number as "trackingNumber",
-          notes, created_at as "createdAt", updated_at as "updatedAt"
-        FROM orders 
-        ORDER BY created_at DESC
-      `)
-
-      const orders = result.rows.map(row => ({
-        ...row,
-        items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items
-      }))
-
-      console.log('Fetched orders from database:', orders.length)
+    // First try to get orders from store manager
+    const orders = await storeManager.getOrders()
+    console.log('Fetched orders from store manager:', orders.length)
+    
+    if (orders.length > 0) {
       return NextResponse.json(orders)
-    } finally {
-      client.release()
     }
   } catch (error) {
-    console.error('Database error fetching orders:', error)
+    console.error('Error fetching orders from store manager:', error)
 
-    // Enhanced fallback data
-    const fallbackOrders = [
+    // Enhanced fallback data as backup
+  const fallbackOrders = [
       {
         id: "1",
         orderId: "HS-1234567890",
@@ -130,6 +112,5 @@ export async function GET() {
     ]
 
     console.log('Using fallback orders:', fallbackOrders.length)
-    return NextResponse.json(fallbackOrders)
-  }
+  return NextResponse.json(fallbackOrders)
 }
