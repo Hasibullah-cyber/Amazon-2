@@ -256,7 +256,9 @@ export async function initializeDatabase() {
       )
     `)
 
-    // Create comprehensive indexes for performance
+    console.log('Database schema created, now creating indexes...')
+
+    // Create basic indexes first (non-dependent columns)
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
       CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured);
@@ -270,10 +272,8 @@ export async function initializeDatabase() {
       
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
-      CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
       
       CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
-      CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active);
       CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
       
       CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
@@ -281,16 +281,16 @@ export async function initializeDatabase() {
       
       CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON product_reviews(product_id);
       CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON product_reviews(user_id);
-      CREATE INDEX IF NOT EXISTS idx_reviews_approved ON product_reviews(is_approved);
     `)
 
-    // Create additional indexes that depend on foreign keys and all columns exist
+    // Create indexes on is_active and other boolean columns separately
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
       CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
       CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
       CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active);
       CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
+      CREATE INDEX IF NOT EXISTS idx_reviews_approved ON product_reviews(is_approved);
     `)
 
     console.log('Database tables initialized successfully with full schema')
