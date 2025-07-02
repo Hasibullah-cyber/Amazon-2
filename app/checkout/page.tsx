@@ -1,7 +1,6 @@
-
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,10 +12,14 @@ import { useToast } from '@/hooks/use-toast'
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, total } = useCart()
+  const { cart } = useCart()
   const { user } = useAuth()
   const { toast } = useToast()
-  
+
+  // Ensure cart is an array to prevent length errors
+  const cartItems = Array.isArray(cart) ? cart : []
+  const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -77,7 +80,14 @@ export default function CheckoutPage() {
     router.push(`/checkout/payment?data=${encodedData}`)
   }
 
-  if (items.length === 0) {
+  // Redirect if cart is empty
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      router.push('/')
+    }
+  }, [cartItems.length, router])
+
+  if (cartItems.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card>
@@ -99,7 +109,7 @@ export default function CheckoutPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Checkout</h1>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Customer Information Form */}
           <div>
@@ -119,7 +129,7 @@ export default function CheckoutPage() {
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="email">Email Address *</Label>
                     <Input
@@ -131,7 +141,7 @@ export default function CheckoutPage() {
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="phone">Phone Number *</Label>
                     <Input
@@ -144,7 +154,7 @@ export default function CheckoutPage() {
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="address">Address *</Label>
                     <Input
@@ -156,7 +166,7 @@ export default function CheckoutPage() {
                       required
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="city">City *</Label>
@@ -168,7 +178,7 @@ export default function CheckoutPage() {
                         required
                       />
                     </div>
-                    
+
                     <div>
                       <Label htmlFor="postalCode">Postal Code</Label>
                       <Input
@@ -192,7 +202,7 @@ export default function CheckoutPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {items.map((item) => (
+                  {cartItems.map((item) => (
                     <div key={item.id} className="flex justify-between items-center">
                       <div className="flex-1">
                         <h4 className="font-medium">{item.name}</h4>
@@ -201,9 +211,9 @@ export default function CheckoutPage() {
                       <p className="font-medium">৳{(item.price * item.quantity).toFixed(2)}</p>
                     </div>
                   ))}
-                  
+
                   <hr />
-                  
+
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>

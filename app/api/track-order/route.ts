@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPool } from '@/lib/database'
+import { pool } from '@/lib/database'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +13,6 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const pool = getPool()
     const client = await pool.connect()
 
     try {
