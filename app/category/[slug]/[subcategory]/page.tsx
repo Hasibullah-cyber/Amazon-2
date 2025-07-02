@@ -19,7 +19,6 @@ const subcategoryProducts = {
         description: "Latest Apple smartphone with advanced camera system, titanium design, and A17 Pro chip. Features 6.7-inch Super Retina XDR display with ProMotion technology, 48MP main camera with 5x telephoto zoom.",
         price: 1299.99,
         image: "/placeholder.svg?height=300&width=300",
-        rating: 4.8,
         reviews: 245,
       },
       {
@@ -28,7 +27,6 @@ const subcategoryProducts = {
         description: "Premium Android phone with S Pen, 200MP camera, and AI features. Built-in S Pen for productivity and creativity with 6.8-inch Dynamic AMOLED display.",
         price: 1199.99,
         image: "/placeholder.svg?height=300&width=300",
-        rating: 4.7,
         reviews: 189,
       },
       {
@@ -37,7 +35,6 @@ const subcategoryProducts = {
         description: "AI-powered photography smartphone with Magic Eraser, Night Sight, and computational photography features. Features Google's Tensor G3 chip and 7 years of updates.",
         price: 899.99,
         image: "/placeholder.svg?height=300&width=300",
-        rating: 4.6,
         reviews: 156,
       },
     ],

@@ -79,12 +79,7 @@ class ServerStoreManager {
           ORDER BY name
         `)
 
-        // Add rating and reviews to products
-        return result.rows.map(product => ({
-          ...product,
-          rating: Math.random() * 2 + 3, // Random rating between 3-5
-          reviews: Math.floor(Math.random() * 200) + 50 // Random reviews 50-250
-        }))
+        return result.rows
       } finally {
         client.release()
       }

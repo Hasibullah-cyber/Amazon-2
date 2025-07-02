@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -25,7 +24,8 @@ export default function Navbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  
+  const [searchQuery, setSearchQuery] = useState("")
+
   const { cartItems } = useCart()
   const { wishlistItems } = useWishlist()
   const { user, isAuthenticated, signOut } = useAuth()
@@ -33,7 +33,6 @@ export default function Navbar() {
   const { toast } = useToast()
 
   const totalItems = cartItems.reduce((total, item) => total + item.quantity, 0)
-  
 
   const openAuthModal = (mode: 'signin' | 'signup') => {
     setAuthMode(mode)
@@ -50,6 +49,13 @@ export default function Navbar() {
     })
   }
 
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (searchQuery.trim()) {
+      window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`
+    }
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full">
       {/* Main header */}
@@ -62,9 +68,23 @@ export default function Navbar() {
             </Link>
 
             {/* Search bar - takes most space */}
-            <div className="flex-1 max-w-3xl">
-              <AIEnhancedSearch />
-            </div>
+            <form onSubmit={handleSearch} className="relative flex-1 max-w-xl">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="amazon-input pl-10 pr-10"
+            />
+            <Button
+              type="submit"
+              size="sm"
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-[#febd69] hover:bg-[#f3a847] text-black h-8"
+            >
+              <Search className="w-4 h-4" />
+            </Button>
+          </form>
 
             {/* Right side icons */}
             <div className="flex items-center gap-2">
@@ -85,7 +105,7 @@ export default function Navbar() {
                 </button>
               )}
 
-              
+
 
               {/* Wishlist */}
               <Link
@@ -196,7 +216,7 @@ export default function Navbar() {
                               className="flex items-center w-full px-4 py-3 text-sm hover:bg-gray-50 text-blue-600"
                             >
                               <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                               </svg>
                               Admin Login
                             </button>
@@ -252,7 +272,7 @@ export default function Navbar() {
                             className="flex items-center w-full px-4 py-3 text-sm hover:bg-gray-50 text-gray-600"
                           >
                             <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                             </svg>
                             Admin Access
                           </button>

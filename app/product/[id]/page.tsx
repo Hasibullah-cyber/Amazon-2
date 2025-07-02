@@ -19,7 +19,6 @@ interface Product {
   image: string
   category: string
   description: string
-  rating: number
   reviews: number
   stock: number
 }
@@ -60,9 +59,19 @@ export default function ProductPage() {
   const loadRelatedProducts = async () => {
     try {
       const allProducts = await storeManager.getProducts()
-      const related = allProducts
-        .filter(p => p.id !== params.id && p.category === product?.category)
-        .slice(0, 4)
+      // Get products from same category first, then fill with popular products
+      let related = allProducts.filter(p => p.id !== params.id && p.category === product?.category)
+      
+      // If not enough products in same category, add from other categories
+      if (related.length < 4) {
+        const otherProducts = allProducts
+          .filter(p => p.id !== params.id && p.category !== product?.category)
+          .sort((a, b) => b.reviews - a.reviews) // Sort by popularity (reviews)
+        related = [...related, ...otherProducts].slice(0, 4)
+      } else {
+        related = related.slice(0, 4)
+      }
+      
       setRelatedProducts(related as Product[])
     } catch (error) {
       console.error('Error loading related products:', error)
@@ -153,22 +162,10 @@ export default function ProductPage() {
               {product.name}
             </h1>
 
-            {/* Rating */}
+            {/* Reviews */}
             <div className="flex items-center gap-2 mb-4">
-              <div className="flex items-center">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`w-4 h-4 ${
-                      i < Math.floor(product.rating)
-                        ? 'text-yellow-400 fill-current'
-                        : 'text-gray-300'
-                    }`}
-                  />
-                ))}
-              </div>
               <span className="text-sm text-gray-600">
-                {product.rating} ({product.reviews} reviews)
+                {product.reviews} reviews
               </span>
             </div>
 
@@ -254,10 +251,14 @@ export default function ProductPage() {
         </div>
       </div>
 
-      {/* Related Products */}
+      {/* Recommended Products */}
       {relatedProducts.length > 0 && (
         <div>
-          <h2 className="text-2xl font-bold mb-6">Related Products</h2>
+          <h2 className="text-2xl font-bold mb-6">
+            {relatedProducts.some(p => p.category === product?.category) 
+              ? "More in " + product?.category 
+              : "You might also like"}
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {relatedProducts.map((relatedProduct) => (
               <Card key={relatedProduct.id} className="p-4 hover:shadow-lg transition-shadow">
@@ -272,13 +273,19 @@ export default function ProductPage() {
                 <h3 className="font-medium text-sm mb-2 line-clamp-2">
                   {relatedProduct.name}
                 </h3>
-                <p className="text-orange-600 font-semibold">
+                <p className="text-orange-600 font-semibold mb-2">
                   ৳{relatedProduct.price.toLocaleString()}
                 </p>
+                <div className="flex items-center justify-between mb-3">
+                  <Badge variant="secondary" className="text-xs">
+                    {relatedProduct.category}
+                  </Badge>
+                  <span className="text-xs text-gray-500">{relatedProduct.reviews} reviews</span>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full mt-3"
+                  className="w-full"
                   onClick={() => window.location.href = `/product/${relatedProduct.id}`}
                 >
                   View Details
