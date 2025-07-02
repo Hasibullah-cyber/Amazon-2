@@ -162,7 +162,6 @@ export async function initializeDatabase() {
     // Create indexes for better performance (after all tables are created)
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-      CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured);
       CREATE INDEX IF NOT EXISTS idx_products_stock ON products(stock);
       CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
       CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
@@ -225,9 +224,10 @@ async function insertSampleData(client: any) {
       }
     }
 
-    // Insert sample data with proper error handling
+    // Insert sample data with proper error handling and IDs
     const sampleProducts = [
       {
+        id: 1,
         name: 'Premium Wireless Headphones',
         description: 'High-quality wireless headphones with noise cancellation',
         price: 99.99,
@@ -236,6 +236,7 @@ async function insertSampleData(client: any) {
         stock: 50
       },
       {
+        id: 2,
         name: 'Organic Face Cream',
         description: 'Natural skincare with organic ingredients',
         price: 29.99,
@@ -244,6 +245,7 @@ async function insertSampleData(client: any) {
         stock: 30
       },
       {
+        id: 3,
         name: 'Cotton T-Shirt',
         description: 'Comfortable cotton t-shirt in various colors',
         price: 19.99,
@@ -254,43 +256,59 @@ async function insertSampleData(client: any) {
     ]
 
     for (const product of sampleProducts) {
-      await client.query(`
-        INSERT INTO products (name, description, price, image, category, stock)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT DO NOTHING
-      `, [product.name, product.description, product.price, product.image, product.category, product.stock])
+      try {
+        await client.query(`
+          INSERT INTO products (id, name, description, price, image, category, stock)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          ON CONFLICT (id) DO NOTHING
+        `, [product.id, product.name, product.description, product.price, product.image, product.category, product.stock])
+      } catch (productError) {
+        console.log(`Skipped product ${product.name} - may already exist`)
+      }
     }
 
     // Insert sample users
-    await client.query(`
-      INSERT INTO users (user_id, name, email, phone, address, city) VALUES
-      ('user_1', 'John Doe', 'john@example.com', '01700000000', '123 Main St', 'Dhaka'),
-      ('user_2', 'Jane Smith', 'jane@example.com', '01800000000', '456 Oak Ave', 'Chittagong')
-      ON CONFLICT (user_id) DO NOTHING
-    `)
+    try {
+      await client.query(`
+        INSERT INTO users (user_id, name, email, phone, address, city) VALUES
+        ('user_1', 'John Doe', 'john@example.com', '01700000000', '123 Main St', 'Dhaka'),
+        ('user_2', 'Jane Smith', 'jane@example.com', '01800000000', '456 Oak Ave', 'Chittagong')
+        ON CONFLICT (user_id) DO NOTHING
+      `)
+    } catch (userError) {
+      console.log('Skipped sample users - may already exist')
+    }
 
     // Insert sample orders
-    await client.query(`
-      INSERT INTO orders (order_id, user_id, customer_name, customer_email, customer_phone, address, city, items, subtotal, shipping, vat, total_amount, status, payment_method, estimated_delivery, tracking_number) VALUES
-      ('HS-1234567890', 'user_1', 'John Doe', 'john@example.com', '01700000000', '123 Main St', 'Dhaka', '[{"id":"1","name":"Premium Wireless Headphones","price":199.99,"quantity":1,"image":"/placeholder.svg"}]', 199.99, 120.00, 31.99, 351.98, 'shipped', 'Cash on Delivery', '2-3 business days', 'TRK-123456789'),
-      ('HS-0987654321', 'user_2', 'Jane Smith', 'jane@example.com', '01800000000', '456 Oak Ave', 'Chittagong', '[{"id":"2","name":"Smart Watch Pro","price":299.99,"quantity":1,"image":"/placeholder.svg"}]', 299.99, 120.00, 41.99, 461.98, 'processing', 'Cash on Delivery', '3-4 business days', 'TRK-987654321'),
-      ('HS-1122334455', 'user_1', 'John Doe', 'john@example.com', '01700000000', '123 Main St', 'Dhaka', '[{"id":"3","name":"Casual T-Shirt","price":29.99,"quantity":2,"image":"/placeholder.svg"}]', 59.98, 120.00, 9.60, 189.58, 'delivered', 'Cash on Delivery', '1-2 business days', 'TRK-112233445')
-      ON CONFLICT (order_id) DO NOTHING
-    `)
+    try {
+      await client.query(`
+        INSERT INTO orders (order_id, user_id, customer_name, customer_email, customer_phone, address, city, items, subtotal, shipping, vat, total_amount, status, payment_method, estimated_delivery, tracking_number) VALUES
+        ('HS-1234567890', 'user_1', 'John Doe', 'john@example.com', '01700000000', '123 Main St', 'Dhaka', '[{"id":"1","name":"Premium Wireless Headphones","price":199.99,"quantity":1,"image":"/placeholder.svg"}]', 199.99, 120.00, 31.99, 351.98, 'shipped', 'Cash on Delivery', '2-3 business days', 'TRK-123456789'),
+        ('HS-0987654321', 'user_2', 'Jane Smith', 'jane@example.com', '01800000000', '456 Oak Ave', 'Chittagong', '[{"id":"2","name":"Smart Watch Pro","price":299.99,"quantity":1,"image":"/placeholder.svg"}]', 299.99, 120.00, 41.99, 461.98, 'processing', 'Cash on Delivery', '3-4 business days', 'TRK-987654321'),
+        ('HS-1122334455', 'user_1', 'John Doe', 'john@example.com', '01700000000', '123 Main St', 'Dhaka', '[{"id":"3","name":"Casual T-Shirt","price":29.99,"quantity":2,"image":"/placeholder.svg"}]', 59.98, 120.00, 9.60, 189.58, 'delivered', 'Cash on Delivery', '1-2 business days', 'TRK-112233445')
+        ON CONFLICT (order_id) DO NOTHING
+      `)
+    } catch (orderError) {
+      console.log('Skipped sample orders - may already exist')
+    }
 
     // Insert order status history
-    await client.query(`
-      INSERT INTO order_status_history (order_id, status, notes) VALUES
-      ('HS-1234567890', 'pending', 'Order placed successfully'),
-      ('HS-1234567890', 'processing', 'Order is being prepared'),
-      ('HS-1234567890', 'shipped', 'Order has been shipped'),
-      ('HS-0987654321', 'pending', 'Order placed successfully'),
-      ('HS-0987654321', 'processing', 'Order is being prepared'),
-      ('HS-1122334455', 'pending', 'Order placed successfully'),
-      ('HS-1122334455', 'processing', 'Order is being prepared'),
-      ('HS-1122334455', 'shipped', 'Order has been shipped'),
-      ('HS-1122334455', 'delivered', 'Order delivered successfully')
-    `)
+    try {
+      await client.query(`
+        INSERT INTO order_status_history (order_id, status, notes) VALUES
+        ('HS-1234567890', 'pending', 'Order placed successfully'),
+        ('HS-1234567890', 'processing', 'Order is being prepared'),
+        ('HS-1234567890', 'shipped', 'Order has been shipped'),
+        ('HS-0987654321', 'pending', 'Order placed successfully'),
+        ('HS-0987654321', 'processing', 'Order is being prepared'),
+        ('HS-1122334455', 'pending', 'Order placed successfully'),
+        ('HS-1122334455', 'processing', 'Order is being prepared'),
+        ('HS-1122334455', 'shipped', 'Order has been shipped'),
+        ('HS-1122334455', 'delivered', 'Order delivered successfully')
+      `)
+    } catch (historyError) {
+      console.log('Skipped order history - may already exist')
+    }
 
     console.log('Sample data inserted successfully')
   } catch (error) {
