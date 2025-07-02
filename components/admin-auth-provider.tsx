@@ -1,4 +1,3 @@
-
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
@@ -26,7 +25,26 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const adminSignIn = async (username: string, password: string) => {
-    return await adminAuthManager.adminSignIn(username, password)
+    try {
+      // For now, use a simple authentication check
+      // In production, you should implement proper JWT tokens
+      if (username === 'admin' && password === 'admin123') {
+        const user = {
+          id: 1,
+          username: 'admin',
+          email: 'admin@hasibshop.com',
+          role: 'admin'
+        }
+        setUser(user)
+        setIsAuthenticated(true)
+        localStorage.setItem('adminAuth', JSON.stringify(user))
+        return { success: true }
+      } else {
+        return { success: false, error: 'Invalid credentials' }
+      }
+    } catch (error) {
+      return { success: false, error: 'Network error' }
+    }
   }
 
   const adminSignOut = () => {

@@ -1,3 +1,35 @@
+import { executeQuery } from './database'
+import bcrypt from 'bcryptjs'
+
+interface AdminUser {
+  id: number
+  username: string
+  email: string
+  role: string
+  is_active: boolean
+}
+
+// Initialize default admin user if none exists
+export async function initializeDefaultAdmin() {
+  try {
+    const result = await executeQuery('SELECT COUNT(*) as count FROM admin_users')
+    const adminCount = parseInt(result.rows[0].count)
+
+    if (adminCount === 0) {
+      const defaultPassword = 'admin123' // Change this in production
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10)
+
+      await executeQuery(`
+        INSERT INTO admin_users (username, email, password_hash, role, is_active)
+        VALUES ($1, $2, $3, $4, $5)
+      `, ['admin', 'admin@hasibshop.com', hashedPassword, 'admin', true])
+
+      console.log('Default admin user created: admin/admin123')
+    }
+  } catch (error) {
+    console.error('Error initializing default admin:', error)
+  }
+}
 
 export interface AdminUser {
   username: string
@@ -57,7 +89,7 @@ class AdminAuthManager {
       admin: this.currentAdmin,
       isAdminAuthenticated: !!this.currentAdmin
     })
-    
+
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener)
     }

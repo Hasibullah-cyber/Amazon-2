@@ -71,6 +71,16 @@ export async function initializeDatabase() {
       )
     `)
 
+    // Create indexes for better performance
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+      CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured);
+      CREATE INDEX IF NOT EXISTS idx_products_stock ON products(stock);
+      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+      CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
+    `)
+
     // Create users table
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -159,6 +169,11 @@ export async function initializeDatabase() {
     await insertSampleData(client)
 
     console.log('Database tables initialized successfully with full schema')
+    
+    // Initialize default admin user
+    const { initializeDefaultAdmin } = await import('./admin-auth')
+    await initializeDefaultAdmin()
+    
     return true
   } catch (error) {
     console.error('Error initializing database:', error)

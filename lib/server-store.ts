@@ -355,9 +355,9 @@ class ServerStoreManager {
         const setClause = Object.keys(updates)
           .map((key, index) => `${key} = $${index + 2}`)
           .join(', ')
-        
+
         const values = [productId, ...Object.values(updates)]
-        
+
         await client.query(`
           UPDATE products 
           SET ${setClause}, updated_at = NOW() 
@@ -429,6 +429,70 @@ class ServerStoreManager {
         totalRevenue: 0,
         pendingOrders: 0,
         lowStockProducts: 0,
+        recentOrders: []
+      }
+    }
+  }
+
+  async getAdminStats() {
+    if (!pool) {
+      return {
+        totalOrders: 0,
+        totalRevenue: 0,
+        pendingOrders: 0,
+        lowStockProducts: 0,
+        recentOrders: []
+      }
+    }
+
+    try {
+      const client = await pool.connect()
+      try {
+        // Get comprehensive stats with proper error handling
+        const [ordersResult, pendingResult, lowStockResult, recentOrdersResult, monthlyRevenueResult] = await Promise.all([
+          client.query('SELECT COUNT(*)::integer as total, COALESCE(SUM(total_amount), 0)::float as revenue FROM orders'),
+          client.query('SELECT COUNT(*)::integer as pending FROM orders WHERE status = $1', ['pending']),
+          client.query('SELECT COUNT(*)::integer as low_stock FROM products WHERE stock < 10'),
+          client.query(`
+            SELECT 
+              id, order_id as "orderId", customer_name as "customerName",
+              customer_email as "customerEmail", items, total_amount as "totalAmount",
+              status, created_at as "createdAt"
+            FROM orders 
+            ORDER BY created_at DESC 
+            LIMIT 5
+          `),
+          client.query(`
+            SELECT 
+              COALESCE(SUM(total_amount), 0)::float as revenue 
+            FROM orders 
+            WHERE created_at >= date_trunc('month', CURRENT_DATE)
+          `)
+        ])
+
+        return {
+          totalOrders: ordersResult.rows[0]?.total || 0,
+          totalRevenue: ordersResult.rows[0]?.revenue || 0,
+          pendingOrders: pendingResult.rows[0]?.pending || 0,
+          lowStockProducts: lowStockResult.rows[0]?.low_stock || 0,
+          monthlyRevenue: monthlyRevenueResult.rows[0]?.revenue || 0,
+          recentOrders: recentOrdersResult.rows.map(row => ({
+            ...row,
+            items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
+            createdAt: new Date(row.createdAt).toISOString()
+          }))
+        }
+      } finally {
+        client.release()
+      }
+    } catch (error) {
+      console.error('Database error in getAdminStats:', error)
+      return {
+        totalOrders: 0,
+        totalRevenue: 0,
+        pendingOrders: 0,
+        lowStockProducts: 0,
+        monthlyRevenue: 0,
         recentOrders: []
       }
     }
