@@ -324,7 +324,7 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex justify-between font-bold text-lg border-t pt-2">
                       <span>Total:</span>
-                      <span>৳{selectedOrder.totalAmount.toFixed(2)}</span>
+                      <span>৳{(selectedOrder.totalAmount || selectedOrder.total_amount || 0).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

@@ -39,10 +39,23 @@ function OrderConfirmationContent() {
       const response = await fetch(`/api/track-order?orderId=${id}`)
       const data = await response.json()
 
-      if (data.success && data.order) {
-        setOrderDetails(data.order)
+      if (data.order) {
+        // Transform the database response to match our interface
+        const transformedOrder = {
+          orderId: data.order.orderId,
+          status: data.order.status,
+          total: data.order.totalAmount,
+          estimatedDelivery: data.order.estimatedDelivery,
+          customerName: data.order.customerName,
+          customerEmail: data.order.customerEmail,
+          customerPhone: data.order.customerPhone,
+          address: data.order.address,
+          city: data.order.city,
+          items: data.order.items || []
+        }
+        setOrderDetails(transformedOrder)
       } else {
-        setError(data.message || 'Order not found')
+        setError(data.error || 'Order not found')
       }
     } catch (err) {
       console.error('Error fetching order details:', err)

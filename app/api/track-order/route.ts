@@ -56,7 +56,13 @@ export async function GET(request: NextRequest) {
         order.items = JSON.parse(order.items)
       }
 
-      return NextResponse.json({ order })
+      return NextResponse.json({ 
+        success: true, 
+        order: {
+          ...order,
+          total: order.totalAmount // Add alias for compatibility
+        }
+      })
     } finally {
       client.release()
     }

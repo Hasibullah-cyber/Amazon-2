@@ -95,28 +95,48 @@ export default function PaymentPage() {
       }
     }
 
-    const order = {
-      orderId: "HS-" + Date.now(),
-      cartItems: cart,
-      subtotal,
-      vat,
-      shipping,
-      totalAmount,
-      paymentMethod: selectedPayment,
-      transactionId: selectedPayment === "Online Payment" ? "TXN-" + Date.now() : "",
-      estimatedDelivery: "1-2 business days",
-      name,
-      address,
-      phone,
-      city,
-      email,
-      userId: user?.id,
-      paymentVerified: selectedPayment === "Online Payment" ? paymentVerified : true
-    }
+    setIsProcessingPayment(true)
 
-    localStorage.setItem("order", JSON.stringify(order))
-    localStorage.removeItem("cart")
-    router.push("/order-confirmation")
+    try {
+      const orderData = {
+        customerInfo: {
+          name,
+          email,
+          phone,
+          address,
+          city
+        },
+        items: cart,
+        paymentMethod: selectedPayment,
+        transactionId: selectedPayment === "Online Payment" ? "TXN-" + Date.now() : "",
+        userId: user?.id
+      }
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData)
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Clear cart from localStorage
+        localStorage.removeItem("cart")
+        
+        // Redirect to order confirmation with order ID
+        router.push(`/order-confirmation?orderId=${result.orderId}`)
+      } else {
+        alert(result.error || 'Failed to place order. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error placing order:', error)
+      alert('Failed to place order. Please try again.')
+    } finally {
+      setIsProcessingPayment(false)
+    }
   }
 
   // Redirect to home if not authenticated

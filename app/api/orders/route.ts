@@ -30,11 +30,11 @@ export async function POST(request: Request) {
       RETURNING *
     `, [
       orderId,
-      orderData.customerInfo.name,
-      orderData.customerInfo.email,
-      orderData.customerInfo.phone,
-      orderData.customerInfo.address,
-      orderData.customerInfo.city,
+      orderData.customerInfo?.name || orderData.name,
+      orderData.customerInfo?.email || orderData.email,
+      orderData.customerInfo?.phone || orderData.phone,
+      orderData.customerInfo?.address || orderData.address,
+      orderData.customerInfo?.city || orderData.city,
       JSON.stringify(orderData.items),
       subtotal,
       shipping,
@@ -86,11 +86,24 @@ export async function POST(request: Request) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orderId: order.order_id,
-          customerEmail: order.customer_email,
-          customerName: order.customer_name,
-          items: orderData.items,
-          total: total
+          email: order.customer_email,
+          orderDetails: {
+            orderId: order.order_id,
+            customerName: order.customer_name,
+            customerEmail: order.customer_email,
+            items: orderData.items,
+            subtotal: subtotal,
+            shipping: shipping,
+            vat: tax,
+            total: total,
+            totalAmount: total,
+            address: order.address,
+            city: order.city,
+            phone: order.customer_phone,
+            paymentMethod: order.payment_method,
+            estimatedDelivery: order.estimated_delivery,
+            createdAt: new Date().toISOString()
+          }
         })
       })
       
