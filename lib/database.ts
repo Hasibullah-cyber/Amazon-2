@@ -259,7 +259,6 @@ export async function initializeDatabase() {
     // Create comprehensive indexes for performance
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-      CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
       CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured);
       CREATE INDEX IF NOT EXISTS idx_products_stock ON products(stock);
       CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
@@ -285,6 +284,11 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON product_reviews(product_id);
       CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON product_reviews(user_id);
       CREATE INDEX IF NOT EXISTS idx_reviews_approved ON product_reviews(is_approved);
+    `)
+
+    // Create additional indexes that depend on foreign keys
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
     `)
 
     console.log('Database tables initialized successfully with full schema')
