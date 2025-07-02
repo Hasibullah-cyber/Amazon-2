@@ -267,7 +267,6 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
       CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
       CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
-      CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
       
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
@@ -291,6 +290,7 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
       CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
       CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active);
+      CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
     `)
 
     console.log('Database tables initialized successfully with full schema')
