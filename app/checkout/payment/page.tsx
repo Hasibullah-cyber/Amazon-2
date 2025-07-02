@@ -179,14 +179,11 @@ function PaymentContent() {
           localStorage.setItem('latest-order', JSON.stringify(confirmationData))
         }
 
-        // Try URL params first, fallback to query param
-        try {
-          const encodedData = encodeURIComponent(JSON.stringify(confirmationData))
-          router.push(`/order-confirmation?data=${encodedData}`)
-        } catch (error) {
-          console.error('Error encoding data for URL, using orderId fallback:', error)
-          router.push(`/order-confirmation?orderId=${result.orderId}`)
-        }
+        // Navigate to order confirmation page
+        console.log('PaymentPage: Navigating to order confirmation...')
+        
+        // Use router.replace instead of push to avoid back button issues
+        router.replace(`/order-confirmation?orderId=${result.orderId}`)
       } else {
         throw new Error(result.error || 'Failed to place order')
       }

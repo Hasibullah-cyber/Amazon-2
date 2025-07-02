@@ -33,31 +33,13 @@ function OrderConfirmationContent() {
   useEffect(() => {
     console.log('OrderConfirmation: Loading order data...')
     
-    const dataParam = searchParams.get('data')
     const orderIdParam = searchParams.get('orderId')
+    const dataParam = searchParams.get('data')
 
-    console.log('OrderConfirmation: dataParam:', dataParam)
     console.log('OrderConfirmation: orderIdParam:', orderIdParam)
+    console.log('OrderConfirmation: dataParam:', dataParam)
 
-    if (dataParam) {
-      try {
-        const decoded = JSON.parse(decodeURIComponent(dataParam))
-        console.log('OrderConfirmation: Successfully decoded data:', decoded)
-        setOrderData(decoded)
-        setLoading(false)
-        return
-      } catch (error) {
-        console.error('Error parsing order data from URL:', error)
-      }
-    }
-
-    if (orderIdParam) {
-      console.log('OrderConfirmation: Fetching order by ID:', orderIdParam)
-      fetchOrderById(orderIdParam)
-      return
-    }
-
-    // Check localStorage for order data as fallback
+    // Priority 1: Check localStorage for latest order first
     if (typeof window !== 'undefined') {
       try {
         const storedOrder = localStorage.getItem('latest-order')
@@ -73,30 +55,60 @@ function OrderConfirmationContent() {
       }
     }
 
+    // Priority 2: Try URL data parameter
+    if (dataParam) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(dataParam))
+        console.log('OrderConfirmation: Successfully decoded data:', decoded)
+        setOrderData(decoded)
+        setLoading(false)
+        return
+      } catch (error) {
+        console.error('Error parsing order data from URL:', error)
+      }
+    }
+
+    // Priority 3: Fetch by order ID
+    if (orderIdParam) {
+      console.log('OrderConfirmation: Fetching order by ID:', orderIdParam)
+      fetchOrderById(orderIdParam)
+      return
+    }
+
     console.log('OrderConfirmation: No order data found')
     setLoading(false)
   }, [searchParams])
 
   const fetchOrderById = async (orderId: string) => {
     try {
+      console.log('OrderConfirmation: Fetching order with ID:', orderId)
       const response = await fetch(`/api/track-order?orderId=${orderId}`)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('OrderConfirmation: API response:', data)
+        
         if (data.success && data.order) {
-          setOrderData({
-            orderId: data.order.orderId,
-            trackingNumber: data.order.trackingNumber,
-            customerName: data.order.customerName,
-            customerEmail: data.order.customerEmail,
-            totalAmount: data.order.totalAmount,
-            paymentMethod: data.order.paymentMethod,
-            estimatedDelivery: data.order.estimatedDelivery,
-            items: data.order.items
-          })
+          const orderInfo = {
+            orderId: data.order.orderId || data.order.order_id || orderId,
+            trackingNumber: data.order.trackingNumber || data.order.tracking_number || '',
+            customerName: data.order.customerName || data.order.customer_name || '',
+            customerEmail: data.order.customerEmail || data.order.customer_email || '',
+            totalAmount: data.order.totalAmount || data.order.total_amount || 0,
+            paymentMethod: data.order.paymentMethod || data.order.payment_method || 'Unknown',
+            estimatedDelivery: data.order.estimatedDelivery || data.order.estimated_delivery || '3-5 business days',
+            items: data.order.items || []
+          }
+          console.log('OrderConfirmation: Setting order data:', orderInfo)
+          setOrderData(orderInfo)
+        } else {
+          console.error('OrderConfirmation: Invalid response format:', data)
         }
+      } else {
+        console.error('OrderConfirmation: Failed to fetch order, status:', response.status)
       }
     } catch (error) {
-      console.error('Error fetching order:', error)
+      console.error('OrderConfirmation: Error fetching order:', error)
     } finally {
       setLoading(false)
     }
