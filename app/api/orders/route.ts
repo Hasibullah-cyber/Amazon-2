@@ -100,15 +100,6 @@ export async function POST(request: NextRequest) {
           console.error('❌ Error sending confirmation email:', emailError)
         }
 
-          if (!emailResponse.ok) {
-            console.warn('Failed to send confirmation email, but order was created')
-          } else {
-            console.log('Confirmation email sent successfully')
-          }
-        } catch (emailError) {
-          console.warn('Email service unavailable, but order was created:', emailError)
-        }
-
         return NextResponse.json({
           success: true,
           orderId: order.orderId,
