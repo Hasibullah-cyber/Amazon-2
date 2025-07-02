@@ -252,17 +252,21 @@ class ServerStoreManager {
           createdAt: new Date().toISOString(),
         }
 
+        // Set appropriate payment status based on payment method
+        const paymentStatus = order.paymentMethod === 'cash_on_delivery' ? 'pending' : 'pending'
+        const orderStatus = order.paymentMethod === 'cash_on_delivery' ? 'confirmed' : 'pending'
+
         await client.query(`
           INSERT INTO orders (
             id, order_id, customer_name, customer_email, customer_phone,
             address, city, items, subtotal, shipping, vat, total_amount,
-            status, payment_method, estimated_delivery, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            status, payment_method, payment_status, estimated_delivery, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         `, [
           newOrder.id, newOrder.orderId, newOrder.customerName, newOrder.customerEmail,
           newOrder.customerPhone, newOrder.address, newOrder.city, JSON.stringify(newOrder.items),
           newOrder.subtotal, newOrder.shipping, newOrder.vat, newOrder.totalAmount,
-          newOrder.status, newOrder.paymentMethod, newOrder.estimatedDelivery, newOrder.createdAt
+          orderStatus, newOrder.paymentMethod, paymentStatus, newOrder.estimatedDelivery, newOrder.createdAt
         ])
 
         // Update inventory for each item

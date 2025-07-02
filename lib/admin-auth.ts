@@ -1,5 +1,6 @@
-import { executeQuery } from './database'
+import 'server-only'
 import bcrypt from 'bcryptjs'
+import { pool, executeQuery } from './database'
 
 interface AdminUser {
   id: number

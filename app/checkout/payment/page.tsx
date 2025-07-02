@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -51,16 +50,16 @@ export default function PaymentPage() {
 
   const processOnlinePayment = async () => {
     setIsProcessingPayment(true)
-    
+
     // Simulate payment processing
     try {
       // In a real app, you would integrate with a payment gateway here
       // For demo purposes, we'll simulate a payment process
       await new Promise(resolve => setTimeout(resolve, 3000))
-      
+
       // Simulate payment success (in real app, this would come from payment gateway)
       const paymentSuccess = Math.random() > 0.1 // 90% success rate for demo
-      
+
       if (paymentSuccess) {
         setPaymentVerified(true)
         return true
