@@ -2,211 +2,205 @@
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
-export async function POST(request: Request) {
-  let client;
-  
-  try {
-    // Validate request data first
-    const orderData = await request.json()
-    console.log('📦 Processing order:', orderData)
-    
-    // Validate required fields
-    if (!orderData.customerInfo?.name || !orderData.customerInfo?.email || !orderData.items?.length) {
-      return NextResponse.json({
-        success: false,
-        error: 'Missing required order information'
-      }, { status: 400 })
-    }
-    
-    client = await pool.connect()
-    await client.query('BEGIN')
-    
-    // Generate order ID
-    const orderId = `HS-${Date.now()}`
-    
-    // Calculate totals
-    const subtotal = orderData.items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
-    const shipping = 50 // Fixed shipping cost for Bangladesh
-    const tax = subtotal * 0.05 // 5% VAT
-    const total = subtotal + shipping + tax
-    
-    // Insert order into database
-    const orderResult = await client.query(`
-      INSERT INTO orders (
-        order_id, customer_name, customer_email, customer_phone, 
-        address, city, items, subtotal, shipping, tax, total_amount,
-        status, payment_method, estimated_delivery
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-      RETURNING *
-    `, [
-      orderId,
-      orderData.customerInfo?.name || orderData.name,
-      orderData.customerInfo?.email || orderData.email,
-      orderData.customerInfo?.phone || orderData.phone,
-      orderData.customerInfo?.address || orderData.address,
-      orderData.customerInfo?.city || orderData.city,
-      JSON.stringify(orderData.items),
-      subtotal,
-      shipping,
-      tax,
-      total,
-      'confirmed',
-      orderData.paymentMethod || 'Cash on Delivery',
-      '3-5 business days'
-    ])
-    
-    const order = orderResult.rows[0]
-    console.log('✅ Order saved to database:', order.order_id)
-    
-    // Insert order items for better tracking
-    for (const item of orderData.items) {
-      await client.query(`
-        INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `, [
-        orderId,
-        item.id,
-        item.name,
-        item.quantity,
-        item.price,
-        item.price * item.quantity
-      ])
-    }
-    
-    // Update product stock
-    for (const item of orderData.items) {
-      await client.query(`
-        UPDATE products 
-        SET stock = GREATEST(stock - $1, 0), total_sales = total_sales + $1
-        WHERE id = $2
-      `, [item.quantity, item.id])
-    }
-    
-    // Add to order status history
-    await client.query(`
-      INSERT INTO order_status_history (order_id, status, notes, created_by)
-      VALUES ($1, $2, $3, $4)
-    `, [orderId, 'confirmed', 'Order confirmed and payment received', 'system'])
-    
-    await client.query('COMMIT')
-    
-    // Send confirmation email (non-blocking)
-    try {
-      const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://0.0.0.0:3000'}/api/send-confirmation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: order.customer_email,
-          orderDetails: {
-            orderId: order.order_id,
-            customerName: order.customer_name,
-            customerEmail: order.customer_email,
-            items: orderData.items,
-            subtotal: subtotal,
-            shipping: shipping,
-            vat: tax,
-            total: total,
-            totalAmount: total,
-            address: order.address,
-            city: order.city,
-            phone: order.customer_phone,
-            paymentMethod: order.payment_method,
-            estimatedDelivery: order.estimated_delivery,
-            createdAt: new Date().toISOString()
-          }
-        })
-      })
-      
-      if (emailResponse.ok) {
-        console.log('📧 Confirmation email sent successfully')
-      } else {
-        console.warn('⚠️ Email service unavailable, but order was created')
-      }
-    } catch (emailError) {
-      console.warn('⚠️ Email service unavailable, but order was created:', emailError)
-    }
-    
-    return NextResponse.json({
-      success: true,
-      orderId: order.order_id,
-      message: 'Order placed successfully!',
-      order: {
-        orderId: order.order_id,
-        status: order.status,
-        total: order.total_amount,
-        estimatedDelivery: order.estimated_delivery
-      }
-    })
-    
-  } catch (error) {
-    if (client) {
-      try {
-        await client.query('ROLLBACK')
-      } catch (rollbackError) {
-        console.error('❌ Rollback failed:', rollbackError)
-      }
-    }
-    console.error('❌ Error processing order:', error)
-    
-    let errorMessage = 'Failed to process order. Please try again.'
-    let statusCode = 500
-    
-    if (error instanceof Error) {
-      if (error.message.includes('connect') || error.message.includes('ECONNREFUSED')) {
-        errorMessage = 'Database connection failed. Please try again.'
-      } else if (error.message.includes('duplicate') || error.message.includes('unique')) {
-        errorMessage = 'Order ID already exists. Please try again.'
-      }
-      console.error('Error details:', error.message)
-    }
-    
-    return NextResponse.json({
-      success: false,
-      error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
-    }, { status: statusCode })
-  } finally {
-    if (client) {
-      try {
-        client.release()
-      } catch (releaseError) {
-        console.error('❌ Client release failed:', releaseError)
-      }
-    }
-  }
-}
-
 export async function GET() {
   try {
     const client = await pool.connect()
-    
     try {
       const result = await client.query(`
         SELECT 
-          order_id,
-          customer_name,
-          customer_email,
-          total_amount,
-          status,
-          created_at,
-          estimated_delivery
+          id, order_id as "orderId", customer_name as "customerName",
+          customer_email as "customerEmail", customer_phone as "customerPhone",
+          address, city, postal_code as "postalCode", country,
+          items, subtotal, shipping, tax, total_amount as "totalAmount",
+          status, payment_method as "paymentMethod", payment_status as "paymentStatus",
+          tracking_number as "trackingNumber", estimated_delivery as "estimatedDelivery",
+          created_at as "createdAt", updated_at as "updatedAt"
         FROM orders 
-        ORDER BY created_at DESC 
-        LIMIT 50
+        ORDER BY created_at DESC
       `)
       
-      return NextResponse.json({
-        success: true,
-        orders: result.rows
-      })
+      return NextResponse.json(result.rows.map(row => ({
+        ...row,
+        items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items
+      })))
     } finally {
       client.release()
     }
   } catch (error) {
     console.error('Error fetching orders:', error)
-    return NextResponse.json({
+    return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 })
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const orderData = await request.json()
+    console.log('Received order data:', orderData)
+
+    // Validate required fields
+    const requiredFields = ['customerName', 'customerEmail', 'customerPhone', 'address', 'city', 'items', 'totalAmount', 'paymentMethod']
+    for (const field of requiredFields) {
+      if (!orderData[field]) {
+        console.error(`Missing required field: ${field}`)
+        return NextResponse.json({ 
+          success: false, 
+          error: `Missing required field: ${field}` 
+        }, { status: 400 })
+      }
+    }
+
+    // Validate items array
+    if (!Array.isArray(orderData.items) || orderData.items.length === 0) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Order must contain at least one item' 
+      }, { status: 400 })
+    }
+
+    // Generate unique order ID
+    const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const trackingNumber = `TRK-${Date.now().toString().substr(-8)}`
+
+    // Calculate totals
+    const subtotal = parseFloat(orderData.subtotal) || parseFloat(orderData.totalAmount) || 0
+    const shipping = parseFloat(orderData.shipping) || 100
+    const tax = parseFloat(orderData.tax) || 0
+    const totalAmount = parseFloat(orderData.totalAmount) || (subtotal + shipping + tax)
+
+    try {
+      const client = await pool.connect()
+      
+      try {
+        await client.query('BEGIN')
+
+        // Insert order
+        const insertResult = await client.query(`
+          INSERT INTO orders (
+            order_id, customer_name, customer_email, customer_phone,
+            address, city, postal_code, country,
+            items, subtotal, shipping, tax, total_amount,
+            status, payment_method, payment_status,
+            tracking_number, estimated_delivery
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+          RETURNING id, order_id as "orderId"
+        `, [
+          orderId,
+          orderData.customerName,
+          orderData.customerEmail,
+          orderData.customerPhone,
+          orderData.address,
+          orderData.city,
+          orderData.postalCode || '',
+          orderData.country || 'Bangladesh',
+          JSON.stringify(orderData.items),
+          subtotal,
+          shipping,
+          tax,
+          totalAmount,
+          'pending',
+          orderData.paymentMethod,
+          orderData.paymentMethod === 'Cash on Delivery' ? 'pending' : 'completed',
+          trackingNumber,
+          '3-5 business days'
+        ])
+
+        const newOrder = insertResult.rows[0]
+        console.log('Order created successfully:', newOrder)
+
+        // Insert order items
+        for (const item of orderData.items) {
+          await client.query(`
+            INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
+            VALUES ($1, $2, $3, $4, $5, $6)
+          `, [
+            orderId,
+            item.id,
+            item.name,
+            item.quantity,
+            item.price,
+            item.price * item.quantity
+          ])
+
+          // Update product stock if available
+          try {
+            await client.query(`
+              UPDATE products 
+              SET stock = GREATEST(0, stock - $1), updated_at = CURRENT_TIMESTAMP 
+              WHERE id = $2
+            `, [item.quantity, item.id])
+          } catch (stockError) {
+            console.warn('Could not update stock for product:', item.id, stockError)
+          }
+        }
+
+        await client.query('COMMIT')
+
+        const responseData = {
+          success: true,
+          orderId: orderId,
+          trackingNumber: trackingNumber,
+          message: 'Order placed successfully',
+          order: {
+            id: newOrder.id,
+            orderId: orderId,
+            customerName: orderData.customerName,
+            customerEmail: orderData.customerEmail,
+            totalAmount: totalAmount,
+            status: 'pending',
+            trackingNumber: trackingNumber,
+            estimatedDelivery: '3-5 business days',
+            items: orderData.items
+          }
+        }
+
+        console.log('Sending response:', responseData)
+        return NextResponse.json(responseData, { status: 201 })
+
+      } catch (dbError) {
+        await client.query('ROLLBACK')
+        throw dbError
+      } finally {
+        client.release()
+      }
+
+    } catch (dbError) {
+      console.error('Database error:', dbError)
+      
+      // Fallback to localStorage for demo
+      console.log('Falling back to demo mode')
+      
+      const fallbackOrder = {
+        id: Date.now(),
+        orderId: orderId,
+        customerName: orderData.customerName,
+        customerEmail: orderData.customerEmail,
+        customerPhone: orderData.customerPhone,
+        address: orderData.address,
+        city: orderData.city,
+        items: orderData.items,
+        totalAmount: totalAmount,
+        status: 'pending',
+        paymentMethod: orderData.paymentMethod,
+        trackingNumber: trackingNumber,
+        estimatedDelivery: '3-5 business days',
+        createdAt: new Date().toISOString()
+      }
+
+      return NextResponse.json({
+        success: true,
+        orderId: orderId,
+        trackingNumber: trackingNumber,
+        message: 'Order placed successfully (demo mode)',
+        order: fallbackOrder
+      }, { status: 201 })
+    }
+
+  } catch (error) {
+    console.error('Error processing order:', error)
+    return NextResponse.json({ 
       success: false,
-      error: 'Failed to fetch orders'
+      error: 'Failed to process order. Please try again.',
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }

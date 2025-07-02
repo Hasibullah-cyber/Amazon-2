@@ -1,124 +1,113 @@
-"use client"
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { CreditCard, Truck, Wallet, Lock } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/components/auth-provider"
-import { AuthModal } from "@/components/auth-modal"
+'use client'
 
-export const dynamic = 'force-dynamic'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
+import { useCart } from '@/components/cart-provider'
+import { useAuth } from '@/components/auth-provider'
+import { useToast } from '@/hooks/use-toast'
+
+interface CheckoutData {
+  name: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  postalCode: string
+}
 
 export default function PaymentPage() {
   const router = useRouter()
-  const { isAuthenticated, user } = useAuth()
-  const [cart, setCart] = useState<any[]>([])
-  const [selectedPayment, setSelectedPayment] = useState("Cash on Delivery")
-  const [address, setAddress] = useState("")
-  const [name, setName] = useState("")
-  const [phone, setPhone] = useState("")
-  const [city, setCity] = useState("")
-  const [email, setEmail] = useState("")
-  const [showAuthModal, setShowAuthModal] = useState(false)
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
-  const [paymentVerified, setPaymentVerified] = useState(false)
+  const searchParams = useSearchParams()
+  const { items, total, clearCart } = useCart()
+  const { user } = useAuth()
+  const { toast } = useToast()
+  
+  const [paymentMethod, setPaymentMethod] = useState('cash-on-delivery')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
 
   useEffect(() => {
-    // Check authentication first
-    if (!isAuthenticated) {
-      setShowAuthModal(true)
-      return
-    }
-
-    const storedCart = localStorage.getItem("cart")
-    if (storedCart) {
-      setCart(JSON.parse(storedCart))
-    }
-
-    // Pre-fill user information if available
-    if (user) {
-      setName(user.name || "")
-      setEmail(user.email || "")
-    }
-  }, [isAuthenticated, user])
-
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const shipping = 120
-  const vat = Math.round(subtotal * 0.1)
-  const totalAmount = subtotal + shipping + vat
-
-  const processOnlinePayment = async () => {
-    setIsProcessingPayment(true)
-
-    // Simulate payment processing
-    try {
-      // In a real app, you would integrate with a payment gateway here
-      // For demo purposes, we'll simulate a payment process
-      await new Promise(resolve => setTimeout(resolve, 3000))
-
-      // Simulate payment success (in real app, this would come from payment gateway)
-      const paymentSuccess = Math.random() > 0.1 // 90% success rate for demo
-
-      if (paymentSuccess) {
-        setPaymentVerified(true)
-        return true
-      } else {
-        throw new Error("Payment failed")
+    // Get checkout data from URL params or localStorage
+    const dataParam = searchParams.get('data')
+    if (dataParam) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(dataParam))
+        setCheckoutData(decoded)
+      } catch (error) {
+        console.error('Error parsing checkout data:', error)
       }
-    } catch (error) {
-      alert("Payment failed. Please try again.")
-      return false
-    } finally {
-      setIsProcessingPayment(false)
-    }
-  }
-
-  const handlePlaceOrder = async () => {
-    if (!isAuthenticated) {
-      setShowAuthModal(true)
-      return
     }
 
-    if (!name || !address || !phone || !city || !email) {
-      alert("Please fill in all required fields")
-      return
-    }
-
-    // For online payment, verify payment first
-    if (selectedPayment === "Online Payment") {
-      if (!paymentVerified) {
-        const paymentSuccess = await processOnlinePayment()
-        if (!paymentSuccess) {
-          return
+    // Fallback to localStorage
+    if (!dataParam && typeof window !== 'undefined') {
+      const stored = localStorage.getItem('checkout-data')
+      if (stored) {
+        try {
+          setCheckoutData(JSON.parse(stored))
+        } catch (error) {
+          console.error('Error parsing stored checkout data:', error)
         }
       }
     }
 
-    setIsProcessingPayment(true)
+    // If no cart items, redirect to cart
+    if (items.length === 0) {
+      router.push('/cart')
+      return
+    }
+  }, [searchParams, items.length, router])
+
+  const handlePlaceOrder = async () => {
+    if (!checkoutData) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Missing checkout information. Please go back to checkout."
+      })
+      return
+    }
+
+    if (items.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Error", 
+        description: "Your cart is empty"
+      })
+      return
+    }
+
+    setIsProcessing(true)
 
     try {
-      // Validate cart items
-      if (!cart || cart.length === 0) {
-        alert('Your cart is empty. Please add items to cart before placing an order.')
-        return
-      }
-
       const orderData = {
-        customerInfo: {
-          name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          address: address.trim(),
-          city: city.trim()
-        },
-        items: cart,
-        paymentMethod: selectedPayment,
-        transactionId: selectedPayment === "Online Payment" ? "TXN-" + Date.now() : "",
-        userId: user?.id
+        customerName: checkoutData.name,
+        customerEmail: checkoutData.email,
+        customerPhone: checkoutData.phone,
+        address: checkoutData.address,
+        city: checkoutData.city,
+        postalCode: checkoutData.postalCode,
+        country: 'Bangladesh',
+        items: items.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image
+        })),
+        subtotal: total,
+        shipping: 100,
+        tax: 0,
+        totalAmount: total + 100,
+        paymentMethod: paymentMethod === 'cash-on-delivery' ? 'Cash on Delivery' : 'Online Payment'
       }
 
-      console.log('Sending order data:', orderData)
+      console.log('Placing order with data:', orderData)
 
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -131,179 +120,177 @@ export default function PaymentPage() {
       const result = await response.json()
       console.log('Order response:', result)
 
-      if (response.ok && result.success) {
-        // Clear cart from localStorage
-        localStorage.removeItem("cart")
-        
-        // Redirect to order confirmation with order ID
-        router.push(`/order-confirmation?orderId=${result.orderId}`)
-      } else {
-        const errorMessage = result.error || result.details || 'Failed to place order. Please try again.'
-        alert(errorMessage)
-        console.error('Order failed:', result)
+      if (!response.ok) {
+        throw new Error(result.error || result.details || 'Failed to place order')
       }
+
+      if (result.success) {
+        // Clear cart
+        clearCart()
+        
+        // Clear checkout data
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('checkout-data')
+        }
+
+        toast({
+          title: "Order Placed Successfully!",
+          description: `Your order ${result.orderId} has been placed successfully.`
+        })
+
+        // Redirect to order confirmation with order data
+        const confirmationData = {
+          orderId: result.orderId,
+          trackingNumber: result.trackingNumber,
+          customerName: orderData.customerName,
+          customerEmail: orderData.customerEmail,
+          totalAmount: orderData.totalAmount,
+          paymentMethod: orderData.paymentMethod,
+          estimatedDelivery: result.order?.estimatedDelivery || '3-5 business days',
+          items: orderData.items
+        }
+
+        const encodedData = encodeURIComponent(JSON.stringify(confirmationData))
+        router.push(`/order-confirmation?data=${encodedData}`)
+      } else {
+        throw new Error(result.error || 'Failed to place order')
+      }
+
     } catch (error) {
       console.error('Error placing order:', error)
-      alert('Network error. Please check your connection and try again.')
+      toast({
+        variant: "destructive",
+        title: "Order Failed",
+        description: error instanceof Error ? error.message : "Failed to place order. Please try again."
+      })
     } finally {
-      setIsProcessingPayment(false)
+      setIsProcessing(false)
     }
   }
 
-  // Redirect to home if not authenticated
-  if (!isAuthenticated) {
+  if (!checkoutData) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <Card className="p-8 max-w-md mx-auto text-center">
-          <Lock className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-          <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
-          <p className="text-gray-600 mb-6">Please sign in to proceed with checkout</p>
-          <Button onClick={() => setShowAuthModal(true)} className="w-full">
-            Sign In to Continue
-          </Button>
+      <div className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <h2 className="text-xl font-semibold mb-4">Loading...</h2>
+            <p className="text-gray-600">Please wait while we load your checkout information.</p>
+          </CardContent>
         </Card>
-        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       </div>
     )
   }
 
+  const subtotal = total
+  const shipping = 100
+  const finalTotal = subtotal + shipping
+
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-6">
-        {/* Payment Options */}
-        <Card className="p-6 space-y-4">
-          <h2 className="text-xl font-semibold mb-2 flex items-center">
-            <CreditCard className="w-5 h-5 mr-2" /> Payment Method
-          </h2>
-          <div className="space-y-2">
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="payment"
-                value="Online Payment"
-                checked={selectedPayment === "Online Payment"}
-                onChange={(e) => {
-                  setSelectedPayment(e.target.value)
-                  setPaymentVerified(false)
-                }}
-              />
-              <span>Online Payment (Secure)</span>
-            </label>
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="payment"
-                value="Cash on Delivery"
-                checked={selectedPayment === "Cash on Delivery"}
-                onChange={(e) => setSelectedPayment(e.target.value)}
-              />
-              <span>Cash on Delivery</span>
-            </label>
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8">Payment</h1>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Payment Method */}
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Method</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="cash-on-delivery" id="cod" />
+                    <Label htmlFor="cod">Cash on Delivery</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="online" id="online" />
+                    <Label htmlFor="online">Online Payment (Coming Soon)</Label>
+                  </div>
+                </RadioGroup>
+
+                {paymentMethod === 'online' && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                    <p className="text-sm text-gray-600">
+                      Online payment options will be available soon. Please use Cash on Delivery for now.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Customer Information */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Delivery Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <p><strong>Name:</strong> {checkoutData.name}</p>
+                  <p><strong>Email:</strong> {checkoutData.email}</p>
+                  <p><strong>Phone:</strong> {checkoutData.phone}</p>
+                  <p><strong>Address:</strong> {checkoutData.address}</p>
+                  <p><strong>City:</strong> {checkoutData.city}</p>
+                  <p><strong>Postal Code:</strong> {checkoutData.postalCode}</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {selectedPayment === "Online Payment" && !paymentVerified && (
-            <div className="mt-4 p-4 border rounded-lg bg-blue-50">
-              <p className="text-sm text-blue-800 mb-3">
-                Complete your payment to proceed with the order
-              </p>
-              <Button 
-                onClick={processOnlinePayment} 
-                disabled={isProcessingPayment}
-                className="w-full"
-              >
-                {isProcessingPayment ? "Processing Payment..." : "Pay Now"}
-              </Button>
-            </div>
-          )}
+          {/* Order Summary */}
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Order Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <h4 className="font-medium">{item.name}</h4>
+                        <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+                      </div>
+                      <p className="font-medium">৳{(item.price * item.quantity).toFixed(2)}</p>
+                    </div>
+                  ))}
+                  
+                  <hr />
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span>৳{subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Shipping:</span>
+                      <span>৳{shipping.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-lg">
+                      <span>Total:</span>
+                      <span>৳{finalTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
 
-          {selectedPayment === "Online Payment" && paymentVerified && (
-            <div className="mt-4 p-4 border rounded-lg bg-green-50">
-              <p className="text-sm text-green-800">
-                ✅ Payment verified successfully
-              </p>
-            </div>
-          )}
-        </Card>
+                  <Button 
+                    onClick={handlePlaceOrder} 
+                    className="w-full amazon-button" 
+                    size="lg"
+                    disabled={isProcessing || paymentMethod === 'online'}
+                  >
+                    {isProcessing ? 'Processing...' : 'Place Order'}
+                  </Button>
 
-        {/* Address & Summary */}
-        <Card className="p-6 space-y-4">
-          <h2 className="text-xl font-semibold mb-2 flex items-center">
-            <Truck className="w-5 h-5 mr-2" /> Shipping Information
-          </h2>
-          <input
-            type="text"
-            placeholder="Your Name *"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full border px-3 py-2 rounded text-sm"
-            required
-          />
-          <input
-            type="email"
-            placeholder="Email Address *"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border px-3 py-2 rounded text-sm"
-            required
-          />
-          <input
-            type="text"
-            placeholder="Address *"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            className="w-full border px-3 py-2 rounded text-sm"
-            required
-          />
-          <input
-            type="text"
-            placeholder="City *"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            className="w-full border px-3 py-2 rounded text-sm"
-            required
-          />
-          <input
-            type="text"
-            placeholder="Phone *"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full border px-3 py-2 rounded text-sm"
-            required
-          />
-
-          <h3 className="text-lg font-medium mt-4">Order Summary</h3>
-          <div className="text-sm space-y-1">
-            <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span>৳{subtotal}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Shipping:</span>
-              <span>৳{shipping}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>VAT (10%):</span>
-              <span>৳{vat}</span>
-            </div>
-            <hr />
-            <div className="flex justify-between font-bold">
-              <span>Total:</span>
-              <span>৳{totalAmount}</span>
-            </div>
+                  {paymentMethod === 'online' && (
+                    <p className="text-sm text-center text-gray-600">
+                      Please select Cash on Delivery to continue
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
-
-          <Button 
-            className="w-full mt-4" 
-            onClick={handlePlaceOrder}
-            disabled={
-              !name || !address || !phone || !city || !email ||
-              (selectedPayment === "Online Payment" && !paymentVerified) ||
-              isProcessingPayment
-            }
-          >
-            {isProcessingPayment ? "Processing..." : "Place Order"}
-          </Button>
-        </Card>
+        </div>
       </div>
     </div>
   )
