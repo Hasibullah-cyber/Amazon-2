@@ -1,1 +1,6 @@
-{}
+{
+  "lib/database.ts -> ./admin-auth": {
+    "id": "lib/database.ts -> ./admin-auth",
+    "files": []
+  }
+}
