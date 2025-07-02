@@ -7,6 +7,7 @@ export interface Product {
   reviews: number
   stock: number
   category: string
+  rating?: number
 }
 
 interface Category {
@@ -51,7 +52,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 245,
     stock: 15,
-    category: "electronics"
+    category: "electronics",
+    rating: 4.8
   },
   {
     id: "1002",
@@ -61,7 +63,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 189,
     stock: 22,
-    category: "electronics"
+    category: "electronics",
+    rating: 4.7
   },
   {
     id: "1003",
@@ -71,7 +74,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 156,
     stock: 8,
-    category: "electronics"
+    category: "electronics",
+    rating: 4.6
   },
   {
     id: "1004",
@@ -81,7 +85,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 134,
     stock: 18,
-    category: "electronics"
+    category: "electronics",
+    rating: 4.5
   },
   {
     id: "1005",
@@ -91,7 +96,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 278,
     stock: 12,
-    category: "electronics"
+    category: "electronics",
+    rating: 4.8
   },
   {
     id: "1006",
@@ -101,7 +107,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 456,
     stock: 35,
-    category: "electronics"
+    category: "electronics",
+    rating: 4.7
   },
   {
     id: "1007",
@@ -111,7 +118,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 189,
     stock: 20,
-    category: "electronics"
+    category: "electronics",
+    rating: 4.6
   },
   {
     id: "1008",
@@ -121,7 +129,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 567,
     stock: 45,
-    category: "electronics"
+    category: "electronics",
+    rating: 4.5
   },
 
   // Fashion Items
@@ -133,7 +142,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 234,
     stock: 28,
-    category: "fashion"
+    category: "fashion",
+    rating: 4.4
   },
   {
     id: "2002",
@@ -143,7 +153,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 345,
     stock: 56,
-    category: "fashion"
+    category: "fashion",
+    rating: 4.6
   },
   {
     id: "2003",
@@ -153,7 +164,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 123,
     stock: 32,
-    category: "fashion"
+    category: "fashion",
+    rating: 4.2
   },
   {
     id: "2004",
@@ -163,7 +175,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 456,
     stock: 22,
-    category: "fashion"
+    category: "fashion",
+    rating: 4.7
   },
   {
     id: "2005",
@@ -173,7 +186,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 789,
     stock: 120,
-    category: "fashion"
+    category: "fashion",
+    rating: 4.1
   },
   {
     id: "2006",
@@ -183,7 +197,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 567,
     stock: 43,
-    category: "fashion"
+    category: "fashion",
+    rating: 4.5
   },
 
   // Beauty Products
@@ -195,7 +210,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 234,
     stock: 78,
-    category: "beauty"
+    category: "beauty",
+    rating: 4.3
   },
   {
     id: "3002",
@@ -205,7 +221,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 456,
     stock: 65,
-    category: "beauty"
+    category: "beauty",
+    rating: 4.4
   },
   {
     id: "3003",
@@ -215,7 +232,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 345,
     stock: 89,
-    category: "beauty"
+    category: "beauty",
+    rating: 4.2
   },
   {
     id: "3004",
@@ -225,7 +243,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 567,
     stock: 156,
-    category: "beauty"
+    category: "beauty",
+    rating: 4.5
   },
   {
     id: "3005",
@@ -235,7 +254,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 234,
     stock: 67,
-    category: "beauty"
+    category: "beauty",
+    rating: 4.6
   },
 
   // Home & Living
@@ -247,7 +267,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 123,
     stock: 45,
-    category: "home-living"
+    category: "home-living",
+    rating: 4.3
   },
   {
     id: "4002",
@@ -257,7 +278,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 89,
     stock: 78,
-    category: "home-living"
+    category: "home-living",
+    rating: 4.1
   },
   {
     id: "4003",
@@ -267,7 +289,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 156,
     stock: 56,
-    category: "home-living"
+    category: "home-living",
+    rating: 4.7
   },
   {
     id: "4004",
@@ -277,7 +300,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 234,
     stock: 34,
-    category: "home-living"
+    category: "home-living",
+    rating: 4.4
   },
   {
     id: "4005",
@@ -287,7 +311,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 67,
     stock: 23,
-    category: "home-living"
+    category: "home-living",
+    rating: 4.0
   }
 ]
 
