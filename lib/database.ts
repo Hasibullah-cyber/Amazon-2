@@ -1,4 +1,3 @@
-
 import { Pool } from 'pg'
 
 // Create connection pool
@@ -139,6 +138,23 @@ export async function initializeDatabase() {
       )
     `)
 
+    // Ensure slug column exists (migration for existing tables)
+    try {
+      await client.query(`
+        DO $$ 
+        BEGIN 
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'categories' AND column_name = 'slug'
+          ) THEN
+            ALTER TABLE categories ADD COLUMN slug VARCHAR(100) UNIQUE;
+          END IF;
+        END $$;
+      `)
+    } catch (error) {
+      console.log('Migration note: Slug column might already exist or table might be new')
+    }
+
     // Insert sample data if tables are empty
     await insertSampleData(client)
 
@@ -162,15 +178,38 @@ async function insertSampleData(client: any) {
       return
     }
 
-    // Insert sample categories
-    await client.query(`
-      INSERT INTO categories (name, slug, description) VALUES
-      ('Electronics', 'electronics', 'Latest electronic devices and gadgets'),
-      ('Fashion', 'fashion', 'Trendy clothing and accessories'),
-      ('Home & Living', 'home-living', 'Home decoration and living essentials'),
-      ('Beauty', 'beauty', 'Beauty and personal care products')
-      ON CONFLICT (slug) DO NOTHING
-    `)
+    // Insert sample categories (only if table is empty and has slug column)
+    const categoryExists = await client.query('SELECT COUNT(*) FROM categories')
+    if (parseInt(categoryExists.rows[0].count) === 0) {
+      try {
+        // Check if slug column exists before inserting
+        const columnCheck = await client.query(`
+          SELECT column_name FROM information_schema.columns 
+          WHERE table_name = 'categories' AND column_name = 'slug'
+        `)
+
+        if (columnCheck.rows.length > 0) {
+          await client.query(`
+            INSERT INTO categories (name, slug, description) VALUES
+            ('Electronics', 'electronics', 'Latest electronic devices and gadgets'),
+            ('Fashion', 'fashion', 'Trendy clothing and accessories'),
+            ('Home & Living', 'home-living', 'Home decoration and living essentials'),
+            ('Beauty', 'beauty', 'Beauty and personal care products')
+          `)
+        } else {
+          // Insert without slug if column doesn't exist
+          await client.query(`
+            INSERT INTO categories (name, description) VALUES
+            ('Electronics', 'Latest electronic devices and gadgets'),
+            ('Fashion', 'Trendy clothing and accessories'),
+            ('Home & Living', 'Home decoration and living essentials'),
+            ('Beauty', 'Beauty and personal care products')
+          `)
+        }
+      } catch (insertError) {
+        console.log('Note: Could not insert sample categories, table structure may be different')
+      }
+    }
 
     // Insert sample products
     await client.query(`
@@ -235,19 +274,19 @@ export async function updateOrderStatus(orderId: string, newStatus: string, note
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    
+
     // Update order status
     await client.query(
       'UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $2',
       [newStatus, orderId]
     )
-    
+
     // Add to status history
     await client.query(
       'INSERT INTO order_status_history (order_id, status, notes) VALUES ($1, $2, $3)',
       [orderId, newStatus, notes || `Status changed to ${newStatus}`]
     )
-    
+
     await client.query('COMMIT')
     return true
   } catch (error) {
