@@ -169,11 +169,11 @@ export async function initializeDatabase() {
     await insertSampleData(client)
 
     console.log('Database tables initialized successfully with full schema')
-    
+
     // Initialize default admin user
     const { initializeDefaultAdmin } = await import('./admin-auth')
     await initializeDefaultAdmin()
-    
+
     return true
   } catch (error) {
     console.error('Error initializing database:', error)
@@ -248,7 +248,7 @@ async function insertSampleData(client: any) {
     await client.query(`
       INSERT INTO users (user_id, name, email, phone, address, city) VALUES
       ('user_1', 'John Doe', 'john@example.com', '01700000000', '123 Main St', 'Dhaka'),
-      ('user_2', 'Jane Smith', 'jane@example.com', '01800000000', '456 Oak Ave', 'Chittagong')
+      ('user_2', 'Jane Smith', 'jane@example.com', 'jane@example.com', '01800000000', '456 Oak Ave', 'Chittagong')
       ON CONFLICT (user_id) DO NOTHING
     `)
 

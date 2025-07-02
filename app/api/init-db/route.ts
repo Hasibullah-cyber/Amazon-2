@@ -1,36 +1,36 @@
+
 import { NextResponse } from 'next/server'
-import { initializeDatabase } from '@/lib/database'
+import { initializeTables } from '@/lib/database'
+import { initializeDefaultAdmin } from '@/lib/admin-auth'
 
 export async function POST() {
   try {
-    console.log('Starting database initialization...')
-    console.log('DATABASE_URL configured:', process.env.DATABASE_URL ? 'Yes' : 'No')
-
-    const success = await initializeDatabase()
-
-    if (success) {
-      console.log('Database tables initialized successfully')
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Database tables initialized successfully' 
-      })
-    } else {
-      console.log('Database initialization failed - check DATABASE_URL configuration')
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Database initialization failed - check DATABASE_URL configuration' 
-      }, { status: 500 })
-    }
+    console.log('Initializing database...')
+    
+    // Initialize database tables
+    await initializeTables()
+    
+    // Initialize default admin user
+    await initializeDefaultAdmin()
+    
+    console.log('Database initialization completed successfully')
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Database initialized successfully' 
+    })
   } catch (error) {
-    console.error('Database initialization error:', error)
+    console.error('Database initialization failed:', error)
     return NextResponse.json({ 
       success: false, 
-      message: 'Database initialization failed',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Database initialization failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }
 
 export async function GET() {
-  return POST()
+  return NextResponse.json({ 
+    message: 'Database initialization endpoint. Use POST to initialize.' 
+  })
 }

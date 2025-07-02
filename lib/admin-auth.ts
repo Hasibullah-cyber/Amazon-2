@@ -31,6 +31,26 @@ export async function initializeDefaultAdmin() {
   }
 }
 
+// Verify admin credentials against database
+export async function verifyAdminCredentials(username: string, password: string): Promise<boolean> {
+  try {
+    const result = await executeQuery(
+      'SELECT password_hash FROM admin_users WHERE username = $1 AND is_active = true',
+      [username]
+    )
+
+    if (result.rows.length === 0) {
+      return false
+    }
+
+    const hashedPassword = result.rows[0].password_hash
+    return await bcrypt.compare(password, hashedPassword)
+  } catch (error) {
+    console.error('Error verifying admin credentials:', error)
+    return false
+  }
+}
+
 export interface AdminUser {
   username: string
   password: string
@@ -97,7 +117,13 @@ class AdminAuthManager {
 
   async adminSignIn(username: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
-      if (username === this.ADMIN_CREDENTIALS.username && password === this.ADMIN_CREDENTIALS.password) {
+      // Try database authentication first
+      const isValidFromDB = await verifyAdminCredentials(username, password)
+      
+      // Fallback to hardcoded credentials
+      const isValidFallback = username === this.ADMIN_CREDENTIALS.username && password === this.ADMIN_CREDENTIALS.password
+
+      if (isValidFromDB || isValidFallback) {
         const adminUser: AdminUser = {
           username,
           password: '', // Don't store password
@@ -113,6 +139,7 @@ class AdminAuthManager {
         return { success: false, error: 'Invalid admin credentials' }
       }
     } catch (error) {
+      console.error('Admin sign in error:', error)
       return { success: false, error: 'Failed to sign in as admin' }
     }
   }
