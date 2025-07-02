@@ -62,7 +62,7 @@ export async function initializeDatabase() {
     // Create products table with enhanced fields
     await client.query(`
       CREATE TABLE IF NOT EXISTS products (
-        id SERIAL PRIMARY KEY,
+        id VARCHAR(50) PRIMARY KEY DEFAULT 'prod_' || generate_random_uuid()::text,
         name VARCHAR(255) NOT NULL,
         slug VARCHAR(255) UNIQUE NOT NULL,
         price DECIMAL(10,2) NOT NULL,
@@ -160,7 +160,7 @@ export async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS order_items (
         id SERIAL PRIMARY KEY,
         order_id VARCHAR(50) REFERENCES orders(order_id),
-        product_id INTEGER,
+        product_id VARCHAR(50),
         product_name VARCHAR(255) NOT NULL,
         product_sku VARCHAR(100),
         quantity INTEGER NOT NULL,
@@ -205,7 +205,7 @@ export async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS product_reviews (
         id SERIAL PRIMARY KEY,
-        product_id INTEGER REFERENCES products(id),
+        product_id VARCHAR(50) REFERENCES products(id),
         user_id VARCHAR(50) REFERENCES users(user_id),
         order_id VARCHAR(50) REFERENCES orders(order_id),
         rating INTEGER CHECK (rating >= 1 AND rating <= 5),
@@ -223,7 +223,7 @@ export async function initializeDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS inventory_logs (
         id SERIAL PRIMARY KEY,
-        product_id INTEGER REFERENCES products(id),
+        product_id VARCHAR(50) REFERENCES products(id),
         change_type VARCHAR(50) NOT NULL,
         quantity_before INTEGER,
         quantity_after INTEGER,
@@ -355,7 +355,7 @@ export async function updateOrderStatus(orderId: string, newStatus: string, note
 }
 
 // Add inventory tracking
-export async function updateProductStock(productId: number, newStock: number, reason: string, referenceId?: string, updatedBy?: string) {
+export async function updateProductStock(productId: string, newStock: number, reason: string, referenceId?: string, updatedBy?: string) {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
