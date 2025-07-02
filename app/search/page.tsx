@@ -1,15 +1,14 @@
+'use client'
 
-"use client"
-
-import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Search, Filter, X, SlidersHorizontal, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import Image from "next/image"
-import Link from "next/link"
+import Image from 'next/image'
+import Link from 'next/link'
 import { storeManager } from "@/lib/store"
 
 interface Product {
@@ -23,10 +22,10 @@ interface Product {
   stock: number
 }
 
-export default function SearchPage() {
+function SearchResults() {
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
-  
+
   const [searchTerm, setSearchTerm] = useState(initialQuery)
   const [products, setProducts] = useState<Product[]>([])
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
@@ -53,7 +52,7 @@ export default function SearchPage() {
     try {
       const fetchedProducts = await storeManager.getProducts()
       setProducts(fetchedProducts)
-      
+
       const uniqueCategories = [...new Set(fetchedProducts.map(p => p.category))]
       setCategories(uniqueCategories)
     } catch (error) {
@@ -66,13 +65,13 @@ export default function SearchPage() {
   const calculateSimilarity = (str1: string, str2: string): number => {
     const s1 = str1.toLowerCase()
     const s2 = str2.toLowerCase()
-    
+
     if (s1 === s2) return 1.0
     if (s1.includes(s2) || s2.includes(s1)) return 0.8
-    
+
     const words1 = s1.split(/\s+/)
     const words2 = s2.split(/\s+/)
-    
+
     let wordMatches = 0
     for (const word1 of words1) {
       for (const word2 of words2) {
@@ -82,35 +81,35 @@ export default function SearchPage() {
         }
       }
     }
-    
+
     if (wordMatches > 0) {
       return 0.6 + (wordMatches / Math.max(words1.length, words2.length)) * 0.2
     }
-    
+
     const maxLen = Math.max(s1.length, s2.length)
     if (maxLen === 0) return 1.0
-    
+
     let commonChars = 0
     for (let i = 0; i < Math.min(s1.length, s2.length); i++) {
       if (s1[i] === s2[i]) commonChars++
     }
-    
+
     const similarity = commonChars / maxLen
     return similarity > 0.3 ? similarity : 0
   }
 
   const applyFilters = () => {
     let filtered: any[] = []
-    
+
     if (searchTerm.trim()) {
       const scoredProducts = products.map(product => {
         const nameScore = calculateSimilarity(product.name, searchTerm)
         const descScore = calculateSimilarity(product.description, searchTerm) * 0.7
         const categoryScore = calculateSimilarity(product.category, searchTerm) * 0.5
-        
+
         const searchWords = searchTerm.toLowerCase().split(/\s+/)
         let partialScore = 0
-        
+
         for (const word of searchWords) {
           if (word.length >= 2) {
             if (product.name.toLowerCase().includes(word)) partialScore += 0.3
@@ -118,9 +117,9 @@ export default function SearchPage() {
             if (product.category.toLowerCase().includes(word)) partialScore += 0.1
           }
         }
-        
+
         const totalScore = Math.max(nameScore, descScore, categoryScore) + partialScore
-        
+
         return {
           ...product,
           similarity: totalScore
@@ -129,10 +128,10 @@ export default function SearchPage() {
         const matchesCategory = !filters.category || product.category === filters.category
         const matchesPrice = product.price >= filters.minPrice && product.price <= filters.maxPrice
         const hasRelevance = product.similarity > 0.1
-        
+
         return matchesCategory && matchesPrice && hasRelevance
       })
-      
+
       scoredProducts.sort((a, b) => {
         if (filters.sortBy === 'relevance') {
           return b.similarity - a.similarity
@@ -144,7 +143,7 @@ export default function SearchPage() {
           default: return b.similarity - a.similarity
         }
       })
-      
+
       filtered = scoredProducts
     } else {
       filtered = products.filter(product => {
@@ -152,7 +151,7 @@ export default function SearchPage() {
         const matchesPrice = product.price >= filters.minPrice && product.price <= filters.maxPrice
         return matchesCategory && matchesPrice
       })
-      
+
       switch (filters.sortBy) {
         case 'price-low':
           filtered.sort((a, b) => a.price - b.price)
@@ -222,7 +221,7 @@ export default function SearchPage() {
                   ))}
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">Min Price</label>
                 <Input
@@ -232,7 +231,7 @@ export default function SearchPage() {
                   min="0"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">Max Price</label>
                 <Input
@@ -242,7 +241,7 @@ export default function SearchPage() {
                   min="0"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">Sort By</label>
                 <select
@@ -257,7 +256,7 @@ export default function SearchPage() {
                 </select>
               </div>
             </div>
-            
+
             <div className="mt-4 flex justify-end">
               <Button variant="outline" onClick={clearFilters}>
                 Clear Filters
@@ -333,5 +332,31 @@ export default function SearchPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto p-4">
+          <div className="h-8 bg-gray-200 rounded w-64 mb-8 animate-pulse"></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <div className="aspect-square bg-gray-200 rounded-t-lg"></div>
+                <CardContent className="p-4">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    }>
+      <SearchResults />
+    </Suspense>
   )
 }

@@ -80,7 +80,7 @@ const products: Product[] = [
   {
     id: "1004",
     name: "OnePlus 12",
-    description: "Flagship OnePlus smartphone with Snapdragon 8 Gen 3, fast charging, and OxygenOS. Features 6.82-inch LTPO AMOLED display, 50MP triple camera system, and 100W SuperVOOC charging.",
+    description: "Flagship killer with Snapdragon 8 Gen 3, 120Hz display, and 100W fast charging. Premium build quality at competitive price. Features 6.82-inch Fluid AMOLED display, 50MP triple camera system, and OxygenOS 14.",
     price: 799.99,
     image: "/placeholder.svg?height=300&width=300",
     reviews: 134,
@@ -311,9 +311,8 @@ const products: Product[] = [
     image: "/placeholder.svg?height=300&width=300",
     reviews: 67,
     stock: 23,
-    category: "home-living",
-    rating: 4.0
-  }
+    category: "home-living"
+  },
 ]
 
 const categories: Category[] = [
