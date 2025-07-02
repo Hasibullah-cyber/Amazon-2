@@ -38,12 +38,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         try {
           const parsedCart = JSON.parse(savedCart)
           if (Array.isArray(parsedCart)) {
+            console.log('CartProvider: Loaded cart from localStorage:', parsedCart)
             setCartItems(parsedCart)
           }
         } catch (error) {
           console.error("Failed to parse cart from localStorage:", error)
           localStorage.removeItem("cart")
         }
+      } else {
+        console.log('CartProvider: No saved cart found')
       }
     }
   }, [])

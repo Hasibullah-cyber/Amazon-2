@@ -36,35 +36,53 @@ function PaymentContent() {
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
 
   useEffect(() => {
-    // Get checkout data from URL params or localStorage
+    console.log('PaymentContent: Loading checkout data...')
+    
+    // Get checkout data from URL params first
     const dataParam = searchParams.get('data')
     if (dataParam) {
       try {
         const decoded = JSON.parse(decodeURIComponent(dataParam))
+        console.log('PaymentContent: Data from URL params:', decoded)
         setCheckoutData(decoded)
+        return
       } catch (error) {
-        console.error('Error parsing checkout data:', error)
+        console.error('Error parsing checkout data from URL:', error)
       }
     }
 
-    // Fallback to localStorage
-    if (!dataParam && typeof window !== 'undefined') {
-      const stored = localStorage.getItem('checkout-data')
+    // Fallback to sessionStorage first, then localStorage
+    if (typeof window !== 'undefined') {
+      let stored = sessionStorage.getItem('checkout-data')
+      if (!stored) {
+        stored = localStorage.getItem('checkout-data')
+      }
+      
       if (stored) {
         try {
-          setCheckoutData(JSON.parse(stored))
+          const parsedData = JSON.parse(stored)
+          console.log('PaymentContent: Data from storage:', parsedData)
+          setCheckoutData(parsedData)
+          return
         } catch (error) {
           console.error('Error parsing stored checkout data:', error)
         }
       }
     }
 
-    // If no cart items, redirect to cart
+    // If no checkout data found, redirect back to checkout
+    console.log('PaymentContent: No checkout data found, redirecting...')
+    router.push('/checkout')
+  }, [searchParams, router])
+
+  // Separate effect for cart validation
+  useEffect(() => {
     if (items.length === 0) {
+      console.log('PaymentContent: No cart items, redirecting to cart...')
       router.push('/cart')
       return
     }
-  }, [searchParams, items.length, router])
+  }, [items.length, router])
 
   const handlePlaceOrder = async () => {
     if (!checkoutData) {
@@ -176,8 +194,16 @@ function PaymentContent() {
       <div className="container mx-auto px-4 py-8">
         <Card>
           <CardContent className="p-8 text-center">
-            <h2 className="text-xl font-semibold mb-4">Loading...</h2>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <h2 className="text-xl font-semibold mb-4">Loading Payment Page...</h2>
             <p className="text-gray-600">Please wait while we load your checkout information.</p>
+            <Button 
+              onClick={() => router.push('/checkout')} 
+              variant="outline" 
+              className="mt-4"
+            >
+              Return to Checkout
+            </Button>
           </CardContent>
         </Card>
       </div>

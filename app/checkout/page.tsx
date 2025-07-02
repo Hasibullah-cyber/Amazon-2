@@ -76,14 +76,28 @@ function CheckoutContent() {
       return
     }
 
-    // Store checkout data
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('checkout-data', JSON.stringify(formData))
-    }
+    setIsLoading(true)
 
-    // Navigate to payment page with data
-    const encodedData = encodeURIComponent(JSON.stringify(formData))
-    router.push(`/checkout/payment?data=${encodedData}`)
+    try {
+      // Store checkout data in multiple ways for reliability
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('checkout-data', JSON.stringify(formData))
+        sessionStorage.setItem('checkout-data', JSON.stringify(formData))
+      }
+
+      // Navigate to payment page with data
+      const encodedData = encodeURIComponent(JSON.stringify(formData))
+      router.push(`/checkout/payment?data=${encodedData}`)
+    } catch (error) {
+      console.error('Error navigating to payment:', error)
+      toast({
+        variant: "destructive",
+        title: "Navigation Error",
+        description: "Failed to proceed to payment. Please try again."
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Redirect if cart is empty
