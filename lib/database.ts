@@ -285,12 +285,12 @@ export async function initializeDatabase() {
 
     // Create indexes on is_active and other boolean columns separately
     await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
       CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
       CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
       CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active);
       CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
       CREATE INDEX IF NOT EXISTS idx_reviews_approved ON product_reviews(is_approved);
+      CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
     `)
 
     console.log('Database tables initialized successfully with full schema')
