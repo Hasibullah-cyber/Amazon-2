@@ -98,19 +98,27 @@ export default function PaymentPage() {
     setIsProcessingPayment(true)
 
     try {
+      // Validate cart items
+      if (!cart || cart.length === 0) {
+        alert('Your cart is empty. Please add items to cart before placing an order.')
+        return
+      }
+
       const orderData = {
         customerInfo: {
-          name,
-          email,
-          phone,
-          address,
-          city
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          city: city.trim()
         },
         items: cart,
         paymentMethod: selectedPayment,
         transactionId: selectedPayment === "Online Payment" ? "TXN-" + Date.now() : "",
         userId: user?.id
       }
+
+      console.log('Sending order data:', orderData)
 
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -121,19 +129,22 @@ export default function PaymentPage() {
       })
 
       const result = await response.json()
+      console.log('Order response:', result)
 
-      if (result.success) {
+      if (response.ok && result.success) {
         // Clear cart from localStorage
         localStorage.removeItem("cart")
         
         // Redirect to order confirmation with order ID
         router.push(`/order-confirmation?orderId=${result.orderId}`)
       } else {
-        alert(result.error || 'Failed to place order. Please try again.')
+        const errorMessage = result.error || result.details || 'Failed to place order. Please try again.'
+        alert(errorMessage)
+        console.error('Order failed:', result)
       }
     } catch (error) {
       console.error('Error placing order:', error)
-      alert('Failed to place order. Please try again.')
+      alert('Network error. Please check your connection and try again.')
     } finally {
       setIsProcessingPayment(false)
     }

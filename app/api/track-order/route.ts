@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const client = await pool.connect()
     try {
       // Query order from database
-      const result = await client.query(`
+      let result = await client.query(`
         SELECT 
           id,
           order_id as "orderId",
@@ -46,8 +46,24 @@ export async function GET(request: NextRequest) {
       `, [orderId])
 
       if (result.rows.length === 0) {
-        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      // Try to find order with different case or formatting
+      const fallbackResult = await client.query(`
+        SELECT * FROM orders 
+        WHERE LOWER(order_id) = LOWER($1) 
+        OR order_id LIKE $2
+        ORDER BY created_at DESC
+        LIMIT 1
+      `, [orderId, `%${orderId}%`])
+
+      if (fallbackResult.rows.length === 0) {
+        return NextResponse.json({
+          success: false,
+          error: `Order ${orderId} not found. Please check your order ID and try again.`
+        }, { status: 404 })
       }
+
+      result = fallbackResult
+    }
 
       const order = result.rows[0]
 

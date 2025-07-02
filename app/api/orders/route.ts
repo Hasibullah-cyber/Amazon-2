@@ -3,13 +3,23 @@ import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
 export async function POST(request: Request) {
-  const client = await pool.connect()
+  let client;
   
   try {
-    await client.query('BEGIN')
-    
+    // Validate request data first
     const orderData = await request.json()
     console.log('📦 Processing order:', orderData)
+    
+    // Validate required fields
+    if (!orderData.customerInfo?.name || !orderData.customerInfo?.email || !orderData.items?.length) {
+      return NextResponse.json({
+        success: false,
+        error: 'Missing required order information'
+      }, { status: 400 })
+    }
+    
+    client = await pool.connect()
+    await client.query('BEGIN')
     
     // Generate order ID
     const orderId = `HS-${Date.now()}`
@@ -129,16 +139,40 @@ export async function POST(request: Request) {
     })
     
   } catch (error) {
-    await client.query('ROLLBACK')
+    if (client) {
+      try {
+        await client.query('ROLLBACK')
+      } catch (rollbackError) {
+        console.error('❌ Rollback failed:', rollbackError)
+      }
+    }
     console.error('❌ Error processing order:', error)
+    
+    let errorMessage = 'Failed to process order. Please try again.'
+    let statusCode = 500
+    
+    if (error instanceof Error) {
+      if (error.message.includes('connect') || error.message.includes('ECONNREFUSED')) {
+        errorMessage = 'Database connection failed. Please try again.'
+      } else if (error.message.includes('duplicate') || error.message.includes('unique')) {
+        errorMessage = 'Order ID already exists. Please try again.'
+      }
+      console.error('Error details:', error.message)
+    }
     
     return NextResponse.json({
       success: false,
-      error: 'Failed to process order. Please try again.',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
+    }, { status: statusCode })
   } finally {
-    client.release()
+    if (client) {
+      try {
+        client.release()
+      } catch (releaseError) {
+        console.error('❌ Client release failed:', releaseError)
+      }
+    }
   }
 }
 
