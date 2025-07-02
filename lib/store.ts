@@ -313,6 +313,17 @@ const products: Product[] = [
     stock: 23,
     category: "home-living"
   },
+  {
+    id: 25,
+    name: "OnePlus 12",
+    description: "Flagship killer with Snapdragon 8 Gen 3, 120Hz display, and 100W fast charging. Premium build quality at competitive price. Features 6.82-inch Fluid AMOLED display, 50MP triple camera system, and OxygenOS 14.",
+    price: 799.99,
+    image: "/placeholder.svg?height=300&width=300",
+    reviews: 134,
+    stock: 18,
+    category: "electronics",
+    rating: 4.5
+  },
 ]
 
 const categories: Category[] = [
