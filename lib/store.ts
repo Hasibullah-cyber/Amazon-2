@@ -654,17 +654,32 @@ class StoreManager {
   // Order methods
   async getOrders(): Promise<Order[]> {
     try {
+      // First try to get from API (database)
       const response = await fetch('/api/admin/orders')
       if (response.ok) {
         const orders = await response.json()
-        this.orders = orders
+        this.state.orders = orders
         this.notifySubscribers()
+        console.log('Fetched orders from database:', orders.length)
         return orders
       }
     } catch (error) {
-      console.error('Error fetching orders:', error)
+      console.error('Error fetching orders from API:', error)
     }
-    return this.orders
+
+    // Fallback to localStorage
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('orders')
+      if (stored) {
+        const orders = JSON.parse(stored)
+        this.state.orders = orders
+        console.log('Using fallback orders from localStorage:', orders.length)
+        return orders
+      }
+    }
+
+    console.log('No orders found in database or localStorage')
+    return []
   }
 
   async getUserOrders(email: string): Promise<Order[]> {
