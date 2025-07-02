@@ -177,14 +177,20 @@ export async function initializeDatabase() {
     console.log('Database tables initialized successfully with full schema')
 
     // Create indexes for better performance (after all tables are created)
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-      CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured);
-      CREATE INDEX IF NOT EXISTS idx_products_stock ON products(stock);
-      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
-      CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
-      CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
-    `)
+    try {
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+        CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured);
+        CREATE INDEX IF NOT EXISTS idx_products_stock ON products(stock);
+        CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+        CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+        CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+        CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
+      `)
+    } catch (indexError) {
+      console.log('Note: Some indexes may already exist or tables may not be ready:', indexError)
+    }
 
     // Initialize default admin user
     const { initializeDefaultAdmin } = await import('./admin-auth')
