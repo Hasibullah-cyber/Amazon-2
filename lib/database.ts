@@ -1,21 +1,18 @@
+
 import { Pool } from 'pg'
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/ecommerce_db',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-})
-
-export function getPool() {
-  return pool
-}
 // Create connection pool
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/ecommerce_db',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 })
+
+export function getPool() {
+  return pool
+}
 
 // Test database connection
 export async function testDatabaseConnection() {
