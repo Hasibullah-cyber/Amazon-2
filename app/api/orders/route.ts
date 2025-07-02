@@ -74,10 +74,31 @@ export async function POST(request: NextRequest) {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              ...order,
-              items: orderData.items // Send original items array
+              email: order.customerEmail,
+              orderDetails: {
+                orderId: order.orderId,
+                customerName: order.customerName,
+                items: orderData.items,
+                subtotal: order.subtotal,
+                shipping: order.shipping,
+                vat: order.vat,
+                totalAmount: order.totalAmount,
+                address: order.address,
+                city: order.city,
+                phone: order.customerPhone
+              }
             })
           })
+          
+          const emailResult = await emailResponse.json()
+          if (emailResult.success) {
+            console.log('✅ Order confirmation email sent successfully')
+          } else {
+            console.error('❌ Failed to send order confirmation email:', emailResult.error)
+          }
+        } catch (emailError) {
+          console.error('❌ Error sending confirmation email:', emailError)
+        }
 
           if (!emailResponse.ok) {
             console.warn('Failed to send confirmation email, but order was created')

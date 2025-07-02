@@ -93,16 +93,34 @@ export default function OrderConfirmationPage() {
 
         // Send confirmation email
         try {
-          await fetch('/api/send-confirmation', {
+          const emailResponse = await fetch('/api/send-confirmation', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
               email: orderData.email,
-              orderData: orderData
+              orderDetails: {
+                orderId: orderData.orderId,
+                customerName: orderData.customerName,
+                items: orderData.items,
+                subtotal: orderData.subtotal,
+                shipping: orderData.shipping,
+                vat: orderData.vat,
+                totalAmount: orderData.totalAmount,
+                address: orderData.address,
+                city: orderData.city,
+                phone: orderData.customerPhone
+              }
             }),
           })
+          
+          const emailResult = await emailResponse.json()
+          if (emailResult.success) {
+            console.log('✅ Confirmation email sent successfully')
+          } else {
+            console.error('❌ Email sending failed:', emailResult.error)
+          }
         } catch (emailError) {
           console.error('Failed to send confirmation email:', emailError)
         }
