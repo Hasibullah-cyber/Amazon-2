@@ -68,22 +68,24 @@ export default function Navbar() {
             </Link>
 
             {/* Search bar - takes most space */}
-            <form onSubmit={handleSearch} className="relative flex-1 max-w-xl">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="amazon-input pl-10 pr-10"
-            />
-            <Button
-              type="submit"
-              size="sm"
-              className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-[#febd69] hover:bg-[#f3a847] text-black h-8"
-            >
-              <Search className="w-4 h-4" />
-            </Button>
+          <form onSubmit={handleSearch} className="relative flex-1 max-w-xl">
+            <div className="relative flex items-center bg-white rounded-md shadow-sm border border-gray-300 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 pl-10 pr-12 h-10 text-sm border-0 rounded-l-md focus:ring-0 focus:outline-none bg-transparent"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 px-3 bg-[#febd69] hover:bg-[#f3a847] text-black rounded-md border-0"
+              >
+                <Search className="w-4 h-4" />
+              </Button>
+            </div>
           </form>
 
             {/* Right side icons */}

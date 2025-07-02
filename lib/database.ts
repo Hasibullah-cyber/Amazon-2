@@ -56,16 +56,13 @@ export async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        description TEXT,
         price DECIMAL(10,2) NOT NULL,
-        category VARCHAR(100) NOT NULL,
-        subcategory VARCHAR(100),
-        image VARCHAR(500),
         stock INTEGER DEFAULT 0,
-        rating DECIMAL(3,2) DEFAULT 0,
+        category VARCHAR(100) NOT NULL,
+        image TEXT,
+        description TEXT,
+        featured BOOLEAN DEFAULT false,
         reviews INTEGER DEFAULT 0,
-        featured BOOLEAN DEFAULT FALSE,
-        tags TEXT[],
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
