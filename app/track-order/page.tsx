@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Package, Truck, CheckCircle, Clock, MapPin, Phone, Mail, AlertCircle } from "lucide-react"
 
@@ -24,7 +24,6 @@ export default function TrackOrderPage() {
 
     try {
       const response = await fetch(`/api/track-order?orderId=${encodeURIComponent(orderId.trim())}`)
-
       const data = await response.json()
 
       if (response.ok && data.order) {
@@ -40,13 +39,6 @@ export default function TrackOrderPage() {
       setLoading(false)
     }
   }
-
-  const statusSteps = [
-    { key: 'pending', label: 'Order Placed', icon: Package, description: 'Your order has been received' },
-    { key: 'processing', label: 'Processing', icon: Clock, description: 'We are preparing your order' },
-    { key: 'shipped', label: 'Shipped', icon: Truck, description: 'Your order is on the way' },
-    { key: 'delivered', label: 'Delivered', icon: CheckCircle, description: 'Order delivered successfully' }
-  ]
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -71,10 +63,10 @@ export default function TrackOrderPage() {
   }
 
   const statusSteps = [
-    { key: 'pending', label: 'Order Confirmed', description: 'Your order has been received and confirmed' },
-    { key: 'processing', label: 'Processing', description: 'Your order is being prepared for shipment' },
-    { key: 'shipped', label: 'Shipped', description: 'Your order is on its way to you' },
-    { key: 'delivered', label: 'Delivered', description: 'Your order has been delivered successfully' }
+    { key: 'pending', label: 'Order Confirmed', description: 'Your order has been received and confirmed', icon: Package },
+    { key: 'processing', label: 'Processing', description: 'Your order is being prepared for shipment', icon: Clock },
+    { key: 'shipped', label: 'Shipped', description: 'Your order is on its way to you', icon: Truck },
+    { key: 'delivered', label: 'Delivered', description: 'Your order has been delivered successfully', icon: CheckCircle }
   ]
 
   const getStepStatus = (stepKey: string, currentStatus: string) => {
@@ -97,167 +89,6 @@ export default function TrackOrderPage() {
           <h1 className="text-3xl font-bold text-center mb-8">Track Your Order</h1>
 
           {/* Search Form */}
-          <Card className="mb-8">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <Input
-                  placeholder="Enter your order ID (e.g., ORD-123456789)"
-                  value={orderId}
-                  onChange={(e) => setOrderId(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleTrackOrder()}
-                  className="flex-1"
-                />
-                <Button 
-                  onClick={handleTrackOrder} 
-                  disabled={loading}
-                  className="amazon-button"
-                >
-                  {loading ? 'Tracking...' : 'Track Order'}
-                </Button>
-              </div>
-              {error && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-500" />
-                  <p className="text-red-700">{error}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Order Details */}
-          {orderData && (
-            <div className="space-y-6">
-              {/* Order Info */}
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h2 className="text-xl font-semibold">Order {orderData.orderId}</h2>
-                      <p className="text-gray-600">Placed on {new Date(orderData.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <Badge className={`${orderData.status === 'delivered' ? 'bg-green-100 text-green-800' : 
-                      orderData.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                      orderData.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'}`}>
-                      {orderData.status.charAt(0).toUpperCase() + orderData.status.slice(1)}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-medium mb-2">Delivery Address</h3>
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          {orderData.address}, {orderData.city}
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <Phone className="h-4 w-4" />
-                          {orderData.customerPhone}
-                        </p>
-                        <p className="flex items-center gap-2">
-                          <Mail className="h-4 w-4" />
-                          {orderData.customerEmail}
-                        </p>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-medium mb-2">Order Summary</h3>
-                      <div className="text-sm space-y-1">
-                        <div className="flex justify-between">
-                          <span>Subtotal:</span>
-                          <span>৳{orderData.subtotal.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Shipping:</span>
-                          <span>৳{orderData.shipping.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between font-semibold">
-                          <span>Total:</span>
-                          <span>৳{orderData.totalAmount.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Progress Steps */}
-              <Card>
-                <CardHeader>
-                  <h3 className="text-lg font-semibold">Order Progress</h3>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {statusSteps.map((step, index) => {
-                      const status = getStepStatus(step.key, orderData.status)
-                      const StepIcon = step.icon
-                      
-                      return (
-                        <div key={step.key} className="flex items-center gap-4">
-                          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                            status === 'completed' ? 'bg-green-500 text-white' :
-                            status === 'current' ? 'bg-blue-500 text-white' :
-                            'bg-gray-200 text-gray-400'
-                          }`}>
-                            <StepIcon className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1">
-                            <div className={`font-medium ${
-                              status === 'completed' ? 'text-green-700' :
-                              status === 'current' ? 'text-blue-700' :
-                              'text-gray-400'
-                            }`}>
-                              {step.label}
-                            </div>
-                            <div className="text-sm text-gray-600">{step.description}</div>
-                          </div>
-                          {index < statusSteps.length - 1 && (
-                            <div className={`w-px h-8 ml-4 ${
-                              status === 'completed' ? 'bg-green-300' : 'bg-gray-200'
-                            }`} />
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Items */}
-              <Card>
-                <CardHeader>
-                  <h3 className="text-lg font-semibold">Items in this Order</h3>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {orderData.items.map((item: any, index: number) => (
-                      <div key={index} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
-                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <Package className="h-8 w-8 text-gray-400" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium">{item.name}</h4>
-                          <p className="text-gray-600">Quantity: {item.quantity}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold">৳{(item.price * item.quantity).toFixed(2)}</p>
-                          <p className="text-sm text-gray-600">৳{item.price.toFixed(2)} each</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
           <Card className="p-6 mb-8 shadow-sm">
             <div className="flex flex-col sm:flex-row gap-4">
               <Input
@@ -352,6 +183,7 @@ export default function TrackOrderPage() {
                 <div className="space-y-6">
                   {statusSteps.map((step, index) => {
                     const stepStatus = getStepStatus(step.key, orderData.status)
+                    const StepIcon = step.icon
 
                     return (
                       <div key={step.key} className="flex items-start gap-4">
@@ -366,7 +198,7 @@ export default function TrackOrderPage() {
                             {stepStatus === 'completed' ? (
                               <CheckCircle className="w-5 h-5" />
                             ) : (
-                              getStatusIcon(step.key)
+                              <StepIcon className="w-5 h-5" />
                             )}
                           </div>
                           {index < statusSteps.length - 1 && (
@@ -401,7 +233,7 @@ export default function TrackOrderPage() {
                     <div key={index} className="flex items-center gap-4 border-b pb-4 last:border-b-0">
                       <div className="w-20 h-20 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
                         <img 
-                          src={item.image} 
+                          src={item.image || "/placeholder.svg"} 
                           alt={item.name} 
                           className="w-full h-full object-contain"
                         />
