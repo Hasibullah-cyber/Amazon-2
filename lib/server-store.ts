@@ -39,6 +39,8 @@ interface Order {
   estimatedDelivery: string
 }
 
+import { executeQuery } from './database'
+
 class ServerStoreManager {
   private static instance: ServerStoreManager | null = null
   private dbInitialized = false
@@ -441,7 +443,13 @@ class ServerStoreManager {
         totalRevenue: 0,
         pendingOrders: 0,
         lowStockProducts: 0,
-        recentOrders: []
+        monthlyRevenue: 0,
+        totalCustomers: 0,
+        totalProducts: 0,
+        recentOrders: [],
+        salesTrend: [],
+        topProducts: [],
+        orderStatusDistribution: {}
       }
     }
 
@@ -449,26 +457,80 @@ class ServerStoreManager {
       const client = await pool.connect()
       try {
         // Get comprehensive stats with proper error handling
-        const [ordersResult, pendingResult, lowStockResult, recentOrdersResult, monthlyRevenueResult] = await Promise.all([
+        const [
+          ordersResult,
+          pendingResult,
+          lowStockResult,
+          customersResult,
+          productsResult,
+          recentOrdersResult,
+          monthlyRevenueResult,
+          dailySalesResult,
+          topProductsResult,
+          statusDistributionResult
+        ] = await Promise.all([
           client.query('SELECT COUNT(*)::integer as total, COALESCE(SUM(total_amount), 0)::float as revenue FROM orders'),
           client.query('SELECT COUNT(*)::integer as pending FROM orders WHERE status = $1', ['pending']),
-          client.query('SELECT COUNT(*)::integer as low_stock FROM products WHERE stock < 10'),
+          client.query('SELECT COUNT(*)::integer as low_stock FROM products WHERE stock < 10 AND is_active = true'),
+          client.query('SELECT COUNT(*)::integer as total FROM users WHERE is_active = true'),
+          client.query('SELECT COUNT(*)::integer as total FROM products WHERE is_active = true'),
           client.query(`
             SELECT 
               id, order_id as "orderId", customer_name as "customerName",
               customer_email as "customerEmail", items, total_amount as "totalAmount",
-              status, created_at as "createdAt"
+              status, payment_method as "paymentMethod", payment_status as "paymentStatus",
+              created_at as "createdAt"
             FROM orders 
             ORDER BY created_at DESC 
-            LIMIT 5
+            LIMIT 10
           `),
           client.query(`
             SELECT 
               COALESCE(SUM(total_amount), 0)::float as revenue 
             FROM orders 
             WHERE created_at >= date_trunc('month', CURRENT_DATE)
+              AND status NOT IN ('cancelled', 'refunded')
+          `),
+          client.query(`
+            SELECT 
+              DATE(created_at) as date,
+              COUNT(*)::integer as orders,
+              COALESCE(SUM(total_amount), 0)::float as revenue
+            FROM orders 
+            WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+              AND status NOT IN ('cancelled', 'refunded')
+            GROUP BY DATE(created_at)
+            ORDER BY date DESC
+            LIMIT 30
+          `),
+          client.query(`
+            SELECT 
+              p.name as "productName",
+              p.id as "productId",
+              COALESCE(SUM(oi.quantity), 0)::integer as "totalSold",
+              COALESCE(SUM(oi.total_price), 0)::float as "totalRevenue"
+            FROM products p
+            LEFT JOIN order_items oi ON p.id = oi.product_id
+            LEFT JOIN orders o ON oi.order_id = o.order_id
+            WHERE o.status NOT IN ('cancelled', 'refunded') OR o.status IS NULL
+            GROUP BY p.id, p.name
+            ORDER BY "totalSold" DESC
+            LIMIT 10
+          `),
+          client.query(`
+            SELECT 
+              status,
+              COUNT(*)::integer as count
+            FROM orders
+            GROUP BY status
           `)
         ])
+
+        // Process status distribution
+        const statusDistribution: { [key: string]: number } = {}
+        statusDistributionResult.rows.forEach(row => {
+          statusDistribution[row.status] = row.count
+        })
 
         return {
           totalOrders: ordersResult.rows[0]?.total || 0,
@@ -476,11 +538,16 @@ class ServerStoreManager {
           pendingOrders: pendingResult.rows[0]?.pending || 0,
           lowStockProducts: lowStockResult.rows[0]?.low_stock || 0,
           monthlyRevenue: monthlyRevenueResult.rows[0]?.revenue || 0,
+          totalCustomers: customersResult.rows[0]?.total || 0,
+          totalProducts: productsResult.rows[0]?.total || 0,
           recentOrders: recentOrdersResult.rows.map(row => ({
             ...row,
             items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
             createdAt: new Date(row.createdAt).toISOString()
-          }))
+          })),
+          salesTrend: dailySalesResult.rows,
+          topProducts: topProductsResult.rows,
+          orderStatusDistribution: statusDistribution
         }
       } finally {
         client.release()
@@ -493,8 +560,180 @@ class ServerStoreManager {
         pendingOrders: 0,
         lowStockProducts: 0,
         monthlyRevenue: 0,
-        recentOrders: []
+        totalCustomers: 0,
+        totalProducts: 0,
+        recentOrders: [],
+        salesTrend: [],
+        topProducts: [],
+        orderStatusDistribution: {}
       }
+    }
+  }
+
+  async getOrders(limit: number = 50, offset: number = 0) {
+    if (!pool) return []
+
+    try {
+      const result = await executeQuery(`
+        SELECT 
+          id, order_id as "orderId", customer_name as "customerName",
+          customer_email as "customerEmail", customer_phone as "customerPhone",
+          address, city, items, total_amount as "totalAmount",
+          status, payment_method as "paymentMethod", payment_status as "paymentStatus",
+          created_at as "createdAt", estimated_delivery as "estimatedDelivery",
+          tracking_number as "trackingNumber"
+        FROM orders 
+        ORDER BY created_at DESC 
+        LIMIT $1 OFFSET $2
+      `, [limit, offset])
+
+      return result.rows.map(row => ({
+        ...row,
+        items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
+        createdAt: new Date(row.createdAt).toISOString()
+      }))
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+      return []
+    }
+  }
+
+  async getProducts(limit: number = 50, offset: number = 0) {
+    if (!pool) return []
+
+    try {
+      const result = await executeQuery(`
+        SELECT 
+          id, name, price, sale_price as "salePrice", stock, category,
+          image, description, featured, is_active as "isActive",
+          created_at as "createdAt", updated_at as "updatedAt"
+        FROM products 
+        ORDER BY created_at DESC 
+        LIMIT $1 OFFSET $2
+      `, [limit, offset])
+
+      return result.rows.map(row => ({
+        ...row,
+        createdAt: new Date(row.createdAt).toISOString(),
+        updatedAt: new Date(row.updatedAt).toISOString()
+      }))
+    } catch (error) {
+      console.error('Error fetching products:', error)
+      return []
+    }
+  }
+
+  async updateOrderStatus(orderId: string, status: string, notes?: string) {
+    if (!pool) return false
+
+    try {
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+
+        // Update order status
+        await client.query(
+          'UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $2',
+          [status, orderId]
+        )
+
+        // Add to status history
+        await client.query(
+          'INSERT INTO order_status_history (order_id, status, notes, created_by) VALUES ($1, $2, $3, $4)',
+          [orderId, status, notes || `Status changed to ${status}`, 'admin']
+        )
+
+        await client.query('COMMIT')
+        return true
+      } catch (error) {
+        await client.query('ROLLBACK')
+        throw error
+      } finally {
+        client.release()
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error)
+      return false
+    }
+  }
+
+  async createProduct(productData: any) {
+    if (!pool) return null
+
+    try {
+      const result = await executeQuery(`
+        INSERT INTO products (
+          name, slug, price, sale_price, stock, category, image, description,
+          short_description, featured, is_active, sku
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING *
+      `, [
+        productData.name,
+        productData.slug || productData.name.toLowerCase().replace(/\s+/g, '-'),
+        productData.price,
+        productData.salePrice || null,
+        productData.stock || 0,
+        productData.category,
+        productData.image || null,
+        productData.description || null,
+        productData.shortDescription || null,
+        productData.featured || false,
+        productData.isActive !== false,
+        productData.sku || null
+      ])
+
+      return result.rows[0]
+    } catch (error) {
+      console.error('Error creating product:', error)
+      return null
+    }
+  }
+
+  async updateProduct(productId: number, productData: any) {
+    if (!pool) return false
+
+    try {
+      const result = await executeQuery(`
+        UPDATE products SET
+          name = $1, price = $2, sale_price = $3, stock = $4,
+          category = $5, image = $6, description = $7,
+          featured = $8, is_active = $9, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $10
+        RETURNING *
+      `, [
+        productData.name,
+        productData.price,
+        productData.salePrice || null,
+        productData.stock,
+        productData.category,
+        productData.image,
+        productData.description,
+        productData.featured || false,
+        productData.isActive !== false,
+        productId
+      ])
+
+      return result.rows.length > 0
+    } catch (error) {
+      console.error('Error updating product:', error)
+      return false
+    }
+  }
+
+  async deleteProduct(productId: number) {
+    if (!pool) return false
+
+    try {
+      // Soft delete - mark as inactive instead of deleting
+      const result = await executeQuery(
+        'UPDATE products SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+        [productId]
+      )
+
+      return result.rowCount > 0
+    } catch (error) {
+      console.error('Error deleting product:', error)
+      return false
     }
   }
 }
