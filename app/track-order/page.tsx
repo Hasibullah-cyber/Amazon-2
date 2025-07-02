@@ -23,11 +23,7 @@ export default function TrackOrderPage() {
     setError("")
 
     try {
-      const response = await fetch('/api/track-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: orderId.trim() })
-      })
+      const response = await fetch(`/api/track-order?orderId=${encodeURIComponent(orderId.trim())}`)
 
       const data = await response.json()
 

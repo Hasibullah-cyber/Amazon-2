@@ -88,46 +88,15 @@ export default function OrderConfirmationPage() {
         }),
       })
 
-      if (response.ok) {
+      const result = await response.json()
+      console.log('Order API response:', result)
+
+      if (response.ok && result.success) {
         setOrderSubmitted(true)
-
-        // Send confirmation email
-        try {
-          const emailResponse = await fetch('/api/send-confirmation', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: orderData.email,
-              orderDetails: {
-                orderId: orderData.orderId,
-                customerName: orderData.customerName,
-                items: orderData.items,
-                subtotal: orderData.subtotal,
-                shipping: orderData.shipping,
-                vat: orderData.vat,
-                totalAmount: orderData.totalAmount,
-                address: orderData.address,
-                city: orderData.city,
-                phone: orderData.customerPhone
-              }
-            }),
-          })
-          
-          const emailResult = await emailResponse.json()
-          if (emailResult.success) {
-            console.log('✅ Confirmation email sent successfully')
-          } else {
-            console.error('❌ Email sending failed:', emailResult.error)
-          }
-        } catch (emailError) {
-          console.error('Failed to send confirmation email:', emailError)
-        }
-
         console.log('Order submitted successfully')
       } else {
-        throw new Error('Failed to submit order')
+        console.error('Order submission failed:', result.error)
+        throw new Error(result.error || 'Failed to submit order')
       }
     } catch (error) {
       console.error('Error submitting order:', error)

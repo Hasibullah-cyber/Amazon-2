@@ -28,7 +28,8 @@ export default function OrderHistoryPage() {
 
     try {
       setLoading(true)
-      const userOrders = await storeManager.getUserOrders(user.email)
+      const response = await fetch(`/api/user-orders?email=${encodeURIComponent(user.email)}`)
+      const userOrders = await response.json()
       setOrders(userOrders)
       filterOrdersFunc(userOrders, searchTerm, filterStatus)
     } catch (error) {
