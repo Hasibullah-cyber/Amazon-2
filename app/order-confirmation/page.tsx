@@ -15,6 +15,7 @@ export default function OrderConfirmationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [orderSubmitted, setOrderSubmitted] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
   const { isAuthenticated, user } = useAuth()
 
   useEffect(() => {
@@ -94,13 +95,20 @@ export default function OrderConfirmationPage() {
       if (response.ok && result.success) {
         setOrderSubmitted(true)
         console.log('Order submitted successfully')
+        // Clear the order from localStorage after successful submission
+        localStorage.removeItem("order")
       } else {
         console.error('Order submission failed:', result.error)
-        throw new Error(result.error || 'Failed to submit order')
+        // Set error state instead of alert
+        if (result.error && result.error.includes('Database service unavailable')) {
+          setSubmissionError('Our order system is temporarily unavailable. Your order has been saved and will be processed when the system is back online.')
+        } else {
+          setSubmissionError('There was an error processing your order. Please contact support or try again.')
+        }
       }
     } catch (error) {
       console.error('Error submitting order:', error)
-      alert('There was an error processing your order. Please contact support.')
+      setSubmissionError('There was an error processing your order. Please contact support.')
     } finally {
       setIsSubmitting(false)
     }
@@ -152,6 +160,11 @@ export default function OrderConfirmationPage() {
           </div>
           {isSubmitting && (
             <p className="text-blue-600 mt-4">Processing your order...</p>
+          )}
+          {submissionError && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-yellow-800">{submissionError}</p>
+            </div>
           )}
         </Card>
 

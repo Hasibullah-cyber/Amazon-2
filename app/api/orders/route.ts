@@ -1,131 +1,123 @@
-
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
-// Helper function to generate order ID
-function generateOrderId() {
-  const timestamp = Date.now().toString(36)
-  const random = Math.random().toString(36).substr(2, 5)
-  return `HS-${timestamp}${random}`.toUpperCase()
-}
-
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const orderData = await request.json()
-    console.log('Received order data:', orderData)
+    const body = await request.json()
+    console.log('📦 Received order:', body)
+
+    const {
+      orderId,
+      customerName,
+      customerEmail,
+      customerPhone,
+      address,
+      city,
+      items,
+      subtotal,
+      shipping,
+      vat,
+      totalAmount,
+      status = 'pending',
+      paymentMethod,
+      paymentStatus = 'pending',
+      transactionId,
+      estimatedDelivery,
+      userId
+    } = body
 
     // Validate required fields
-    const requiredFields = ['customerName', 'customerEmail', 'customerPhone', 'address', 'city', 'items', 'subtotal', 'shipping', 'vat', 'totalAmount', 'paymentMethod']
-    for (const field of requiredFields) {
-      if (!orderData[field]) {
-        return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 })
-      }
+    if (!orderId || !customerName || !customerEmail || !items || !totalAmount) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Missing required fields' 
+      }, { status: 400 })
     }
 
-    // Generate order ID
-    const orderId = generateOrderId()
-    console.log('Generated order ID:', orderId)
-
-    // Prepare order data
-    const order = {
-      orderId,
-      customerName: orderData.customerName,
-      customerEmail: orderData.customerEmail,
-      customerPhone: orderData.customerPhone,
-      address: orderData.address,
-      city: orderData.city,
-      items: JSON.stringify(orderData.items),
-      subtotal: parseFloat(orderData.subtotal),
-      shipping: parseFloat(orderData.shipping),
-      vat: parseFloat(orderData.vat),
-      totalAmount: parseFloat(orderData.totalAmount),
-      status: 'pending',
-      paymentMethod: orderData.paymentMethod,
-      paymentStatus: 'pending',
-      estimatedDelivery: orderData.estimatedDelivery || '3-5 business days',
-      notes: orderData.notes || null
-    }
-
-    // Store in database if available
-    if (pool) {
-      const client = await pool.connect()
-      try {
-        const result = await client.query(`
-          INSERT INTO orders (
-            order_id, customer_name, customer_email, customer_phone,
-            address, city, items, subtotal, shipping, vat, total_amount,
-            status, payment_method, payment_status, estimated_delivery, notes
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-          RETURNING id, order_id as "orderId", created_at as "createdAt"
-        `, [
-          order.orderId, order.customerName, order.customerEmail, order.customerPhone,
-          order.address, order.city, order.items, order.subtotal, order.shipping,
-          order.vat, order.totalAmount, order.status, order.paymentMethod,
-          order.paymentStatus, order.estimatedDelivery, order.notes
-        ])
-
-        console.log('Order stored in database:', result.rows[0])
-
-        // Try to send confirmation email
-        try {
-          const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://0.0.0.0:3000'}/api/send-confirmation`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: order.customerEmail,
-              orderDetails: {
-                orderId: order.orderId,
-                customerName: order.customerName,
-                items: orderData.items,
-                subtotal: order.subtotal,
-                shipping: order.shipping,
-                vat: order.vat,
-                totalAmount: order.totalAmount,
-                address: order.address,
-                city: order.city,
-                phone: order.customerPhone
-              }
-            })
-          })
-          
-          const emailResult = await emailResponse.json()
-          if (emailResult.success) {
-            console.log('✅ Order confirmation email sent successfully')
-          } else {
-            console.error('❌ Failed to send order confirmation email:', emailResult.error)
-          }
-        } catch (emailError) {
-          console.error('❌ Error sending confirmation email:', emailError)
-        }
-
-        return NextResponse.json({
-          success: true,
-          orderId: order.orderId,
-          message: 'Order placed successfully',
-          order: {
-            ...order,
-            id: result.rows[0].id,
-            createdAt: result.rows[0].createdAt,
-            items: orderData.items
-          }
-        })
-      } finally {
-        client.release()
-      }
-    } else {
-      console.warn('Database not available, order not stored')
-      return NextResponse.json({
-        success: false,
-        error: 'Database unavailable - order could not be processed'
+    // Check if database is available
+    if (!pool) {
+      console.warn('Database not available, order cannot be saved')
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Database service unavailable. Please contact support.' 
       }, { status: 503 })
     }
+
+    const client = await pool.connect()
+    try {
+      // Check if order already exists
+      const existingOrder = await client.query(
+        'SELECT id FROM orders WHERE order_id = $1',
+        [orderId]
+      )
+
+      if (existingOrder.rows.length > 0) {
+        console.log('✅ Order already exists, returning success')
+        return NextResponse.json({
+          success: true,
+          orderId: orderId,
+          message: 'Order already processed'
+        })
+      }
+
+      // Insert order into database
+      const result = await client.query(`
+        INSERT INTO orders (
+          order_id, customer_name, customer_email, customer_phone,
+          address, city, items, subtotal, shipping, vat, total_amount,
+          status, payment_method, payment_status, transaction_id,
+          estimated_delivery, user_id, created_at, updated_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW()
+        ) RETURNING id
+      `, [
+        orderId, customerName, customerEmail, customerPhone,
+        address, city, JSON.stringify(items), subtotal, shipping, vat, totalAmount,
+        status, paymentMethod, paymentStatus, transactionId,
+        estimatedDelivery, userId
+      ])
+
+      const order = result.rows[0]
+      console.log('✅ Order saved to database:', order.id)
+
+      // Send confirmation email (non-blocking)
+      try {
+        const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://0.0.0.0:3000'}/api/send-confirmation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId,
+            customerEmail,
+            customerName,
+            items,
+            totalAmount
+          })
+        })
+
+        if (!emailResponse.ok) {
+          console.warn('Failed to send confirmation email, but order was created')
+        } else {
+          console.log('✅ Confirmation email sent successfully')
+        }
+      } catch (emailError) {
+        console.error('❌ Error sending confirmation email:', emailError)
+      }
+
+      return NextResponse.json({
+        success: true,
+        orderId: orderId,
+        message: 'Order created successfully'
+      })
+
+    } finally {
+      client.release()
+    }
+
   } catch (error) {
-    console.error('Error creating order:', error)
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to create order'
+    console.error('❌ Error creating order:', error)
+    return NextResponse.json({ 
+      success: false, 
+      error: 'There was an error processing your order. Please contact support.' 
     }, { status: 500 })
   }
 }
