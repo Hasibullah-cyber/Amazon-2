@@ -153,6 +153,34 @@ export async function POST(request: Request) {
           }
         }
 
+        // Send confirmation email
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-confirmation`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: orderData.customerEmail,
+              orderDetails: {
+                orderId: orderId,
+                customerName: orderData.customerName,
+                items: orderData.items,
+                subtotal: subtotal,
+                shipping: shipping,
+                vat: tax,
+                totalAmount: totalAmount,
+                address: orderData.address,
+                city: orderData.city,
+                phone: orderData.customerPhone
+              }
+            })
+          })
+        } catch (emailError) {
+          console.error('Failed to send confirmation email:', emailError)
+          // Don't fail the order if email fails
+        }
+
         console.log('Sending response:', responseData)
         return NextResponse.json(responseData, { status: 201 })
 
