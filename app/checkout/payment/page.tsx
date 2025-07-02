@@ -152,6 +152,7 @@ function PaymentContent() {
         // Clear checkout data
         if (typeof window !== 'undefined') {
           localStorage.removeItem('checkout-data')
+          sessionStorage.removeItem('checkout-data')
         }
 
         toast({
@@ -159,7 +160,7 @@ function PaymentContent() {
           description: `Your order ${result.orderId} has been placed successfully.`
         })
 
-        // Redirect to order confirmation with order data
+        // Prepare order confirmation data
         const confirmationData = {
           orderId: result.orderId,
           trackingNumber: result.trackingNumber,
@@ -171,8 +172,21 @@ function PaymentContent() {
           items: orderData.items
         }
 
-        const encodedData = encodeURIComponent(JSON.stringify(confirmationData))
-        router.push(`/order-confirmation?data=${encodedData}`)
+        console.log('PaymentPage: Redirecting with confirmation data:', confirmationData)
+
+        // Store in localStorage as backup
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('latest-order', JSON.stringify(confirmationData))
+        }
+
+        // Try URL params first, fallback to query param
+        try {
+          const encodedData = encodeURIComponent(JSON.stringify(confirmationData))
+          router.push(`/order-confirmation?data=${encodedData}`)
+        } catch (error) {
+          console.error('Error encoding data for URL, using orderId fallback:', error)
+          router.push(`/order-confirmation?orderId=${result.orderId}`)
+        }
       } else {
         throw new Error(result.error || 'Failed to place order')
       }

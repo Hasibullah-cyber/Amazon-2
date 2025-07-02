@@ -31,24 +31,50 @@ function OrderConfirmationContent() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    console.log('OrderConfirmation: Loading order data...')
+    
     const dataParam = searchParams.get('data')
     const orderIdParam = searchParams.get('orderId')
+
+    console.log('OrderConfirmation: dataParam:', dataParam)
+    console.log('OrderConfirmation: orderIdParam:', orderIdParam)
 
     if (dataParam) {
       try {
         const decoded = JSON.parse(decodeURIComponent(dataParam))
+        console.log('OrderConfirmation: Successfully decoded data:', decoded)
         setOrderData(decoded)
         setLoading(false)
+        return
       } catch (error) {
-        console.error('Error parsing order data:', error)
-        setLoading(false)
+        console.error('Error parsing order data from URL:', error)
       }
-    } else if (orderIdParam) {
-      // Fetch order by ID if only orderId is provided
-      fetchOrderById(orderIdParam)
-    } else {
-      setLoading(false)
     }
+
+    if (orderIdParam) {
+      console.log('OrderConfirmation: Fetching order by ID:', orderIdParam)
+      fetchOrderById(orderIdParam)
+      return
+    }
+
+    // Check localStorage for order data as fallback
+    if (typeof window !== 'undefined') {
+      try {
+        const storedOrder = localStorage.getItem('latest-order')
+        if (storedOrder) {
+          const parsedOrder = JSON.parse(storedOrder)
+          console.log('OrderConfirmation: Found order in localStorage:', parsedOrder)
+          setOrderData(parsedOrder)
+          setLoading(false)
+          return
+        }
+      } catch (error) {
+        console.error('Error reading order from localStorage:', error)
+      }
+    }
+
+    console.log('OrderConfirmation: No order data found')
+    setLoading(false)
   }, [searchParams])
 
   const fetchOrderById = async (orderId: string) => {
@@ -91,18 +117,28 @@ function OrderConfirmationContent() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Order Not Found</h1>
+          <h1 className="text-2xl font-bold text-orange-600 mb-4">Order Confirmation</h1>
           <p className="text-gray-600 mb-6">
-            We couldn't find your order confirmation. This might happen if:
+            We're having trouble loading your order confirmation. This might happen if:
           </p>
           <ul className="text-left text-gray-600 mb-6 space-y-2">
-            <li>• The order was not successfully placed</li>
-            <li>• The confirmation link is invalid</li>
-            <li>• There was a technical issue</li>
+            <li>• The page was refreshed before loading completed</li>
+            <li>• The confirmation link expired</li>
+            <li>• There was a temporary technical issue</li>
           </ul>
+          <div className="bg-blue-50 p-4 rounded-lg mb-6">
+            <p className="text-blue-800 font-semibold mb-2">Don't worry!</p>
+            <p className="text-blue-700 text-sm">
+              If your order was successfully placed, you should receive a confirmation email shortly. 
+              You can also track your order using the tracking number provided.
+            </p>
+          </div>
           <div className="space-y-4">
             <Button onClick={() => router.push('/track-order')} className="amazon-button">
               Track Your Order
+            </Button>
+            <Button onClick={() => router.push('/order-history')} variant="outline">
+              View Order History
             </Button>
             <Button onClick={() => router.push('/')} variant="outline">
               Continue Shopping
