@@ -38,6 +38,11 @@ export async function initializeDatabase() {
   const client = await pool.connect()
 
   try {
+    // Drop existing tables with foreign key constraints to avoid conflicts
+    await client.query('DROP TABLE IF EXISTS order_items CASCADE')
+    await client.query('DROP TABLE IF EXISTS order_status_history CASCADE')
+    await client.query('DROP TABLE IF EXISTS product_reviews CASCADE')
+    await client.query('DROP TABLE IF EXISTS inventory_logs CASCADE')
     // Create categories table first (referenced by products)
     await client.query(`
       CREATE TABLE IF NOT EXISTS categories (
@@ -155,13 +160,14 @@ export async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS order_items (
         id SERIAL PRIMARY KEY,
         order_id VARCHAR(50) REFERENCES orders(order_id),
-        product_id INTEGER REFERENCES products(id),
+        product_id INTEGER,
         product_name VARCHAR(255) NOT NULL,
         product_sku VARCHAR(100),
         quantity INTEGER NOT NULL,
         unit_price DECIMAL(10,2) NOT NULL,
         total_price DECIMAL(10,2) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
       )
     `)
 
