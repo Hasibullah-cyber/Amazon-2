@@ -658,7 +658,7 @@ class StoreManager {
       const response = await fetch('/api/admin/orders')
       if (response.ok) {
         const orders = await response.json()
-        this.state.orders = orders
+        this.orders = orders
         this.notifySubscribers()
         console.log('Fetched orders from database:', orders.length)
         return orders
@@ -672,7 +672,7 @@ class StoreManager {
       const stored = localStorage.getItem('orders')
       if (stored) {
         const orders = JSON.parse(stored)
-        this.state.orders = orders
+        this.orders = orders
         console.log('Using fallback orders from localStorage:', orders.length)
         return orders
       }
