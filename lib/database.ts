@@ -154,6 +154,23 @@ export async function initializeDatabase() {
       console.log('Migration note: Slug column might already exist or table might be new')
     }
 
+    // Ensure featured column exists in products table (migration for existing tables)
+    try {
+      await client.query(`
+        DO $$ 
+        BEGIN 
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'products' AND column_name = 'featured'
+          ) THEN
+            ALTER TABLE products ADD COLUMN featured BOOLEAN DEFAULT false;
+          END IF;
+        END $$;
+      `)
+    } catch (error) {
+      console.log('Migration note: Featured column might already exist or table might be new')
+    }
+
     // Insert sample data if tables are empty
     await insertSampleData(client)
 
@@ -162,6 +179,7 @@ export async function initializeDatabase() {
     // Create indexes for better performance (after all tables are created)
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+      CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured);
       CREATE INDEX IF NOT EXISTS idx_products_stock ON products(stock);
       CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
       CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
