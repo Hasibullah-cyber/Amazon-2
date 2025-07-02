@@ -1,172 +1,165 @@
+
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
 export async function POST(request: Request) {
+  const client = await pool.connect()
+  
   try {
-    const body = await request.json()
-    console.log('📦 Received order:', body)
-
-    const {
+    await client.query('BEGIN')
+    
+    const orderData = await request.json()
+    console.log('📦 Processing order:', orderData)
+    
+    // Generate order ID
+    const orderId = `HS-${Date.now()}`
+    
+    // Calculate totals
+    const subtotal = orderData.items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
+    const shipping = 50 // Fixed shipping cost for Bangladesh
+    const tax = subtotal * 0.05 // 5% VAT
+    const total = subtotal + shipping + tax
+    
+    // Insert order into database
+    const orderResult = await client.query(`
+      INSERT INTO orders (
+        order_id, customer_name, customer_email, customer_phone, 
+        address, city, items, subtotal, shipping, tax, total_amount,
+        status, payment_method, estimated_delivery
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *
+    `, [
       orderId,
-      customerName,
-      customerEmail,
-      customerPhone,
-      address,
-      city,
-      items,
+      orderData.customerInfo.name,
+      orderData.customerInfo.email,
+      orderData.customerInfo.phone,
+      orderData.customerInfo.address,
+      orderData.customerInfo.city,
+      JSON.stringify(orderData.items),
       subtotal,
       shipping,
-      vat,
-      totalAmount,
-      status = 'pending',
-      paymentMethod,
-      paymentStatus = 'pending',
-      transactionId,
-      estimatedDelivery,
-      userId
-    } = body
-
-    // Validate required fields
-    if (!orderId || !customerName || !customerEmail || !items || !totalAmount) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Missing required fields' 
-      }, { status: 400 })
-    }
-
-    // Check if database is available
-    if (!pool) {
-      console.warn('Database not available, order cannot be saved')
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Database service unavailable. Please contact support.' 
-      }, { status: 503 })
-    }
-
-    const client = await pool.connect()
-    try {
-      // Check if order already exists
-      const existingOrder = await client.query(
-        'SELECT id FROM orders WHERE order_id = $1',
-        [orderId]
-      )
-
-      if (existingOrder.rows.length > 0) {
-        console.log('✅ Order already exists, returning success')
-        return NextResponse.json({
-          success: true,
-          orderId: orderId,
-          message: 'Order already processed'
-        })
-      }
-
-      // Insert order into database
-      const result = await client.query(`
-        INSERT INTO orders (
-          order_id, customer_name, customer_email, customer_phone,
-          address, city, items, subtotal, shipping, vat, total_amount,
-          status, payment_method, payment_status, transaction_id,
-          estimated_delivery, user_id, created_at, updated_at
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW()
-        ) RETURNING id
+      tax,
+      total,
+      'confirmed',
+      orderData.paymentMethod || 'Cash on Delivery',
+      '3-5 business days'
+    ])
+    
+    const order = orderResult.rows[0]
+    console.log('✅ Order saved to database:', order.order_id)
+    
+    // Insert order items for better tracking
+    for (const item of orderData.items) {
+      await client.query(`
+        INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
+        VALUES ($1, $2, $3, $4, $5, $6)
       `, [
-        orderId, customerName, customerEmail, customerPhone,
-        address, city, JSON.stringify(items), subtotal, shipping, vat, totalAmount,
-        status, paymentMethod, paymentStatus, transactionId,
-        estimatedDelivery, userId
+        orderId,
+        item.id,
+        item.name,
+        item.quantity,
+        item.price,
+        item.price * item.quantity
       ])
-
-      const order = result.rows[0]
-      console.log('✅ Order saved to database:', order.id)
-
-      // Send confirmation email (non-blocking)
-      try {
-        const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://0.0.0.0:3000'}/api/send-confirmation`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId,
-            customerEmail,
-            customerName,
-            items,
-            totalAmount
-          })
-        })
-
-        if (!emailResponse.ok) {
-          console.warn('Failed to send confirmation email, but order was created')
-        } else {
-          console.log('✅ Confirmation email sent successfully')
-        }
-      } catch (emailError) {
-        console.error('❌ Error sending confirmation email:', emailError)
-      }
-
-      return NextResponse.json({
-        success: true,
-        orderId: orderId,
-        message: 'Order created successfully'
-      })
-
-    } finally {
-      client.release()
     }
-
+    
+    // Update product stock
+    for (const item of orderData.items) {
+      await client.query(`
+        UPDATE products 
+        SET stock = GREATEST(stock - $1, 0), total_sales = total_sales + $1
+        WHERE id = $2
+      `, [item.quantity, item.id])
+    }
+    
+    // Add to order status history
+    await client.query(`
+      INSERT INTO order_status_history (order_id, status, notes, created_by)
+      VALUES ($1, $2, $3, $4)
+    `, [orderId, 'confirmed', 'Order confirmed and payment received', 'system'])
+    
+    await client.query('COMMIT')
+    
+    // Send confirmation email (non-blocking)
+    try {
+      const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://0.0.0.0:3000'}/api/send-confirmation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.order_id,
+          customerEmail: order.customer_email,
+          customerName: order.customer_name,
+          items: orderData.items,
+          total: total
+        })
+      })
+      
+      if (emailResponse.ok) {
+        console.log('📧 Confirmation email sent successfully')
+      } else {
+        console.warn('⚠️ Email service unavailable, but order was created')
+      }
+    } catch (emailError) {
+      console.warn('⚠️ Email service unavailable, but order was created:', emailError)
+    }
+    
+    return NextResponse.json({
+      success: true,
+      orderId: order.order_id,
+      message: 'Order placed successfully!',
+      order: {
+        orderId: order.order_id,
+        status: order.status,
+        total: order.total_amount,
+        estimatedDelivery: order.estimated_delivery
+      }
+    })
+    
   } catch (error) {
-    console.error('❌ Error creating order:', error)
-    return NextResponse.json({ 
-      success: false, 
-      error: 'There was an error processing your order. Please contact support.' 
+    await client.query('ROLLBACK')
+    console.error('❌ Error processing order:', error)
+    
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to process order. Please try again.',
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
+  } finally {
+    client.release()
   }
 }
 
 export async function GET() {
   try {
-    if (!pool) {
-      return NextResponse.json({ orders: [] })
-    }
-
     const client = await pool.connect()
+    
     try {
       const result = await client.query(`
         SELECT 
-          id,
-          order_id as "orderId",
-          customer_name as "customerName",
-          customer_email as "customerEmail",
-          customer_phone as "customerPhone",
-          address,
-          city,
-          items,
-          subtotal,
-          shipping,
-          vat,
-          total_amount as "totalAmount",
+          order_id,
+          customer_name,
+          customer_email,
+          total_amount,
           status,
-          payment_method as "paymentMethod",
-          payment_status as "paymentStatus",
-          estimated_delivery as "estimatedDelivery",
-          tracking_number as "trackingNumber",
-          notes,
-          created_at as "createdAt",
-          updated_at as "updatedAt"
+          created_at,
+          estimated_delivery
         FROM orders 
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC 
+        LIMIT 50
       `)
-
-      const orders = result.rows.map(order => ({
-        ...order,
-        items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items
-      }))
-
-      return NextResponse.json({ orders })
+      
+      return NextResponse.json({
+        success: true,
+        orders: result.rows
+      })
     } finally {
       client.release()
     }
   } catch (error) {
     console.error('Error fetching orders:', error)
-    return NextResponse.json({ orders: [] })
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch orders'
+    }, { status: 500 })
   }
 }
