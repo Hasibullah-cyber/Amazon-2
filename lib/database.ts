@@ -38,6 +38,9 @@ export async function initializeDatabase() {
   const client = await pool.connect()
 
   try {
+    // Start transaction for table creation
+    await client.query('BEGIN')
+    
     // Drop existing tables with foreign key constraints to avoid conflicts
     await client.query('DROP TABLE IF EXISTS order_items CASCADE')
     await client.query('DROP TABLE IF EXISTS order_status_history CASCADE')
@@ -256,44 +259,49 @@ export async function initializeDatabase() {
       )
     `)
 
-    console.log('Database schema created, now creating indexes...')
+    console.log('Database schema created successfully')
 
-    // Create basic indexes first (non-dependent columns)
+    // Commit the table creation transaction first
+    await client.query('COMMIT')
+    await client.query('BEGIN')
+
+    console.log('Creating database indexes...')
+
+    // Create all indexes in a separate transaction after tables are committed
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
       CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured);
       CREATE INDEX IF NOT EXISTS idx_products_stock ON products(stock);
-      CREATE INDEX IF NOT EXISTS idx_products_name_search ON products USING gin(to_tsvector('english', name));
-      CREATE INDEX IF NOT EXISTS idx_products_description_search ON products USING gin(to_tsvector('english', description));
+      CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
+      CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
       
       CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
       CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
       CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
+      CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
       
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
+      CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
       
       CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
       CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
+      CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active);
       
       CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
       CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id);
       
       CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON product_reviews(product_id);
       CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON product_reviews(user_id);
-    `)
-
-    // Create indexes on is_active and other boolean columns separately
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
-      CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
-      CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(is_active);
-      CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
       CREATE INDEX IF NOT EXISTS idx_reviews_approved ON product_reviews(is_approved);
-      CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
     `)
 
-    console.log('Database tables initialized successfully with full schema')
+    console.log('Database indexes created successfully')
+    
+    // Commit the index creation transaction
+    await client.query('COMMIT')
+    
+    console.log('Database tables and indexes initialized successfully')
 
     // Initialize default admin user
     const { initializeDefaultAdmin } = await import('./admin-auth')
@@ -302,6 +310,7 @@ export async function initializeDatabase() {
     return true
   } catch (error) {
     console.error('Error initializing database:', error)
+    await client.query('ROLLBACK')
     return false
   } finally {
     client.release()
