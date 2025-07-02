@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { useCart } from '@/components/cart-provider'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@/hooks/use-toast'
+import { ChunkErrorBoundary } from '@/components/chunk-error-boundary'
 
 interface CheckoutData {
   name: string
@@ -300,17 +301,19 @@ function PaymentContent() {
 
 export default function PaymentPage() {
   return (
-    <Suspense fallback={
-      <div className="container mx-auto px-4 py-8">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <h2 className="text-xl font-semibold mb-4">Loading...</h2>
-            <p className="text-gray-600">Please wait while we load your payment information.</p>
-          </CardContent>
-        </Card>
-      </div>
-    }>
-      <PaymentContent />
-    </Suspense>
+    <ChunkErrorBoundary>
+      <Suspense fallback={
+        <div className="container mx-auto px-4 py-8">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading payment information...</p>
+            </CardContent>
+          </Card>
+        </div>
+      }>
+        <PaymentContent />
+      </Suspense>
+    </ChunkErrorBoundary>
   )
 }

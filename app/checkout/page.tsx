@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,8 +9,9 @@ import { Label } from '@/components/ui/label'
 import { useCart } from '@/components/cart-provider'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@/hooks/use-toast'
+import { ChunkErrorBoundary } from '@/components/chunk-error-boundary'
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const router = useRouter()
   const { cartItems } = useCart()
   const { user } = useAuth()
@@ -30,6 +31,11 @@ export default function CheckoutPage() {
   })
 
   const [isLoading, setIsLoading] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -82,10 +88,23 @@ export default function CheckoutPage() {
 
   // Redirect if cart is empty
   useEffect(() => {
-    if (safeCartItems.length === 0) {
+    if (mounted && safeCartItems.length === 0) {
       router.push('/')
     }
-  }, [safeCartItems.length, router])
+  }, [mounted, safeCartItems.length, router])
+
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading checkout...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   if (safeCartItems.length === 0) {
     return (
@@ -244,5 +263,24 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <ChunkErrorBoundary>
+      <Suspense fallback={
+        <div className="container mx-auto px-4 py-8">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading checkout...</p>
+            </CardContent>
+          </Card>
+        </div>
+      }>
+        <CheckoutContent />
+      </Suspense>
+    </ChunkErrorBoundary>
   )
 }
