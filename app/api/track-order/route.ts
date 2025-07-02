@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
+
+import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const orderId = searchParams.get('orderId')
@@ -10,47 +11,49 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 })
     }
 
-    console.log('Tracking order:', orderId)
+    const client = await pool.connect()
 
-    // First try to get order from database
     try {
-      const client = await pool.connect()
-      try {
-        const result = await client.query(`
-          SELECT 
-            id, order_id as "orderId", customer_name as "customerName",
-            customer_email as "customerEmail", customer_phone as "customerPhone",
-            address, city, items, subtotal, shipping, vat, total_amount as "totalAmount",
-            status, payment_method as "paymentMethod", estimated_delivery as "estimatedDelivery",
-            created_at as "createdAt"
-          FROM orders 
+      // Get order details
+      const orderResult = await client.query(`
+        SELECT 
+          id, order_id as "orderId", user_id as "userId", customer_name as "customerName",
+          customer_email as "customerEmail", customer_phone as "customerPhone",
+          address, city, items, subtotal, shipping, vat, total_amount as "totalAmount",
+          status, payment_method as "paymentMethod", payment_status as "paymentStatus",
+          estimated_delivery as "estimatedDelivery", tracking_number as "trackingNumber",
+          notes, created_at as "createdAt", updated_at as "updatedAt"
+        FROM orders 
+        WHERE order_id = $1
+      `, [orderId])
+
+      if (orderResult.rows.length > 0) {
+        // Get order status history for tracking
+        const historyResult = await client.query(`
+          SELECT status, notes, created_at as "createdAt"
+          FROM order_status_history
           WHERE order_id = $1
+          ORDER BY created_at ASC
         `, [orderId])
 
-        if (result.rows.length > 0) {
-          const order = result.rows[0]
-          order.items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items
-
-          // Add tracking information to the order
-          const orderWithTracking = {
-            ...order,
-            tracking: {
-              orderPlaced: order.createdAt,
-              processing: order.status !== 'pending' ? order.createdAt : null,
-              shipped: order.status === 'shipped' || order.status === 'delivered' ? order.createdAt : null,
-              delivered: order.status === 'delivered' ? order.createdAt : null
-            },
-            estimatedDelivery: order.estimatedDelivery || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-          }
-
-          console.log('Order found in database:', orderWithTracking)
-          return NextResponse.json({ success: true, order: orderWithTracking })
+        const order = {
+          ...orderResult.rows[0],
+          items: typeof orderResult.rows[0].items === 'string' 
+            ? JSON.parse(orderResult.rows[0].items) 
+            : orderResult.rows[0].items,
+          tracking: {
+            orderPlaced: orderResult.rows[0].createdAt,
+            processing: historyResult.rows.find(h => h.status === 'processing')?.createdAt || null,
+            shipped: historyResult.rows.find(h => h.status === 'shipped')?.createdAt || null,
+            delivered: historyResult.rows.find(h => h.status === 'delivered')?.createdAt || null
+          },
+          statusHistory: historyResult.rows
         }
-      } finally {
-        client.release()
+
+        return NextResponse.json({ success: true, order })
       }
-    } catch (dbError) {
-      console.error('Database error, trying fallback:', dbError)
+    } finally {
+      client.release()
     }
 
     // Fallback: Return sample tracking data for demo orders
@@ -68,6 +71,8 @@ export async function GET(request: Request) {
         shipping: 120,
         vat: 0,
         paymentMethod: 'Cash on Delivery',
+        paymentStatus: 'pending',
+        trackingNumber: 'TRK-' + orderId.split('-')[1],
         createdAt: new Date().toISOString(),
         estimatedDelivery: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toDateString(),
         tracking: {
@@ -76,6 +81,11 @@ export async function GET(request: Request) {
           shipped: new Date().toISOString(),
           delivered: null
         },
+        statusHistory: [
+          { status: 'pending', notes: 'Order placed successfully', createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+          { status: 'processing', notes: 'Order is being prepared', createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+          { status: 'shipped', notes: 'Order has been shipped', createdAt: new Date().toISOString() }
+        ],
         items: [
           { id: '1', name: 'Sample Product', quantity: 1, price: 199.99, image: '/placeholder.svg' }
         ]

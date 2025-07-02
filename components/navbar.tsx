@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ShoppingCart, Menu, X, User, MapPin, LogOut, Search, Bell } from "lucide-react"
+import { ShoppingCart, Menu, X, User, MapPin, LogOut, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
 import { useWishlist } from "@/components/wishlist-provider"
@@ -25,12 +25,7 @@ export default function Navbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false)
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: "Order Confirmed", message: "Your order #12345 has been confirmed", time: "2 min ago", read: false },
-    { id: 2, title: "Order Shipped", message: "Your order #12344 has been shipped", time: "1 hour ago", read: false },
-    { id: 3, title: "Order Delivered", message: "Your order #12343 has been delivered", time: "2 hours ago", read: true }
-  ])
+  
   const { cartItems } = useCart()
   const { wishlistItems } = useWishlist()
   const { user, isAuthenticated, signOut } = useAuth()
@@ -38,21 +33,7 @@ export default function Navbar() {
   const { toast } = useToast()
 
   const totalItems = cartItems.reduce((total, item) => total + item.quantity, 0)
-  const unreadNotifications = notifications.filter(n => !n.read).length
-
-  // Listen for new notifications
-  useEffect(() => {
-    const handleNewNotification = (event: CustomEvent) => {
-      const newNotification = event.detail
-      setNotifications(prev => [newNotification, ...prev])
-    }
-
-    window.addEventListener('navbar-notification', handleNewNotification as EventListener)
-
-    return () => {
-      window.removeEventListener('navbar-notification', handleNewNotification as EventListener)
-    }
-  }, [])
+  
 
   const openAuthModal = (mode: 'signin' | 'signup') => {
     setAuthMode(mode)
@@ -104,89 +85,7 @@ export default function Navbar() {
                 </button>
               )}
 
-              {/* Notifications */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="flex items-center text-white p-3 hover:bg-gray-700 rounded-md transition-colors min-w-[44px] min-h-[44px]"
-                  aria-label="Notifications"
-                >
-                  <div className="relative">
-                    <Bell className="h-6 w-6" />
-                    {unreadNotifications > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center text-[10px] font-bold">
-                        {unreadNotifications}
-                      </span>
-                    )}
-                  </div>
-                </button>
-
-                {isNotificationOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg border z-50 max-h-96 overflow-y-auto">
-                    <div className="py-2">
-                      <div className="px-4 py-3 border-b bg-gray-50 flex justify-between items-center">
-                        <h3 className="font-medium text-gray-900">Notifications</h3>
-                        <button
-                          onClick={() => {
-                            setNotifications(notifications.map(n => ({ ...n, read: true })))
-                          }}
-                          className="text-xs text-blue-600 hover:text-blue-800"
-                        >
-                          Mark all read
-                        </button>
-                      </div>
-                      
-                      {notifications.length === 0 ? (
-                        <div className="px-4 py-8 text-center text-gray-500">
-                          <Bell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                          <p>No notifications yet</p>
-                        </div>
-                      ) : (
-                        notifications.map((notification) => (
-                          <div
-                            key={notification.id}
-                            className={`px-4 py-3 border-b hover:bg-gray-50 cursor-pointer ${
-                              !notification.read ? 'bg-blue-50' : ''
-                            }`}
-                            onClick={() => {
-                              setNotifications(notifications.map(n => 
-                                n.id === notification.id ? { ...n, read: true } : n
-                              ))
-                            }}
-                          >
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <h4 className={`text-sm font-medium ${!notification.read ? 'text-blue-900' : 'text-gray-900'}`}>
-                                  {notification.title}
-                                </h4>
-                                <p className="text-xs text-gray-600 mt-1">
-                                  {notification.message}
-                                </p>
-                                <p className="text-xs text-gray-400 mt-1">
-                                  {notification.time}
-                                </p>
-                              </div>
-                              {!notification.read && (
-                                <div className="w-2 h-2 bg-blue-500 rounded-full mt-1"></div>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                      
-                      <div className="px-4 py-3 bg-gray-50">
-                        <Link
-                          href="/notifications"
-                          className="text-sm text-blue-600 hover:text-blue-800"
-                          onClick={() => setIsNotificationOpen(false)}
-                        >
-                          View all notifications →
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              
 
               {/* Wishlist */}
               <Link
