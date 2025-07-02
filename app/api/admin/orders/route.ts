@@ -112,5 +112,6 @@ export async function GET() {
     ]
 
     console.log('Using fallback orders:', fallbackOrders.length)
-  return NextResponse.json(fallbackOrders)
+    return NextResponse.json(fallbackOrders)
+  }
 }
