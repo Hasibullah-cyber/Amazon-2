@@ -1,3 +1,4 @@
+
 export interface User {
   id: string
   email: string
@@ -52,6 +53,44 @@ class AuthManager {
     this.listeners.forEach(listener => listener(state))
   }
 
+  // Save user to database
+  private async saveUserToDatabase(user: User): Promise<boolean> {
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(user),
+      })
+
+      if (response.ok) {
+        console.log('User saved to database successfully')
+        return true
+      } else {
+        console.error('Failed to save user to database')
+        return false
+      }
+    } catch (error) {
+      console.error('Error saving user to database:', error)
+      return false
+    }
+  }
+
+  // Check if user exists in database
+  private async checkUserInDatabase(email: string): Promise<User | null> {
+    try {
+      const response = await fetch(`/api/users?email=${encodeURIComponent(email)}`)
+      if (response.ok) {
+        const data = await response.json()
+        return data.user || null
+      }
+    } catch (error) {
+      console.error('Error checking user in database:', error)
+    }
+    return null
+  }
+
   subscribe(listener: (state: AuthState) => void) {
     this.listeners.push(listener)
     // Immediately call with current state
@@ -68,12 +107,18 @@ class AuthManager {
   async signUp(email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('Attempting sign up for:', email)
-      // Check if user already exists
-      const existingUsers = this.getAllUsers()
-      console.log('Existing users:', existingUsers.length)
       
+      // Check if user already exists in database
+      const existingUser = await this.checkUserInDatabase(email)
+      if (existingUser) {
+        console.log('Email already exists in database')
+        return { success: false, error: 'Email already registered' }
+      }
+
+      // Check localStorage as fallback
+      const existingUsers = this.getAllUsers()
       if (existingUsers.find(u => u.email === email)) {
-        console.log('Email already exists')
+        console.log('Email already exists in localStorage')
         return { success: false, error: 'Email already registered' }
       }
 
@@ -88,7 +133,10 @@ class AuthManager {
 
       console.log('Creating new user:', newUser)
 
-      // Save to users list
+      // Save to database first
+      const dbSuccess = await this.saveUserToDatabase(newUser)
+      
+      // Save to localStorage as backup
       const users = [...existingUsers, newUser]
       if (typeof window !== 'undefined') {
         localStorage.setItem('hasib_shop_users', JSON.stringify(users))
@@ -111,9 +159,15 @@ class AuthManager {
   async signIn(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('Attempting sign in for:', email)
-      const users = this.getAllUsers()
-      console.log('Available users:', users.length)
-      const user = users.find(u => u.email === email)
+      
+      // First check database
+      let user = await this.checkUserInDatabase(email)
+      
+      // Fallback to localStorage
+      if (!user) {
+        const users = this.getAllUsers()
+        user = users.find(u => u.email === email) || null
+      }
 
       if (!user) {
         console.log('User not found')
