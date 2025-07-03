@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Package, Clock, Truck, AlertCircle } from 'lucide-react'
+import { CheckCircle2, Package, Clock, Truck, AlertCircle, RefreshCw } from 'lucide-react'
 
 interface OrderData {
   orderId: string
@@ -29,11 +29,12 @@ function OrderConfirmationContent() {
   const [orderData, setOrderData] = useState<OrderData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<any>(null)
 
   useEffect(() => {
     console.log('OrderConfirmation: Component mounted')
     loadOrderData()
-  }, [searchParams])
+  }, [])
 
   const loadOrderData = async () => {
     console.log('OrderConfirmation: Loading order data...')
@@ -43,39 +44,70 @@ function OrderConfirmationContent() {
     try {
       const orderIdParam = searchParams.get('orderId')
       const dataParam = searchParams.get('data')
+      
+      // Debug information
+      const debug = {
+        orderIdParam,
+        dataParam: dataParam ? 'present' : 'missing',
+        localStorage: null,
+        sessionStorage: null,
+        urlLength: window.location.href.length
+      }
 
-      console.log('OrderConfirmation: URL params:', { orderIdParam, dataParam })
+      console.log('OrderConfirmation: URL params:', { orderIdParam, dataParam: dataParam?.substring(0, 100) })
 
-      // Priority 1: Check localStorage for latest order first
+      // Priority 1: Check localStorage for latest order
       if (typeof window !== 'undefined') {
         try {
           const storedOrder = localStorage.getItem('latest-order')
+          debug.localStorage = storedOrder ? 'present' : 'missing'
+          
           if (storedOrder) {
             const parsedOrder = JSON.parse(storedOrder)
             console.log('OrderConfirmation: Found order in localStorage:', parsedOrder)
             
-            // Validate the stored order has required fields
+            // Validate the stored order
             if (parsedOrder.orderId && parsedOrder.totalAmount) {
               setOrderData(parsedOrder)
               setLoading(false)
+              setDebugInfo(debug)
+              return
+            }
+          }
+
+          // Also check sessionStorage
+          const sessionOrder = sessionStorage.getItem('latest-order')
+          debug.sessionStorage = sessionOrder ? 'present' : 'missing'
+          
+          if (sessionOrder) {
+            const parsedOrder = JSON.parse(sessionOrder)
+            console.log('OrderConfirmation: Found order in sessionStorage:', parsedOrder)
+            
+            if (parsedOrder.orderId && parsedOrder.totalAmount) {
+              setOrderData(parsedOrder)
+              setLoading(false)
+              setDebugInfo(debug)
               return
             }
           }
         } catch (error) {
-          console.error('Error reading order from localStorage:', error)
+          console.error('Error reading order from storage:', error)
+          debug.localStorage = 'error'
+          debug.sessionStorage = 'error'
         }
       }
 
       // Priority 2: Try URL data parameter
       if (dataParam) {
         try {
+          console.log('OrderConfirmation: Attempting to decode URL data...')
           const decoded = JSON.parse(decodeURIComponent(dataParam))
           console.log('OrderConfirmation: Successfully decoded data:', decoded)
           
-          // Validate decoded data
           if (decoded.orderId && decoded.totalAmount) {
             setOrderData(decoded)
             setLoading(false)
+            setDebugInfo(debug)
             return
           }
         } catch (error) {
@@ -83,63 +115,110 @@ function OrderConfirmationContent() {
         }
       }
 
-      // Priority 3: Fetch by order ID
+      // Priority 3: Fetch by order ID from API
       if (orderIdParam) {
         console.log('OrderConfirmation: Fetching order by ID:', orderIdParam)
-        await fetchOrderById(orderIdParam)
-        return
+        const fetchResult = await fetchOrderById(orderIdParam)
+        if (fetchResult) {
+          setDebugInfo(debug)
+          return
+        }
       }
 
       // No valid order data found
       console.log('OrderConfirmation: No order data found')
       setError('No order information found')
+      setDebugInfo(debug)
       
     } catch (error) {
       console.error('OrderConfirmation: Error in loadOrderData:', error)
-      setError('Failed to load order information')
+      setError(`Failed to load order information: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchOrderById = async (orderId: string) => {
+  const fetchOrderById = async (orderId: string): Promise<boolean> => {
     try {
       console.log('OrderConfirmation: Fetching order with ID:', orderId)
-      const response = await fetch(`/api/track-order?orderId=${orderId}`)
+      const response = await fetch(`/api/orders/${orderId}`)
       
-      if (response.ok) {
-        const data = await response.json()
-        console.log('OrderConfirmation: API response:', data)
-        
-        if (data.success && data.order) {
-          const orderInfo = {
-            orderId: data.order.orderId || data.order.order_id || orderId,
-            trackingNumber: data.order.trackingNumber || data.order.tracking_number || '',
-            customerName: data.order.customerName || data.order.customer_name || '',
-            customerEmail: data.order.customerEmail || data.order.customer_email || '',
-            totalAmount: data.order.totalAmount || data.order.total_amount || 0,
-            paymentMethod: data.order.paymentMethod || data.order.payment_method || 'Unknown',
-            estimatedDelivery: data.order.estimatedDelivery || data.order.estimated_delivery || '3-5 business days',
-            items: data.order.items || []
-          }
-          console.log('OrderConfirmation: Setting order data:', orderInfo)
-          setOrderData(orderInfo)
-        } else {
-          console.error('OrderConfirmation: Invalid response format:', data)
-          setError('Order not found or invalid response')
+      if (!response.ok) {
+        // Try alternative API endpoint
+        const altResponse = await fetch(`/api/track-order?orderId=${orderId}`)
+        if (!altResponse.ok) {
+          throw new Error(`Failed to fetch order: ${response.status} / ${altResponse.status}`)
         }
-      } else {
-        console.error('OrderConfirmation: Failed to fetch order, status:', response.status)
-        setError(`Failed to fetch order (${response.status})`)
+        return await processOrderResponse(altResponse)
       }
+      
+      return await processOrderResponse(response)
     } catch (error) {
       console.error('OrderConfirmation: Error fetching order:', error)
-      setError('Network error while fetching order')
+      setError(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      return false
     }
+  }
+
+  const processOrderResponse = async (response: Response): Promise<boolean> => {
+    const data = await response.json()
+    console.log('OrderConfirmation: API response:', data)
+    
+    if (data.success && data.order) {
+      const order = data.order
+      const orderInfo: OrderData = {
+        orderId: order.orderId || order.order_id || order.id || 'Unknown',
+        trackingNumber: order.trackingNumber || order.tracking_number || `TRK${order.orderId || order.id}`,
+        customerName: order.customerName || order.customer_name || 'Customer',
+        customerEmail: order.customerEmail || order.customer_email || '',
+        totalAmount: parseFloat(order.totalAmount || order.total_amount || order.total || 0),
+        paymentMethod: order.paymentMethod || order.payment_method || 'Cash on Delivery',
+        estimatedDelivery: order.estimatedDelivery || order.estimated_delivery || '3-5 business days',
+        items: order.items || []
+      }
+      
+      console.log('OrderConfirmation: Setting order data:', orderInfo)
+      setOrderData(orderInfo)
+      return true
+    }
+    
+    setError('Order not found or invalid response format')
+    return false
   }
 
   const handleRetry = () => {
     loadOrderData()
+  }
+
+  const handleSendConfirmationEmail = async () => {
+    if (!orderData) return
+    
+    try {
+      const response = await fetch('/api/send-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: orderData.customerEmail,
+          orderDetails: {
+            orderId: orderData.orderId,
+            customerName: orderData.customerName,
+            items: orderData.items,
+            subtotal: orderData.totalAmount - 100, // Assuming 100 is shipping
+            shipping: 100,
+            totalAmount: orderData.totalAmount
+          }
+        })
+      })
+      
+      if (response.ok) {
+        alert('Confirmation email sent successfully!')
+      } else {
+        alert('Failed to send confirmation email')
+      }
+    } catch (error) {
+      console.error('Error sending confirmation email:', error)
+      alert('Error sending confirmation email')
+    }
   }
 
   if (loading) {
@@ -166,32 +245,44 @@ function OrderConfirmationContent() {
             </div>
           )}
           
+          {/* Debug Information */}
+          {debugInfo && (
+            <details className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 text-left">
+              <summary className="font-semibold cursor-pointer">Debug Information</summary>
+              <pre className="mt-2 text-xs text-gray-600 overflow-auto">
+                {JSON.stringify(debugInfo, null, 2)}
+              </pre>
+            </details>
+          )}
+          
           <p className="text-gray-600 mb-6">
             We're having trouble loading your order confirmation. This might happen if:
           </p>
           <ul className="text-left text-gray-600 mb-6 space-y-2 max-w-md mx-auto">
-            <li>• The page was refreshed before loading completed</li>
-            <li>• The confirmation link expired</li>
-            <li>• There was a temporary technical issue</li>
+            <li>• The page was refreshed before data loaded</li>
+            <li>• The confirmation link was incomplete</li>
+            <li>• There was a temporary network issue</li>
+            <li>• The order data wasn't properly saved</li>
           </ul>
           
           <div className="bg-blue-50 p-4 rounded-lg mb-6">
             <p className="text-blue-800 font-semibold mb-2">Don't worry!</p>
             <p className="text-blue-700 text-sm">
-              If your order was successfully placed, you should receive a confirmation email shortly. 
-              You can also track your order using the tracking number provided.
+              Your order may have been successfully placed. Check your email for a confirmation,
+              or try tracking your order with the order ID you received.
             </p>
           </div>
           
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Button onClick={handleRetry} className="amazon-button">
+              <RefreshCw className="h-4 w-4 mr-2" />
               Try Again
             </Button>
             <Button onClick={() => router.push('/track-order')} variant="outline">
-              Track Your Order
+              Track Order
             </Button>
             <Button onClick={() => router.push('/order-history')} variant="outline">
-              View Order History
+              Order History
             </Button>
             <Button onClick={() => router.push('/')} variant="outline">
               Continue Shopping
@@ -225,7 +316,7 @@ function OrderConfirmationContent() {
               <div className="space-y-4">
                 <div>
                   <p className="text-sm text-gray-600">Order ID</p>
-                  <p className="font-mono font-semibold">{orderData.orderId}</p>
+                  <p className="font-mono font-semibold text-lg">{orderData.orderId}</p>
                 </div>
                 
                 {orderData.trackingNumber && (
@@ -248,7 +339,7 @@ function OrderConfirmationContent() {
                 
                 <div>
                   <p className="text-sm text-gray-600">Total Amount</p>
-                  <p className="font-semibold text-lg">৳{orderData.totalAmount.toFixed(2)}</p>
+                  <p className="font-semibold text-lg text-green-600">৳{orderData.totalAmount.toFixed(2)}</p>
                 </div>
               </div>
             </CardContent>
@@ -280,6 +371,16 @@ function OrderConfirmationContent() {
                     <li>• Track your order anytime with the tracking number</li>
                   </ul>
                 </div>
+                
+                {orderData.customerEmail && (
+                  <Button 
+                    onClick={handleSendConfirmationEmail}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Resend Confirmation Email
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -289,7 +390,7 @@ function OrderConfirmationContent() {
         {orderData.items && orderData.items.length > 0 && (
           <Card className="mt-8">
             <CardHeader>
-              <CardTitle>Order Items</CardTitle>
+              <CardTitle>Order Items ({orderData.items.length})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -358,4 +459,4 @@ export default function OrderConfirmationPage() {
       <OrderConfirmationContent />
     </Suspense>
   )
-                  }
+}
