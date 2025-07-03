@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
@@ -163,7 +162,7 @@ function PaymentContent() {
         // Prepare order confirmation data
         const confirmationData = {
           orderId: result.orderId,
-          trackingNumber: result.trackingNumber,
+          trackingNumber: result.trackingNumber || `TRK${result.orderId}`,
           customerName: orderData.customerName,
           customerEmail: orderData.customerEmail,
           totalAmount: orderData.totalAmount,
@@ -172,18 +171,24 @@ function PaymentContent() {
           items: orderData.items
         }
 
-        console.log('PaymentPage: Redirecting with confirmation data:', confirmationData)
+        console.log('PaymentPage: Confirmation data prepared:', confirmationData)
 
-        // Store in localStorage as backup
+        // Store in localStorage as primary method
         if (typeof window !== 'undefined') {
           localStorage.setItem('latest-order', JSON.stringify(confirmationData))
+          console.log('PaymentPage: Order stored in localStorage')
         }
 
-        // Navigate to order confirmation page
+        // Navigate to order confirmation page with multiple fallback methods
         console.log('PaymentPage: Navigating to order confirmation...')
         
-        // Use router.replace instead of push to avoid back button issues
-        router.replace(`/order-confirmation?orderId=${result.orderId}`)
+        // Method 1: Use URL params as primary
+        const encodedConfirmationData = encodeURIComponent(JSON.stringify(confirmationData))
+        const confirmationUrl = `/order-confirmation?orderId=${result.orderId}&data=${encodedConfirmationData}`
+        
+        // Use replace to avoid back button issues
+        router.replace(confirmationUrl)
+        
       } else {
         throw new Error(result.error || 'Failed to place order')
       }
@@ -271,7 +276,9 @@ function PaymentContent() {
                   <p><strong>Phone:</strong> {checkoutData.phone}</p>
                   <p><strong>Address:</strong> {checkoutData.address}</p>
                   <p><strong>City:</strong> {checkoutData.city}</p>
-                  <p><strong>Postal Code:</strong> {checkoutData.postalCode}</p>
+                  {checkoutData.postalCode && (
+                    <p><strong>Postal Code:</strong> {checkoutData.postalCode}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -353,4 +360,4 @@ export default function PaymentPage() {
       </Suspense>
     </ChunkErrorBoundary>
   )
-}
+          }
