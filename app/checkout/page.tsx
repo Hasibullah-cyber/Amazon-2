@@ -13,17 +13,38 @@ import { ChunkErrorBoundary } from '@/components/chunk-error-boundary'
 
 function CheckoutContent() {
   const router = useRouter()
-  const { cartItems } = useCart()
+  const { cartItems, clearCart } = useCart()
   const { user } = useAuth()
   const { toast } = useToast()
 
-  // Ensure cartItems is an array to prevent length errors
-  const safeCartItems = Array.isArray(cartItems) ? cartItems : []
-  const total = safeCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  // Safely handle cartItems with better error checking
+  const [safeCartItems, setSafeCartItems] = useState<any[]>([])
+  const [isLoadingCart, setIsLoadingCart] = useState(true)
+  
+  useEffect(() => {
+    try {
+      if (cartItems && Array.isArray(cartItems)) {
+        setSafeCartItems(cartItems)
+      } else {
+        setSafeCartItems([])
+      }
+    } catch (error) {
+      console.error('Error processing cart items:', error)
+      setSafeCartItems([])
+    } finally {
+      setIsLoadingCart(false)
+    }
+  }, [cartItems])
+
+  const total = safeCartItems.reduce((sum, item) => {
+    const price = parseFloat(item?.price || 0)
+    const quantity = parseInt(item?.quantity || 0)
+    return sum + (price * quantity)
+  }, 0)
 
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
+    name: '',
+    email: '',
     phone: '',
     address: '',
     city: '',
@@ -33,26 +54,45 @@ function CheckoutContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
 
+  // Safely initialize form data with user info
   useEffect(() => {
+    try {
+      if (user) {
+        setFormData(prev => ({
+          ...prev,
+          name: user.name || '',
+          email: user.email || ''
+        }))
+      }
+    } catch (error) {
+      console.error('Error setting user data:', error)
+    }
     setMounted(true)
-  }, [])
+  }, [user])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+    try {
+      const { name, value } = e.target
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }))
+    } catch (error) {
+      console.error('Error updating form:', error)
+    }
   }
 
-  const handleContinueToPayment = () => {
-    // Validate form
-    if (!formData.name || !formData.email || !formData.phone || !formData.address || !formData.city) {
+  const validateForm = () => {
+    const requiredFields = ['name', 'email', 'phone', 'address', 'city']
+    const missingFields = requiredFields.filter(field => !formData[field]?.trim())
+    
+    if (missingFields.length > 0) {
       toast({
         variant: "destructive",
         title: "Required Fields Missing",
-        description: "Please fill in all required fields"
+        description: `Please fill in: ${missingFields.join(', ')}`
       })
-      return
+      return false
     }
 
     // Email validation
@@ -63,7 +103,7 @@ function CheckoutContent() {
         title: "Invalid Email",
         description: "Please enter a valid email address"
       })
-      return
+      return false
     }
 
     // Phone validation
@@ -73,21 +113,37 @@ function CheckoutContent() {
         title: "Invalid Phone Number",
         description: "Please enter a valid phone number"
       })
-      return
+      return false
     }
+
+    return true
+  }
+
+  const handleContinueToPayment = async () => {
+    if (!validateForm()) return
 
     setIsLoading(true)
 
     try {
-      // Store checkout data in multiple ways for reliability
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('checkout-data', JSON.stringify(formData))
-        sessionStorage.setItem('checkout-data', JSON.stringify(formData))
+      // Store checkout data safely
+      const checkoutData = {
+        ...formData,
+        timestamp: new Date().toISOString()
       }
 
-      // Navigate to payment page with data
-      const encodedData = encodeURIComponent(JSON.stringify(formData))
-      router.push(`/checkout/payment?data=${encodedData}`)
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('checkout-data', JSON.stringify(checkoutData))
+          sessionStorage.setItem('checkout-data', JSON.stringify(checkoutData))
+        } catch (storageError) {
+          console.error('Storage error:', storageError)
+        }
+      }
+
+      // Navigate to payment page
+      const encodedData = encodeURIComponent(JSON.stringify(checkoutData))
+      await router.push(`/checkout/payment?data=${encodedData}`)
+      
     } catch (error) {
       console.error('Error navigating to payment:', error)
       toast({
@@ -100,14 +156,15 @@ function CheckoutContent() {
     }
   }
 
-  // Redirect if cart is empty
+  // Redirect if cart is empty after mounting
   useEffect(() => {
-    if (mounted && safeCartItems.length === 0) {
+    if (mounted && !isLoadingCart && safeCartItems.length === 0) {
       router.push('/')
     }
-  }, [mounted, safeCartItems.length, router])
+  }, [mounted, isLoadingCart, safeCartItems.length, router])
 
-  if (!mounted) {
+  // Loading state
+  if (!mounted || isLoadingCart) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card>
@@ -120,6 +177,7 @@ function CheckoutContent() {
     )
   }
 
+  // Empty cart state
   if (safeCartItems.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -159,6 +217,7 @@ function CheckoutContent() {
                       name="name"
                       value={formData.name}
                       onChange={handleInputChange}
+                      placeholder="Enter your full name"
                       required
                     />
                   </div>
@@ -171,6 +230,7 @@ function CheckoutContent() {
                       type="email"
                       value={formData.email}
                       onChange={handleInputChange}
+                      placeholder="Enter your email"
                       required
                     />
                   </div>
@@ -208,6 +268,7 @@ function CheckoutContent() {
                         name="city"
                         value={formData.city}
                         onChange={handleInputChange}
+                        placeholder="City"
                         required
                       />
                     </div>
@@ -219,6 +280,7 @@ function CheckoutContent() {
                         name="postalCode"
                         value={formData.postalCode}
                         onChange={handleInputChange}
+                        placeholder="Postal code"
                       />
                     </div>
                   </div>
@@ -235,13 +297,15 @@ function CheckoutContent() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {safeCartItems.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center">
+                  {safeCartItems.map((item, index) => (
+                    <div key={item?.id || index} className="flex justify-between items-center">
                       <div className="flex-1">
-                        <h4 className="font-medium">{item.name}</h4>
-                        <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+                        <h4 className="font-medium">{item?.name || 'Unknown Item'}</h4>
+                        <p className="text-sm text-gray-600">Qty: {item?.quantity || 0}</p>
                       </div>
-                      <p className="font-medium">৳{(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="font-medium">
+                        ৳{((item?.price || 0) * (item?.quantity || 0)).toFixed(2)}
+                      </p>
                     </div>
                   ))}
 
