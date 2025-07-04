@@ -17,7 +17,6 @@ function CheckoutContent() {
   const { user } = useAuth()
   const { toast } = useToast()
 
-  // Ensure cartItems is an array to prevent length errors
   const safeCartItems = Array.isArray(cartItems) ? cartItems : []
   const total = safeCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 
@@ -45,7 +44,6 @@ function CheckoutContent() {
   }
 
   const handleContinueToPayment = () => {
-    // Validate form
     if (!formData.name || !formData.email || !formData.phone || !formData.address || !formData.city) {
       toast({
         variant: "destructive",
@@ -55,7 +53,6 @@ function CheckoutContent() {
       return
     }
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(formData.email)) {
       toast({
@@ -66,7 +63,6 @@ function CheckoutContent() {
       return
     }
 
-    // Phone validation
     if (formData.phone.length < 10) {
       toast({
         variant: "destructive",
@@ -79,13 +75,11 @@ function CheckoutContent() {
     setIsLoading(true)
 
     try {
-      // Store checkout data in multiple ways for reliability
       if (typeof window !== 'undefined') {
         localStorage.setItem('checkout-data', JSON.stringify(formData))
         sessionStorage.setItem('checkout-data', JSON.stringify(formData))
       }
 
-      // Navigate to payment page with data
       const encodedData = encodeURIComponent(JSON.stringify(formData))
       router.push(`/checkout/payment?data=${encodedData}`)
     } catch (error) {
@@ -100,7 +94,6 @@ function CheckoutContent() {
     }
   }
 
-  // Redirect if cart is empty
   useEffect(() => {
     if (mounted && safeCartItems.length === 0) {
       router.push('/')
@@ -144,7 +137,6 @@ function CheckoutContent() {
         <h1 className="text-3xl font-bold mb-8">Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Customer Information Form */}
           <div>
             <Card>
               <CardHeader>
@@ -227,7 +219,6 @@ function CheckoutContent() {
             </Card>
           </div>
 
-          {/* Order Summary */}
           <div>
             <Card>
               <CardHeader>
@@ -297,4 +288,4 @@ export default function CheckoutPage() {
       </Suspense>
     </ChunkErrorBoundary>
   )
-      }
+                }
