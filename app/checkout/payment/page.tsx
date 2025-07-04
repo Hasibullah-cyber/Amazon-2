@@ -35,14 +35,10 @@ function PaymentContent() {
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
 
   useEffect(() => {
-    console.log('PaymentContent: Loading checkout data...')
-    
-    // Get checkout data from URL params first
     const dataParam = searchParams.get('data')
     if (dataParam) {
       try {
         const decoded = JSON.parse(decodeURIComponent(dataParam))
-        console.log('PaymentContent: Data from URL params:', decoded)
         setCheckoutData(decoded)
         return
       } catch (error) {
@@ -50,7 +46,6 @@ function PaymentContent() {
       }
     }
 
-    // Fallback to sessionStorage first, then localStorage
     if (typeof window !== 'undefined') {
       let stored = sessionStorage.getItem('checkout-data')
       if (!stored) {
@@ -60,7 +55,6 @@ function PaymentContent() {
       if (stored) {
         try {
           const parsedData = JSON.parse(stored)
-          console.log('PaymentContent: Data from storage:', parsedData)
           setCheckoutData(parsedData)
           return
         } catch (error) {
@@ -69,15 +63,11 @@ function PaymentContent() {
       }
     }
 
-    // If no checkout data found, redirect back to checkout
-    console.log('PaymentContent: No checkout data found, redirecting...')
     router.push('/checkout')
   }, [searchParams, router])
 
-  // Separate effect for cart validation
   useEffect(() => {
     if (items.length === 0) {
-      console.log('PaymentContent: No cart items, redirecting to cart...')
       router.push('/cart')
       return
     }
@@ -127,8 +117,6 @@ function PaymentContent() {
         paymentMethod: paymentMethod === 'cash-on-delivery' ? 'Cash on Delivery' : 'Online Payment'
       }
 
-      console.log('Placing order with data:', orderData)
-
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
@@ -138,17 +126,14 @@ function PaymentContent() {
       })
 
       const result = await response.json()
-      console.log('Order response:', result)
 
       if (!response.ok) {
         throw new Error(result.error || result.details || 'Failed to place order')
       }
 
       if (result.success) {
-        // Clear cart
         clearCart()
         
-        // Clear checkout data
         if (typeof window !== 'undefined') {
           localStorage.removeItem('checkout-data')
           sessionStorage.removeItem('checkout-data')
@@ -159,7 +144,6 @@ function PaymentContent() {
           description: `Your order ${result.orderId} has been placed successfully.`
         })
 
-        // Prepare order confirmation data
         const confirmationData = {
           orderId: result.orderId,
           trackingNumber: result.trackingNumber,
@@ -171,17 +155,10 @@ function PaymentContent() {
           items: orderData.items
         }
 
-        console.log('PaymentPage: Redirecting with confirmation data:', confirmationData)
-
-        // Store in localStorage as backup
         if (typeof window !== 'undefined') {
           localStorage.setItem('latest-order', JSON.stringify(confirmationData))
         }
 
-        // Navigate to order confirmation page
-        console.log('PaymentPage: Navigating to order confirmation...')
-        
-        // Use router.replace instead of push to avoid back button issues
         router.replace(`/order-confirmation?orderId=${result.orderId}`)
       } else {
         throw new Error(result.error || 'Failed to place order')
@@ -230,7 +207,6 @@ function PaymentContent() {
         <h1 className="text-3xl font-bold mb-8">Payment</h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Payment Method */}
           <div>
             <Card>
               <CardHeader>
@@ -258,7 +234,6 @@ function PaymentContent() {
               </CardContent>
             </Card>
 
-            {/* Customer Information */}
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle>Delivery Information</CardTitle>
@@ -276,7 +251,6 @@ function PaymentContent() {
             </Card>
           </div>
 
-          {/* Order Summary */}
           <div>
             <Card>
               <CardHeader>
@@ -352,4 +326,4 @@ export default function PaymentPage() {
       </Suspense>
     </ChunkErrorBoundary>
   )
-          }
+}
