@@ -1,82 +1,49 @@
 "use client"
 
 import { useEffect, useState } from "react"
+
 export const dynamic = 'force-dynamic'
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useAdminAuth } from "@/components/admin-auth-provider"
 import { AdminLoginModal } from "@/components/admin-login-modal"
-import { Package, Users, ShoppingCart, TrendingUp, AlertTriangle, Eye, Edit } from "lucide-react"
+import { Package, Users, ShoppingCart, TrendingUp, AlertTriangle, Eye, Edit, Trash2, FolderOpen } from "lucide-react"
 
 export default function AdminHome() {
   const [stats, setStats] = useState<any>(null)
   const [orders, setOrders] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [showAdminLogin, setShowAdminLogin] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const { isAdminAuthenticated, adminSignOut } = useAdminAuth()
 
   useEffect(() => {
-    console.log("Authentication status:", isAdminAuthenticated)
-    
-    if (!isAdminAuthenticated) {
-      setLoading(false)
-      return
-    }
-
-    const fetchData = async () => {
+    const updateData = async () => {
       try {
-        setLoading(true)
-        setError(null)
-        
-        console.log("Starting data fetch...")
-        const startTime = Date.now()
-
         const [statsResponse, ordersResponse, productsResponse] = await Promise.all([
           fetch('/api/admin/stats'),
           fetch('/api/admin/orders'),
           fetch('/api/admin/products')
         ])
 
-        console.log("API responses received in", Date.now() - startTime + "ms")
+        if (statsResponse.ok && ordersResponse.ok && productsResponse.ok) {
+          const [fetchedStats, fetchedOrders, fetchedProducts] = await Promise.all([
+            statsResponse.json(),
+            ordersResponse.json(),
+            productsResponse.json()
+          ])
 
-        if (!statsResponse.ok) throw new Error(`Stats API failed: ${statsResponse.status}`)
-        if (!ordersResponse.ok) throw new Error(`Orders API failed: ${ordersResponse.status}`)
-        if (!productsResponse.ok) throw new Error(`Products API failed: ${productsResponse.status}`)
-
-        const [statsData, ordersData, productsData] = await Promise.all([
-          statsResponse.json(),
-          ordersResponse.json(),
-          productsResponse.json()
-        ])
-
-        console.log("Fetched data:", {
-          stats: statsData,
-          orders: ordersData,
-          products: productsData
-        })
-
-        setStats(statsData)
-        setOrders(ordersData)
-        setProducts(productsData)
-
-      } catch (err) {
-        console.error("Fetch error:", err)
-        setError(err instanceof Error ? err.message : "Failed to load admin data")
-      } finally {
-        setLoading(false)
+          setStats(fetchedStats)
+          setOrders(fetchedOrders)
+          setProducts(fetchedProducts)
+        }
+      } catch (error) {
+        console.error('Error fetching admin data:', error)
       }
     }
 
-    fetchData()
-
-    // Add cleanup if needed
-    return () => {
-      // Cancel any ongoing requests if component unmounts
-    }
-  }, [isAdminAuthenticated])
+    updateData()
+  }, [])
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
@@ -86,20 +53,13 @@ export default function AdminHome() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ status: newStatus }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`Failed to update order: ${response.status}`)
-      }
-
-      // Refresh orders after update
-      const updatedOrders = await fetch('/api/admin/orders')
-      if (updatedOrders.ok) {
-        setOrders(await updatedOrders.json())
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
     } catch (error) {
       console.error('Error updating order status:', error)
-      setError(error instanceof Error ? error.message : "Failed to update order")
     }
   }
 
@@ -124,64 +84,10 @@ export default function AdminHome() {
     )
   }
 
-  if (loading) {
-    return (
-      <div className="p-6 flex flex-col items-center justify-center min-h-[300px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <p className="text-gray-600">Loading admin dashboard...</p>
-        <p className="text-sm text-gray-500 mt-2">Fetching data from server...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">
-                Error loading dashboard: {error}
-              </p>
-            </div>
-          </div>
-        </div>
-        <Button 
-          onClick={() => window.location.reload()} 
-          variant="outline"
-        >
-          Retry
-        </Button>
-      </div>
-    )
-  }
-
-  if (!stats || !orders || !products) {
-    return (
-      <div className="p-6">
-        <p className="text-red-500">No data available</p>
-        <Button 
-          onClick={() => window.location.reload()} 
-          variant="outline"
-          className="mt-4"
-        >
-          Refresh Data
-        </Button>
-      </div>
-    )
-  }
-
-  const subtotal = stats.totalRevenue || 0
-  const pendingOrders = stats.pendingOrders || 0
-  const lowStockProducts = stats.lowStockProducts || 0
-  const totalOrders = stats.totalOrders || 0
+  if (!stats) return <div className="p-6">Loading admin dashboard...</div>
 
   return (
     <div className="p-6">
-      {/* Header and other components remain the same as your original */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
@@ -202,21 +108,167 @@ export default function AdminHome() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        {/* Cards remain the same but with null checks */}
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold">{totalOrders}</p>
+              <p className="text-2xl font-bold">{stats.totalOrders}</p>
             </div>
             <ShoppingCart className="h-8 w-8 text-blue-600" />
           </div>
         </Card>
 
-        {/* Other cards... */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+              <p className="text-2xl font-bold">৳{stats.totalRevenue.toFixed(2)}</p>
+            </div>
+            <TrendingUp className="h-8 w-8 text-green-600" />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Pending Orders</p>
+              <p className="text-2xl font-bold">{stats.pendingOrders}</p>
+            </div>
+            <Package className="h-8 w-8 text-orange-600" />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Low Stock Items</p>
+              <p className="text-2xl font-bold">{stats.lowStockProducts}</p>
+            </div>
+            <AlertTriangle className="h-8 w-8 text-red-600" />
+          </div>
+        </Card>
       </div>
 
-      {/* Rest of your original JSX */}
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <Button asChild className="h-12">
+          <Link href="/admin/orders">
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Manage Orders
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="h-12">
+          <Link href="/admin/products">
+            <Package className="h-4 w-4 mr-2" />
+            Manage Products
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="h-12">
+          <Link href="/admin/users">
+            <Users className="h-4 w-4 mr-2" />
+            Manage Users
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="h-12">
+          <Link href="/admin/dashboard">
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Analytics
+          </Link>
+        </Button>
+      </div>
+
+      {/* Recent Orders */}
+      <Card className="p-6 mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Recent Orders</h2>
+          <Link href="/admin/orders" className="text-blue-600 hover:underline">
+            View All
+          </Link>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left p-2">Order ID</th>
+                <th className="text-left p-2">Customer</th>
+                <th className="text-left p-2">Items</th>
+                <th className="text-left p-2">Total</th>
+                <th className="text-left p-2">Status</th>
+                <th className="text-left p-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats && stats.recentOrders && stats.recentOrders.map((order: any) => (
+                <tr key={order.id} className="border-b hover:bg-gray-50">
+                  <td className="p-2 font-mono text-sm">{order.orderId}</td>
+                  <td className="p-2">{order.customerName}</td>
+                  <td className="p-2">{order.items.length} items</td>
+                  <td className="p-2">৳{order.totalAmount.toFixed(2)}</td>
+                  <td className="p-2">
+                    <select
+                      value={order.status}
+                      onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                      className={`px-2 py-1 rounded-full text-xs border ${
+                        order.status === "delivered" ? "bg-green-100 text-green-800 border-green-200" :
+                        order.status === "shipped" ? "bg-blue-100 text-blue-800 border-blue-200" :
+                        order.status === "processing" ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                        "bg-gray-100 text-gray-800 border-gray-200"
+                      }`}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="processing">Processing</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </td>
+                  <td className="p-2">
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline">
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Product Inventory */}
+      <Card className="p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Product Inventory</h2>
+          <Link href="/admin/products" className="text-blue-600 hover:underline">
+            Manage All
+          </Link>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {products && products.slice(0, 6).map((product) => (
+            <div key={product.id} className="border p-4 rounded-lg hover:shadow-md transition">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-medium truncate">{product.name}</h3>
+                <span className="text-sm font-bold">৳{product.price}</span>
+              </div>
+              <p className="text-gray-600 text-sm mb-2">ID: {product.id}</p>
+              <div className="flex justify-between items-center">
+                <span className={`text-sm ${
+                  product.stock > 20 ? "text-green-600" : 
+                  product.stock > 10 ? "text-yellow-600" : "text-red-600"
+                }`}>
+                  {product.stock} in stock
+                </span>
+                <div className="flex gap-1">
+                  <Button size="sm" variant="outline">
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   )
-        }
+            }
