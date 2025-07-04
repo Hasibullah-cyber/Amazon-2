@@ -1,181 +1,81 @@
-const handlePlaceOrder = async () => {
-  if (!checkoutData) {
-    toast({
-      variant: "destructive",
-      title: "Error",
-      description: "Missing checkout information. Please go back to checkout."
-    })
-    return
-  }
+"use client"
 
-  if (items.length === 0) {
-    toast({
-      variant: "destructive",
-      title: "Error", 
-      description: "Your cart is empty"
-    })
-    return
-  }
+import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { CheckCircle } from "lucide-react"
+import { useCartStore } from "@/store"
+import { formatPrice } from "@/lib/utils"
+import axios from "axios"
 
-  setIsProcessing(true)
+interface Order {
+  id: string
+  isPaid: boolean
+  totalAmount: number
+  createdAt: Date
+  products: {
+    id: string
+    name: string
+    image: string
+    price: number
+    quantity: number
+  }[]
+}
 
-  try {
-    const orderData = {
-      customerName: checkoutData.name,
-      customerEmail: checkoutData.email,
-      customerPhone: checkoutData.phone,
-      address: checkoutData.address,
-      city: checkoutData.city,
-      postalCode: checkoutData.postalCode,
-      country: 'Bangladesh',
-      items: items.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        image: item.image
-      })),
-      subtotal: total,
-      shipping: 100,
-      tax: 0,
-      totalAmount: total + 100,
-      paymentMethod: paymentMethod === 'cash-on-delivery' ? 'Cash on Delivery' : 'Online Payment'
-    }
+export default function ConfirmationPage() {
+  const searchParams = useSearchParams()
+  const [order, setOrder] = useState<Order | null>(null)
+  const clearCart = useCartStore((state) => state.clearCart)
 
-    console.log('Placing order with data:', orderData)
-
-    const response = await fetch('/api/orders', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(orderData)
-    })
-
-    const result = await response.json()
-    console.log('Order response:', result)
-
-    if (!response.ok) {
-      throw new Error(result.error || result.details || 'Failed to place order')
-    }
-
-    if (result.success) {
-      // Generate tracking number if not provided
-      const trackingNumber = result.trackingNumber || `TRK${result.orderId || Date.now()}`
-      
-      // Prepare comprehensive order confirmation data
-      const confirmationData = {
-        orderId: result.orderId,
-        trackingNumber: trackingNumber,
-        customerName: orderData.customerName,
-        customerEmail: orderData.customerEmail,
-        totalAmount: orderData.totalAmount,
-        paymentMethod: orderData.paymentMethod,
-        estimatedDelivery: result.order?.estimatedDelivery || '3-5 business days',
-        items: orderData.items,
-        address: orderData.address,
-        city: orderData.city,
-        phone: orderData.customerPhone,
-        orderDate: new Date().toISOString(),
-        subtotal: orderData.subtotal,
-        shipping: orderData.shipping,
-        tax: orderData.tax
-      }
-
-      console.log('Payment: Confirmation data prepared:', confirmationData)
-
-      // Store order data in multiple places for reliability
-      if (typeof window !== 'undefined') {
-        try {
-          // Primary storage
-          localStorage.setItem('latest-order', JSON.stringify(confirmationData))
-          sessionStorage.setItem('latest-order', JSON.stringify(confirmationData))
-          
-          // Backup with order ID key
-          localStorage.setItem(`order-${result.orderId}`, JSON.stringify(confirmationData))
-          
-          console.log('Payment: Order data stored successfully')
-        } catch (storageError) {
-          console.error('Payment: Error storing order data:', storageError)
-        }
-      }
-
-      // Send confirmation email
+  useEffect(() => {
+    const getOrder = async () => {
       try {
-        const emailResponse = await fetch('/api/send-confirmation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: orderData.customerEmail,
-            orderDetails: {
-              orderId: result.orderId,
-              customerName: orderData.customerName,
-              items: orderData.items,
-              subtotal: orderData.subtotal,
-              shipping: orderData.shipping,
-              vat: orderData.tax,
-              totalAmount: orderData.totalAmount,
-              address: orderData.address,
-              city: orderData.city,
-              phone: orderData.customerPhone
-            }
-          })
-        })
-        
-        if (emailResponse.ok) {
-          console.log('Payment: Confirmation email sent successfully')
-        } else {
-          console.error('Payment: Failed to send confirmation email')
-        }
-      } catch (emailError) {
-        console.error('Payment: Error sending confirmation email:', emailError)
-      }
+        const orderId = searchParams.get("orderId")
 
-      // Clear cart and checkout data
-      clearCart()
-      
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('checkout-data')
-        sessionStorage.removeItem('checkout-data')
+        const res = await axios.get(`/api/orders/${orderId}`)
+        setOrder(res.data)
+        clearCart()
+      } catch (error) {
+        console.log("[confirmation page]", error)
       }
-
-      toast({
-        title: "Order Placed Successfully!",
-        description: `Your order ${result.orderId} has been placed successfully.`
-      })
-
-      // Navigate to confirmation page with multiple fallback methods
-      console.log('Payment: Navigating to order confirmation...')
-      
-      // Create a comprehensive URL with all necessary data
-      const encodedData = encodeURIComponent(JSON.stringify(confirmationData))
-      const baseUrl = `/order-confirmation?orderId=${result.orderId}`
-      
-      // Check if URL would be too long (most browsers handle ~2000 chars)
-      const fullUrl = `${baseUrl}&data=${encodedData}`
-      
-      if (fullUrl.length > 1900) {
-        // URL too long, use just order ID and rely on storage
-        console.log('Payment: URL too long, using storage method')
-        router.replace(`${baseUrl}&stored=true`)
-      } else {
-        // URL is safe, include data
-        console.log('Payment: Using URL with data')
-        router.replace(fullUrl)
-      }
-      
-    } else {
-      throw new Error(result.error || 'Failed to place order')
     }
 
-  } catch (error) {
-    console.error('Error placing order:', error)
-    toast({
-      variant: "destructive",
-      title: "Order Failed",
-      description: error instanceof Error ? error.message : "Failed to place order. Please try again."
-    })
-  } finally {
-    setIsProcessing(false)
+    getOrder()
+  }, [])
+
+  if (!order) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-gray-500">Loading your order...</p>
+      </div>
+    )
   }
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-12">
+      <div className="flex items-center gap-2 mb-8">
+        <CheckCircle className="text-green-500 w-6 h-6" />
+        <h1 className="text-2xl font-semibold">Thank you for your order!</h1>
+      </div>
+      <div className="bg-white shadow-md rounded-lg p-6">
+        <p className="mb-4">Order ID: <span className="font-medium">{order.id}</span></p>
+        <p className="mb-4">Order Date: <span className="font-medium">{new Date(order.createdAt).toLocaleDateString()}</span></p>
+        <p className="mb-4">Payment Status: <span className="font-medium">{order.isPaid ? "Paid" : "Pending"}</span></p>
+        <h2 className="text-lg font-semibold mb-2">Products:</h2>
+        <ul className="space-y-2 mb-4">
+          {order.products.map((product) => (
+            <li key={product.id} className="flex justify-between items-center">
+              <div>
+                <p className="font-medium">{product.name}</p>
+                <p className="text-sm text-gray-500">Qty: {product.quantity}</p>
+              </div>
+              <p>{formatPrice(product.price)}</p>
+            </li>
+          ))}
+        </ul>
+        <p className="text-right font-semibold text-lg">
+          Total: {formatPrice(order.totalAmount)}
+        </p>
+      </div>
+    </div>
+  )
 }
