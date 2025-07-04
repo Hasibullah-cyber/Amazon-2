@@ -1,121 +1,291 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { CheckCircle2, Truck, Clock, AlertCircle } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { CheckCircle2, Package, Clock, Truck } from 'lucide-react'
 
-export default function OrderConfirmation() {
+interface OrderData {
+  orderId: string
+  trackingNumber: string
+  customerName: string
+  customerEmail: string
+  totalAmount: number
+  paymentMethod: string
+  estimatedDelivery: string
+  items: Array<{
+    id: string
+    name: string
+    price: number
+    quantity: number
+    image?: string
+  }>
+}
+
+function OrderConfirmationContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [order, setOrder] = useState<any>(null)
+  const [orderData, setOrderData] = useState<OrderData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  // Load order data
   useEffect(() => {
-    const loadOrder = async () => {
+    const orderIdParam = searchParams.get('orderId')
+    const dataParam = searchParams.get('data')
+
+    if (typeof window !== 'undefined') {
       try {
-        const orderId = searchParams.get('orderId')
-        if (!orderId) throw new Error('Missing order ID')
-
-        // Try API first
-        const response = await fetch(`/api/orders/${orderId}`)
-        if (!response.ok) throw new Error('Order not found')
-
-        const data = await response.json()
-        if (!data.success) throw new Error(data.error || 'Invalid order data')
-
-        setOrder(data.order)
-        
-        // Fallback: Save to localStorage
-        localStorage.setItem(`order-${orderId}`, JSON.stringify(data.order))
-
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load order')
-      } finally {
-        setLoading(false)
+        const storedOrder = localStorage.getItem('latest-order')
+        if (storedOrder) {
+          const parsedOrder = JSON.parse(storedOrder)
+          setOrderData(parsedOrder)
+          setLoading(false)
+          return
+        }
+      } catch (error) {
+        console.error('Error reading order from localStorage:', error)
       }
     }
 
-    loadOrder()
+    if (dataParam) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(dataParam))
+        setOrderData(decoded)
+        setLoading(false)
+        return
+      } catch (error) {
+        console.error('Error parsing order data from URL:', error)
+      }
+    }
+
+    if (orderIdParam) {
+      fetchOrderById(orderIdParam)
+      return
+    }
+
+    setLoading(false)
   }, [searchParams])
+
+  const fetchOrderById = async (orderId: string) => {
+    try {
+      const response = await fetch(`/api/track-order?orderId=${orderId}`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success && data.order) {
+          const orderInfo = {
+            orderId: data.order.orderId || data.order.order_id || orderId,
+            trackingNumber: data.order.trackingNumber || data.order.tracking_number || '',
+            customerName: data.order.customerName || data.order.customer_name || '',
+            customerEmail: data.order.customerEmail || data.order.customer_email || '',
+            totalAmount: data.order.totalAmount || data.order.total_amount || 0,
+            paymentMethod: data.order.paymentMethod || data.order.payment_method || 'Unknown',
+            estimatedDelivery: data.order.estimatedDelivery || data.order.estimated_delivery || '3-5 business days',
+            items: data.order.items || []
+          }
+          setOrderData(orderInfo)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching order:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (loading) {
     return (
-      <div className="text-center p-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto" />
-        <p className="mt-4">Loading your order...</p>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading order confirmation...</p>
+        </div>
       </div>
     )
   }
 
-  if (error || !order) {
+  if (!orderData) {
     return (
-      <div className="text-center p-8">
-        <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
-        <h1 className="text-2xl font-bold mt-4">Order Not Found</h1>
-        <p className="mt-2 text-gray-600">{error}</p>
-        <Button 
-          onClick={() => router.push('/orders')}
-          className="mt-6"
-        >
-          View Order History
-        </Button>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto text-center">
+          <h1 className="text-2xl font-bold text-orange-600 mb-4">Order Confirmation</h1>
+          <p className="text-gray-600 mb-6">
+            We're having trouble loading your order confirmation. This might happen if:
+          </p>
+          <ul className="text-left text-gray-600 mb-6 space-y-2">
+            <li>• The page was refreshed before loading completed</li>
+            <li>• The confirmation link expired</li>
+            <li>• There was a temporary technical issue</li>
+          </ul>
+          <div className="bg-blue-50 p-4 rounded-lg mb-6">
+            <p className="text-blue-800 font-semibold mb-2">Don't worry!</p>
+            <p className="text-blue-700 text-sm">
+              If your order was successfully placed, you should receive a confirmation email shortly. 
+              You can also track your order using the tracking number provided.
+            </p>
+          </div>
+          <div className="space-y-4">
+            <Button onClick={() => router.push('/track-order')} className="amazon-button">
+              Track Your Order
+            </Button>
+            <Button onClick={() => router.push('/order-history')} variant="outline">
+              View Order History
+            </Button>
+            <Button onClick={() => router.push('/')} variant="outline">
+              Continue Shopping
+            </Button>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <div className="text-center mb-8">
-        <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
-        <h1 className="text-3xl font-bold mt-4">Order Confirmed!</h1>
-        <p className="text-lg text-gray-600 mt-2">
-          Thank you for your purchase, {order.customer_name}!
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
-        <div className="border rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Order Details</h2>
-          <div className="space-y-2">
-            <p><span className="font-medium">Order ID:</span> {order.order_id}</p>
-            <p><span className="font-medium">Date:</span> {new Date(order.created_at).toLocaleDateString()}</p>
-            <p><span className="font-medium">Total:</span> ${order.total_amount.toFixed(2)}</p>
-          </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+          <h1 className="text-3xl font-bold text-green-600 mb-2">Order Placed Successfully!</h1>
+          <p className="text-gray-600">Thank you for your order. We'll send you updates via email.</p>
         </div>
 
-        <div className="border rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Delivery Information</h2>
-          <div className="flex items-start gap-3">
-            <Truck className="text-blue-500 mt-1" />
-            <div>
-              <p className="font-medium">Tracking Number:</p>
-              <p>{order.tracking_number}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3 mt-4">
-            <Clock className="text-blue-500 mt-1" />
-            <div>
-              <p className="font-medium">Estimated Delivery:</p>
-              <p>{order.estimated_delivery || '3-5 business days'}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Order Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-600">Order ID</p>
+                  <p className="font-mono font-semibold">{orderData.orderId}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-600">Tracking Number</p>
+                  <p className="font-mono font-semibold">{orderData.trackingNumber}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-600">Customer</p>
+                  <p className="font-semibold">{orderData.customerName}</p>
+                  <p className="text-sm text-gray-600">{orderData.customerEmail}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-600">Payment Method</p>
+                  <p className="font-semibold">{orderData.paymentMethod}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-600">Total Amount</p>
+                  <p className="font-semibold text-lg">৳{orderData.totalAmount.toFixed(2)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-      <div className="flex flex-wrap gap-4 justify-center">
-        <Button onClick={() => router.push('/')}>
-          Continue Shopping
-        </Button>
-        <Button 
-          variant="outline" 
-          onClick={() => router.push(`/track-order?orderId=${order.order_id}`)}
-        >
-          Track Order
-        </Button>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5" />
+                Delivery Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <Clock className="h-5 w-5 text-blue-500 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Estimated Delivery</p>
+                    <p className="text-gray-600">{orderData.estimatedDelivery}</p>
+                  </div>
+                </div>
+                
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-blue-800 mb-2">What's Next?</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• You'll receive an email confirmation shortly</li>
+                    <li>• We'll notify you when your order is shipped</li>
+                    <li>• Track your order anytime with the tracking number</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Order Items</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {orderData.items.map((item, index) => (
+                <div key={index} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
+                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <Package className="h-8 w-8 text-gray-400" />
+                    )}
+                  </div>
+                  
+                  <div className="flex-1">
+                    <h4 className="font-semibold">{item.name}</h4>
+                    <p className="text-gray-600">Quantity: {item.quantity}</p>
+                  </div>
+                  
+                  <div className="text-right">
+                    <p className="font-semibold">৳{(item.price * item.quantity).toFixed(2)}</p>
+                    <p className="text-sm text-gray-600">৳{item.price.toFixed(2)} each</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col sm:flex-row gap-4 mt-8 justify-center">
+          <Button 
+            onClick={() => router.push(`/track-order?orderId=${orderData.orderId}`)}
+            className="amazon-button"
+          >
+            Track This Order
+          </Button>
+          <Button 
+            onClick={() => router.push('/')}
+            variant="outline"
+          >
+            Continue Shopping
+          </Button>
+          <Button 
+            onClick={() => router.push('/order-history')}
+            variant="outline"
+          >
+            View All Orders
+          </Button>
+        </div>
       </div>
     </div>
+  )
+}
+
+export default function OrderConfirmationPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading order confirmation...</p>
+        </div>
+      </div>
+    }>
+      <OrderConfirmationContent />
+    </Suspense>
   )
 }
