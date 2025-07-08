@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
-import { v4 as uuidv4 } from 'uuid'
+// Removed: import { v4 as uuidv4 } from 'uuid'
 
 interface OrderItem {
   id: string;
@@ -93,8 +93,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const orderId = `ORD-${uuidv4()}`
-    const trackingNumber = `TRK-${uuidv4().slice(0, 8).toUpperCase()}`
+    // --- Use crypto.randomUUID() instead of uuidv4()
+    const orderId = `ORD-${crypto.randomUUID()}`
+    const trackingNumber = `TRK-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
 
     const subtotal = parseFloat(orderData.subtotal as string) || parseFloat(orderData.totalAmount as string) || 0
     const shipping = parseFloat(orderData.shipping as string) || 100
