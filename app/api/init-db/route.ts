@@ -1,5 +1,6 @@
-
 import { NextResponse } from 'next/server'
+
+// Only used on the server, safe to import here
 import { initializeTables } from '@/lib/database'
 import { initializeDefaultAdmin } from '@/lib/admin-auth'
 
