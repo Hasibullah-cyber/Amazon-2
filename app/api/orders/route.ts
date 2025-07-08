@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
+import { v4 as uuidv4 } from 'uuid'
 
 export async function GET() {
   try {
@@ -17,10 +18,10 @@ export async function GET() {
         FROM orders 
         ORDER BY created_at DESC
       `)
-      
+      // Ensure items always parsed as array
       return NextResponse.json(result.rows.map(row => ({
         ...row,
-        items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items
+        items: (typeof row.items === 'string' ? JSON.parse(row.items) : row.items) || []
       })))
     } finally {
       client.release()
@@ -37,28 +38,30 @@ export async function POST(request: Request) {
     console.log('Received order data:', orderData)
 
     // Validate required fields
-    const requiredFields = ['customerName', 'customerEmail', 'customerPhone', 'address', 'city', 'items', 'totalAmount', 'paymentMethod']
+    const requiredFields = [
+      'customerName', 'customerEmail', 'customerPhone', 'address', 'city', 'items', 'totalAmount', 'paymentMethod'
+    ]
     for (const field of requiredFields) {
       if (!orderData[field]) {
         console.error(`Missing required field: ${field}`)
-        return NextResponse.json({ 
-          success: false, 
-          error: `Missing required field: ${field}` 
+        return NextResponse.json({
+          success: false,
+          error: `Missing required field: ${field}`
         }, { status: 400 })
       }
     }
 
     // Validate items array
     if (!Array.isArray(orderData.items) || orderData.items.length === 0) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Order must contain at least one item' 
+      return NextResponse.json({
+        success: false,
+        error: 'Order must contain at least one item'
       }, { status: 400 })
     }
 
-    // Generate unique order ID
-    const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    const trackingNumber = `TRK-${Date.now().toString().substr(-8)}`
+    // Generate unique order ID and tracking number
+    const orderId = `ORD-${uuidv4()}`
+    const trackingNumber = `TRK-${uuidv4().slice(0, 8).toUpperCase()}`
 
     // Calculate totals
     const subtotal = parseFloat(orderData.subtotal) || parseFloat(orderData.totalAmount) || 0
@@ -68,7 +71,6 @@ export async function POST(request: Request) {
 
     try {
       const client = await pool.connect()
-      
       try {
         await client.query('BEGIN')
 
@@ -106,7 +108,7 @@ export async function POST(request: Request) {
         const newOrder = insertResult.rows[0]
         console.log('Order created successfully:', newOrder)
 
-        // Insert order items
+        // Insert order items and update stock safely
         for (const item of orderData.items) {
           await client.query(`
             INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
@@ -120,15 +122,21 @@ export async function POST(request: Request) {
             item.price * item.quantity
           ])
 
-          // Update product stock if available
-          try {
-            await client.query(`
-              UPDATE products 
-              SET stock = GREATEST(0, stock - $1), updated_at = CURRENT_TIMESTAMP 
-              WHERE id = $2
-            `, [item.quantity, item.id])
-          } catch (stockError) {
-            console.warn('Could not update stock for product:', item.id, stockError)
+          // Safely update stock with check
+          const stockUpdateResult = await client.query(`
+            UPDATE products
+            SET stock = stock - $1, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2 AND stock >= $1
+            RETURNING stock
+          `, [item.quantity, item.id])
+
+          if (stockUpdateResult.rowCount === 0) {
+            // Not enough stock, rollback and return error
+            await client.query('ROLLBACK')
+            return NextResponse.json({
+              success: false,
+              error: `Not enough stock for product ${item.id}`
+            }, { status: 400 })
           }
         }
 
@@ -192,10 +200,8 @@ export async function POST(request: Request) {
 
     } catch (dbError) {
       console.error('Database error:', dbError)
-      
-      // Fallback to localStorage for demo
-      console.log('Falling back to demo mode')
-      
+      // Demo fallback: just return success without DB
+      console.log('Falling back to in-memory demo order (not persistent)')
       const fallbackOrder = {
         id: Date.now(),
         orderId: orderId,
@@ -212,7 +218,6 @@ export async function POST(request: Request) {
         estimatedDelivery: '3-5 business days',
         createdAt: new Date().toISOString()
       }
-
       return NextResponse.json({
         success: true,
         orderId: orderId,
@@ -224,7 +229,7 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Error processing order:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: false,
       error: 'Failed to process order. Please try again.',
       details: error instanceof Error ? error.message : 'Unknown error'
