@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
@@ -8,7 +7,6 @@ export async function GET(request: Request) {
     const email = searchParams.get('email')
 
     const client = await pool.connect()
-
     try {
       if (email) {
         // Check for specific user by email
@@ -16,7 +14,6 @@ export async function GET(request: Request) {
           'SELECT id, email, name, created_at as "createdAt" FROM users WHERE email = $1',
           [email]
         )
-        
         if (result.rows.length > 0) {
           return NextResponse.json({ user: result.rows[0] })
         } else {
@@ -30,9 +27,7 @@ export async function GET(request: Request) {
           FROM users 
           ORDER BY created_at DESC
         `)
-
         const users = result.rows
-        console.log('Fetched users from database:', users.length)
         return NextResponse.json(users)
       }
     } finally {
@@ -46,10 +41,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { id, email, name, createdAt } = await request.json()
+    const { email, name } = await request.json()
+
+    if (!email || !name) {
+      return NextResponse.json({ error: 'Email and name are required' }, { status: 400 })
+    }
 
     const client = await pool.connect()
-
     try {
       // Check if user already exists
       const existingUser = await client.query(
@@ -61,15 +59,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'User already exists' }, { status: 409 })
       }
 
-      // Insert new user
+      // Insert new user, let DB handle id and created_at
       const result = await client.query(
-        `INSERT INTO users (id, email, name, created_at) 
-         VALUES ($1, $2, $3, $4) 
+        `INSERT INTO users (email, name) 
+         VALUES ($1, $2) 
          RETURNING id, email, name, created_at as "createdAt"`,
-        [id, email, name, createdAt]
+        [email, name]
       )
 
-      console.log('User saved to database:', result.rows[0])
       return NextResponse.json({ success: true, user: result.rows[0] })
     } finally {
       client.release()
