@@ -11,7 +11,6 @@ import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@/hooks/use-toast'
 import { ChunkErrorBoundary } from '@/components/chunk-error-boundary'
 
-// Type definitions for cart items and order response
 interface CartItem {
   id: string
   name: string
@@ -41,13 +40,15 @@ interface OrderResult {
 }
 
 function isValidCheckoutData(data: any): data is CheckoutData {
-  return data &&
+  return (
+    data &&
     typeof data.name === 'string' &&
     typeof data.email === 'string' &&
     typeof data.phone === 'string' &&
     typeof data.address === 'string' &&
     typeof data.city === 'string' &&
     typeof data.postalCode === 'string'
+  )
 }
 
 function PaymentContent() {
@@ -56,7 +57,6 @@ function PaymentContent() {
   const { cartItems, totalPrice, clearCart } = useCart()
   const items: CartItem[] = cartItems || []
   const total = totalPrice || 0
-  const { user } = useAuth()
   const { toast } = useToast()
 
   const [paymentMethod, setPaymentMethod] = useState('cash-on-delivery')
@@ -78,9 +78,7 @@ function PaymentContent() {
             loaded = true
             return
           }
-        } catch (error) {
-          // Ignore and continue
-        }
+        } catch (error) {}
       }
       // Try from storage
       if (typeof window !== 'undefined') {
@@ -94,28 +92,24 @@ function PaymentContent() {
               loaded = true
               return
             }
-          } catch (error) {
-            // Ignore and continue
-          }
+          } catch (error) {}
         }
       }
     }
     tryLoad()
     setLoading(false)
     if (!loaded) {
-      // Delay navigation to avoid hydration issues
       setTimeout(() => router.replace('/checkout'), 200)
     }
     // eslint-disable-next-line
-  }, [searchParams])
+  }, [searchParams, router])
 
   // If cart is empty, navigate to cart page
   useEffect(() => {
     if (!loading && items.length === 0) {
       setTimeout(() => router.replace('/cart'), 200)
     }
-    // eslint-disable-next-line
-  }, [items.length, loading])
+  }, [items.length, loading, router])
 
   const handlePlaceOrder = async () => {
     if (!checkoutData) {
@@ -199,8 +193,7 @@ function PaymentContent() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('latest-order', JSON.stringify(confirmationData))
       }
-      
-      // FIX: Use query parameter format
+
       router.replace(`/order-confirmation?orderId=${encodeURIComponent(result.orderId)}`)
     } catch (error: any) {
       toast({
@@ -213,7 +206,6 @@ function PaymentContent() {
     }
   }
 
-  // Loading spinner
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -228,7 +220,6 @@ function PaymentContent() {
     )
   }
 
-  // Show return to checkout if data is missing
   if (!checkoutData) {
     return (
       <div className="container mx-auto px-4 py-8">
