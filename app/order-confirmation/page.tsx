@@ -30,14 +30,42 @@ function OrderConfirmationContent() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    console.log('OrderConfirmation: Loading order data...')
+    
     const orderIdParam = searchParams.get('orderId')
     const dataParam = searchParams.get('data')
 
+    console.log('OrderConfirmation: orderIdParam:', orderIdParam)
+    console.log('OrderConfirmation: dataParam:', dataParam)
+
+    // FIX: Changed priority order - URL params first
+    // Priority 1: Try URL data parameter
+    if (dataParam) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(dataParam))
+        console.log('OrderConfirmation: Successfully decoded data:', decoded)
+        setOrderData(decoded)
+        setLoading(false)
+        return
+      } catch (error) {
+        console.error('Error parsing order data from URL:', error)
+      }
+    }
+
+    // Priority 2: Try URL orderId parameter
+    if (orderIdParam) {
+      console.log('OrderConfirmation: Fetching order by ID:', orderIdParam)
+      fetchOrderById(orderIdParam)
+      return
+    }
+
+    // Priority 3: Check localStorage for latest order
     if (typeof window !== 'undefined') {
       try {
         const storedOrder = localStorage.getItem('latest-order')
         if (storedOrder) {
           const parsedOrder = JSON.parse(storedOrder)
+          console.log('OrderConfirmation: Found order in localStorage:', parsedOrder)
           setOrderData(parsedOrder)
           setLoading(false)
           return
@@ -47,31 +75,18 @@ function OrderConfirmationContent() {
       }
     }
 
-    if (dataParam) {
-      try {
-        const decoded = JSON.parse(decodeURIComponent(dataParam))
-        setOrderData(decoded)
-        setLoading(false)
-        return
-      } catch (error) {
-        console.error('Error parsing order data from URL:', error)
-      }
-    }
-
-    if (orderIdParam) {
-      fetchOrderById(orderIdParam)
-      return
-    }
-
+    console.log('OrderConfirmation: No order data found')
     setLoading(false)
   }, [searchParams])
 
   const fetchOrderById = async (orderId: string) => {
     try {
+      console.log('OrderConfirmation: Fetching order with ID:', orderId)
       const response = await fetch(`/api/track-order?orderId=${orderId}`)
       
       if (response.ok) {
         const data = await response.json()
+        console.log('OrderConfirmation: API response:', data)
         
         if (data.success && data.order) {
           const orderInfo = {
@@ -84,11 +99,16 @@ function OrderConfirmationContent() {
             estimatedDelivery: data.order.estimatedDelivery || data.order.estimated_delivery || '3-5 business days',
             items: data.order.items || []
           }
+          console.log('OrderConfirmation: Setting order data:', orderInfo)
           setOrderData(orderInfo)
+        } else {
+          console.error('OrderConfirmation: Invalid response format:', data)
         }
+      } else {
+        console.error('OrderConfirmation: Failed to fetch order, status:', response.status)
       }
     } catch (error) {
-      console.error('Error fetching order:', error)
+      console.error('OrderConfirmation: Error fetching order:', error)
     } finally {
       setLoading(false)
     }
@@ -144,6 +164,7 @@ function OrderConfirmationContent() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
+        {/* Success Header */}
         <div className="text-center mb-8">
           <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-green-600 mb-2">Order Placed Successfully!</h1>
@@ -151,6 +172,7 @@ function OrderConfirmationContent() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Order Details */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -189,6 +211,7 @@ function OrderConfirmationContent() {
             </CardContent>
           </Card>
 
+          {/* Delivery Information */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -219,6 +242,7 @@ function OrderConfirmationContent() {
           </Card>
         </div>
 
+        {/* Order Items */}
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>Order Items</CardTitle>
@@ -250,6 +274,7 @@ function OrderConfirmationContent() {
           </CardContent>
         </Card>
 
+        {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 mt-8 justify-center">
           <Button 
             onClick={() => router.push(`/track-order?orderId=${orderData.orderId}`)}
@@ -288,4 +313,4 @@ export default function OrderConfirmationPage() {
       <OrderConfirmationContent />
     </Suspense>
   )
-}
+                }
