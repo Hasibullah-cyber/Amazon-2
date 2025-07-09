@@ -40,15 +40,13 @@ interface OrderResult {
 }
 
 function isValidCheckoutData(data: any): data is CheckoutData {
-  return (
-    data &&
+  return data &&
     typeof data.name === 'string' &&
     typeof data.email === 'string' &&
     typeof data.phone === 'string' &&
     typeof data.address === 'string' &&
     typeof data.city === 'string' &&
     typeof data.postalCode === 'string'
-  )
 }
 
 function PaymentContent() {
@@ -57,6 +55,7 @@ function PaymentContent() {
   const { cartItems, totalPrice, clearCart } = useCart()
   const items: CartItem[] = cartItems || []
   const total = totalPrice || 0
+  const { user } = useAuth()
   const { toast } = useToast()
 
   const [paymentMethod, setPaymentMethod] = useState('cash-on-delivery')
@@ -64,11 +63,9 @@ function PaymentContent() {
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Load checkout data from URL or storage
   useEffect(() => {
     let loaded = false
     const tryLoad = () => {
-      // Try from searchParams
       const dataParam = searchParams.get('data')
       if (dataParam) {
         try {
@@ -80,7 +77,7 @@ function PaymentContent() {
           }
         } catch (error) {}
       }
-      // Try from storage
+      
       if (typeof window !== 'undefined') {
         let stored: string | null = sessionStorage.getItem('checkout-data')
         if (!stored) stored = localStorage.getItem('checkout-data')
@@ -101,15 +98,14 @@ function PaymentContent() {
     if (!loaded) {
       setTimeout(() => router.replace('/checkout'), 200)
     }
-    // eslint-disable-next-line
-  }, [searchParams, router])
+  }, [searchParams])
 
-  // If cart is empty, navigate to cart page
   useEffect(() => {
-    if (!loading && items.length === 0) {
+    const orderId = searchParams.get('orderId')
+    if (!loading && items.length === 0 && !orderId) {
       setTimeout(() => router.replace('/cart'), 200)
     }
-  }, [items.length, loading, router])
+  }, [items.length, loading, searchParams, router])
 
   const handlePlaceOrder = async () => {
     if (!checkoutData) {
@@ -128,6 +124,7 @@ function PaymentContent() {
       })
       return
     }
+
     setIsProcessing(true)
     try {
       const orderData = {
@@ -169,17 +166,6 @@ function PaymentContent() {
         throw new Error(result.error || result.details || 'Failed to place order')
       }
 
-      clearCart()
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('checkout-data')
-        sessionStorage.removeItem('checkout-data')
-      }
-
-      toast({
-        title: "Order Placed Successfully!",
-        description: `Your order ${result.orderId} has been placed successfully.`
-      })
-
       const confirmationData = {
         orderId: result.orderId,
         trackingNumber: result.trackingNumber,
@@ -190,11 +176,21 @@ function PaymentContent() {
         estimatedDelivery: result.order?.estimatedDelivery || '3-5 business days',
         items: orderData.items
       }
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('latest-order', JSON.stringify(confirmationData))
-      }
-
+      
+      localStorage.setItem('latest-order', JSON.stringify(confirmationData))
       router.replace(`/order-confirmation?orderId=${encodeURIComponent(result.orderId)}`)
+
+      setTimeout(() => {
+        clearCart()
+        localStorage.removeItem('checkout-data')
+        sessionStorage.removeItem('checkout-data')
+      }, 1000)
+
+      toast({
+        title: "Order Placed Successfully!",
+        description: `Your order ${result.orderId} has been placed successfully.`
+      })
+
     } catch (error: any) {
       toast({
         variant: "destructive",
