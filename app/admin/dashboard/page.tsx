@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
-
 import { TrendingUp, TrendingDown, ShoppingCart, Package, Users, DollarSign } from "lucide-react"
 
 export const dynamic = 'force-dynamic'
@@ -11,41 +10,92 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null)
   const [orders, setOrders] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const updateData = async () => {
       try {
+        setLoading(true)
+        setError(null)
+        
         const [statsResponse, ordersResponse, productsResponse] = await Promise.all([
-          fetch('/api/admin/stats'),
-          fetch('/api/admin/orders'),
-          fetch('/api/admin/products')
+          fetch('/api/admin/stats').then(async res => {
+            if (!res.ok) throw new Error(`Stats failed: ${res.status}`)
+            return res.json()
+          }),
+          fetch('/api/admin/orders').then(async res => {
+            if (!res.ok) throw new Error(`Orders failed: ${res.status}`)
+            return res.json()
+          }),
+          fetch('/api/admin/products').then(async res => {
+            if (!res.ok) throw new Error(`Products failed: ${res.status}`)
+            return res.json()
+          })
         ])
 
-        if (statsResponse.ok && ordersResponse.ok && productsResponse.ok) {
-          const [fetchedStats, fetchedOrders, fetchedProducts] = await Promise.all([
-            statsResponse.json(),
-            ordersResponse.json(),
-            productsResponse.json()
-          ])
-
-          setStats(fetchedStats)
-          setOrders(fetchedOrders)
-          setProducts(fetchedProducts)
+        // Validate response structure
+        if (!statsResponse?.totalRevenue && statsResponse?.totalRevenue !== 0) {
+          throw new Error('Invalid stats format')
         }
+        if (!Array.isArray(ordersResponse)) {
+          throw new Error('Orders must be an array')
+        }
+        if (!Array.isArray(productsResponse)) {
+          throw new Error('Products must be an array')
+        }
+
+        setStats(statsResponse)
+        setOrders(ordersResponse)
+        setProducts(productsResponse)
       } catch (error) {
-        console.error('Error fetching data:', error)
+        console.error('Dashboard fetch error:', error)
+        setError(error instanceof Error ? error.message : 'Failed to load dashboard')
+      } finally {
+        setLoading(false)
       }
     }
 
     updateData()
-    
-    // Set up periodic refresh
-    const interval = setInterval(updateData, 30000) // Refresh every 30 seconds
-    
+    const interval = setInterval(updateData, 30000)
     return () => clearInterval(interval)
   }, [])
 
-  if (!stats) return <div className="p-6">Loading analytics...</div>
+  if (loading) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 mb-4"></div>
+        <p>Loading dashboard data...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+          <p className="font-bold">Error</p>
+          <p>{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!stats) {
+    return (
+      <div className="p-6">
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4">
+          <p>No data available</p>
+        </div>
+      </div>
+    )
+  }
 
   const totalInventoryValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0)
   const avgOrderValue = orders.length > 0 ? stats.totalRevenue / orders.length : 0
