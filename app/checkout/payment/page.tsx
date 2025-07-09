@@ -4,13 +4,21 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { useCart } from '@/components/cart-provider'
 import { useAuth } from '@/components/auth-provider'
 import { useToast } from '@/hooks/use-toast'
 import { ChunkErrorBoundary } from '@/components/chunk-error-boundary'
+
+// Type definitions for cart items and order response
+interface CartItem {
+  id: string
+  name: string
+  price: number
+  quantity: number
+  image: string
+}
 
 interface CheckoutData {
   name: string
@@ -21,57 +29,93 @@ interface CheckoutData {
   postalCode: string
 }
 
+interface OrderResult {
+  success: boolean
+  orderId: string
+  trackingNumber?: string
+  order?: {
+    estimatedDelivery?: string
+  }
+  error?: string
+  details?: string
+}
+
+function isValidCheckoutData(data: any): data is CheckoutData {
+  return data &&
+    typeof data.name === 'string' &&
+    typeof data.email === 'string' &&
+    typeof data.phone === 'string' &&
+    typeof data.address === 'string' &&
+    typeof data.city === 'string' &&
+    typeof data.postalCode === 'string'
+}
+
 function PaymentContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { cartItems, totalPrice, clearCart } = useCart()
-  const items = cartItems || []
+  const items: CartItem[] = cartItems || []
   const total = totalPrice || 0
   const { user } = useAuth()
   const { toast } = useToast()
-  
+
   const [paymentMethod, setPaymentMethod] = useState('cash-on-delivery')
   const [isProcessing, setIsProcessing] = useState(false)
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null)
+  const [loading, setLoading] = useState(true)
 
+  // Load checkout data from URL or storage
   useEffect(() => {
-    const dataParam = searchParams.get('data')
-    if (dataParam) {
-      try {
-        const decoded = JSON.parse(decodeURIComponent(dataParam))
-        setCheckoutData(decoded)
-        return
-      } catch (error) {
-        console.error('Error parsing checkout data from URL:', error)
-      }
-    }
-
-    if (typeof window !== 'undefined') {
-      let stored = sessionStorage.getItem('checkout-data')
-      if (!stored) {
-        stored = localStorage.getItem('checkout-data')
-      }
-      
-      if (stored) {
+    let loaded = false
+    const tryLoad = () => {
+      // Try from searchParams
+      const dataParam = searchParams.get('data')
+      if (dataParam) {
         try {
-          const parsedData = JSON.parse(stored)
-          setCheckoutData(parsedData)
-          return
+          const decoded = JSON.parse(decodeURIComponent(dataParam))
+          if (isValidCheckoutData(decoded)) {
+            setCheckoutData(decoded)
+            loaded = true
+            return
+          }
         } catch (error) {
-          console.error('Error parsing stored checkout data:', error)
+          // Ignore and continue
+        }
+      }
+      // Try from storage
+      if (typeof window !== 'undefined') {
+        let stored: string | null = sessionStorage.getItem('checkout-data')
+        if (!stored) stored = localStorage.getItem('checkout-data')
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored)
+            if (isValidCheckoutData(parsed)) {
+              setCheckoutData(parsed)
+              loaded = true
+              return
+            }
+          } catch (error) {
+            // Ignore and continue
+          }
         }
       }
     }
-
-    router.push('/checkout')
-  }, [searchParams, router])
-
-  useEffect(() => {
-    if (items.length === 0) {
-      router.push('/cart')
-      return
+    tryLoad()
+    setLoading(false)
+    if (!loaded) {
+      // Delay navigation to avoid hydration issues
+      setTimeout(() => router.replace('/checkout'), 200)
     }
-  }, [items.length, router])
+    // eslint-disable-next-line
+  }, [searchParams])
+
+  // If cart is empty, navigate to cart page
+  useEffect(() => {
+    if (!loading && items.length === 0) {
+      setTimeout(() => router.replace('/cart'), 200)
+    }
+    // eslint-disable-next-line
+  }, [items.length, loading])
 
   const handlePlaceOrder = async () => {
     if (!checkoutData) {
@@ -82,18 +126,15 @@ function PaymentContent() {
       })
       return
     }
-
     if (items.length === 0) {
       toast({
         variant: "destructive",
-        title: "Error", 
+        title: "Error",
         description: "Your cart is empty"
       })
       return
     }
-
     setIsProcessing(true)
-
     try {
       const orderData = {
         customerName: checkoutData.name,
@@ -119,64 +160,59 @@ function PaymentContent() {
 
       const response = await fetch('/api/orders', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData)
       })
 
-      const result = await response.json()
+      let result: OrderResult
+      try {
+        result = await response.json()
+      } catch (err) {
+        throw new Error('Unable to parse server response.')
+      }
 
-      if (!response.ok) {
+      if (!response.ok || !result.success) {
         throw new Error(result.error || result.details || 'Failed to place order')
       }
 
-      if (result.success) {
-        clearCart()
-        
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('checkout-data')
-          sessionStorage.removeItem('checkout-data')
-        }
-
-        toast({
-          title: "Order Placed Successfully!",
-          description: `Your order ${result.orderId} has been placed successfully.`
-        })
-
-        const confirmationData = {
-          orderId: result.orderId,
-          trackingNumber: result.trackingNumber,
-          customerName: orderData.customerName,
-          customerEmail: orderData.customerEmail,
-          totalAmount: orderData.totalAmount,
-          paymentMethod: orderData.paymentMethod,
-          estimatedDelivery: result.order?.estimatedDelivery || '3-5 business days',
-          items: orderData.items
-        }
-
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('latest-order', JSON.stringify(confirmationData))
-        }
-
-        router.replace(`/order-confirmation?orderId=${result.orderId}`)
-      } else {
-        throw new Error(result.error || 'Failed to place order')
+      clearCart()
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('checkout-data')
+        sessionStorage.removeItem('checkout-data')
       }
 
-    } catch (error) {
-      console.error('Error placing order:', error)
+      toast({
+        title: "Order Placed Successfully!",
+        description: `Your order ${result.orderId} has been placed successfully.`
+      })
+
+      const confirmationData = {
+        orderId: result.orderId,
+        trackingNumber: result.trackingNumber,
+        customerName: orderData.customerName,
+        customerEmail: orderData.customerEmail,
+        totalAmount: orderData.totalAmount,
+        paymentMethod: orderData.paymentMethod,
+        estimatedDelivery: result.order?.estimatedDelivery || '3-5 business days',
+        items: orderData.items
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('latest-order', JSON.stringify(confirmationData))
+      }
+      router.replace(`/order-confirmation?orderId=${result.orderId}`)
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Order Failed",
-        description: error instanceof Error ? error.message : "Failed to place order. Please try again."
+        description: error?.message || "Failed to place order. Please try again."
       })
     } finally {
       setIsProcessing(false)
     }
   }
 
-  if (!checkoutData) {
+  // Loading spinner
+  if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card>
@@ -184,9 +220,23 @@ function PaymentContent() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <h2 className="text-xl font-semibold mb-4">Loading Payment Page...</h2>
             <p className="text-gray-600">Please wait while we load your checkout information.</p>
-            <Button 
-              onClick={() => router.push('/checkout')} 
-              variant="outline" 
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Show return to checkout if data is missing
+  if (!checkoutData) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <h2 className="text-xl font-semibold mb-4">Missing Information</h2>
+            <p className="text-gray-600 mb-4">We could not load your checkout details.</p>
+            <Button
+              onClick={() => router.replace('/checkout')}
+              variant="outline"
               className="mt-4"
             >
               Return to Checkout
@@ -205,7 +255,6 @@ function PaymentContent() {
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Payment</h1>
-        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div>
             <Card>
@@ -223,7 +272,6 @@ function PaymentContent() {
                     <Label htmlFor="online">Online Payment (Coming Soon)</Label>
                   </div>
                 </RadioGroup>
-
                 {paymentMethod === 'online' && (
                   <div className="mt-4 p-4 bg-gray-50 rounded-md">
                     <p className="text-sm text-gray-600">
@@ -233,7 +281,6 @@ function PaymentContent() {
                 )}
               </CardContent>
             </Card>
-
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle>Delivery Information</CardTitle>
@@ -250,7 +297,6 @@ function PaymentContent() {
               </CardContent>
             </Card>
           </div>
-
           <div>
             <Card>
               <CardHeader>
@@ -267,9 +313,7 @@ function PaymentContent() {
                       <p className="font-medium">৳{(item.price * item.quantity).toFixed(2)}</p>
                     </div>
                   ))}
-                  
                   <hr />
-                  
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
@@ -284,16 +328,14 @@ function PaymentContent() {
                       <span>৳{finalTotal.toFixed(2)}</span>
                     </div>
                   </div>
-
-                  <Button 
-                    onClick={handlePlaceOrder} 
-                    className="w-full amazon-button" 
+                  <Button
+                    onClick={handlePlaceOrder}
+                    className="w-full amazon-button"
                     size="lg"
                     disabled={isProcessing || paymentMethod === 'online'}
                   >
                     {isProcessing ? 'Processing...' : 'Place Order'}
                   </Button>
-
                   {paymentMethod === 'online' && (
                     <p className="text-sm text-center text-gray-600">
                       Please select Cash on Delivery to continue
