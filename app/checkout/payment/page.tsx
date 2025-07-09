@@ -199,7 +199,9 @@ function PaymentContent() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('latest-order', JSON.stringify(confirmationData))
       }
-      router.replace(`/order-confirmation?orderId=${result.orderId}`)
+      
+      // FIX: Use query parameter format
+      router.replace(`/order-confirmation?orderId=${encodeURIComponent(result.orderId)}`)
     } catch (error: any) {
       toast({
         variant: "destructive",
