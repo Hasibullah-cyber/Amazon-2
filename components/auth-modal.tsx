@@ -1,5 +1,4 @@
-
-"use client"
+'use client'
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -60,10 +59,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
           return
         }
 
-        console.log('Submitting signup form')
+        // Removed sensitive logging
         const result = await authManager.signUp(formData.email, formData.password, formData.name)
-        console.log('Signup result:', result)
-        
         if (result.success) {
           toast({
             title: "Account created successfully!",
@@ -71,16 +68,13 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
             duration: 4000,
           })
           onClose()
-          // Reset form
           setFormData({ email: '', password: '', name: '', confirmPassword: '' })
         } else {
           setError(result.error || 'Failed to create account')
         }
       } else {
-        console.log('Submitting signin form')
+        // Removed sensitive logging
         const result = await authManager.signIn(formData.email, formData.password)
-        console.log('Signin result:', result)
-        
         if (result.success) {
           toast({
             title: "Welcome back!",
@@ -88,14 +82,12 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
             duration: 4000,
           })
           onClose()
-          // Reset form
           setFormData({ email: '', password: '', name: '', confirmPassword: '' })
         } else {
           setError(result.error || 'Failed to sign in')
         }
       }
     } catch (err) {
-      console.error('Auth form error:', err)
       setError('An unexpected error occurred')
     } finally {
       setLoading(false)
@@ -112,17 +104,33 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     resetForm()
   }
 
+  // Placeholder for forgot password
+  const handleForgotPassword = () => {
+    toast({
+      title: "Forgot password?",
+      description: "Password reset functionality is not implemented yet.",
+      duration: 4000,
+    })
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-modal-title"
+    >
       <Card className="w-full max-w-md p-6 relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+          aria-label="Close modal"
+          disabled={loading}
         >
           <X className="h-5 w-5" />
         </button>
 
-        <h2 className="text-2xl font-bold mb-6 text-center">
+        <h2 id="auth-modal-title" className="text-2xl font-bold mb-6 text-center">
           {mode === 'signin' ? 'Sign In' : 'Create Account'}
         </h2>
 
@@ -172,6 +180,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                tabIndex={0}
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4 text-gray-400" />
@@ -206,6 +216,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
             <button
               onClick={switchMode}
               className="ml-1 text-blue-600 hover:underline font-medium"
+              type="button"
+              disabled={loading}
             >
               {mode === 'signin' ? 'Sign up' : 'Sign in'}
             </button>
@@ -214,7 +226,12 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
 
         {mode === 'signin' && (
           <div className="mt-4 text-center">
-            <button className="text-sm text-blue-600 hover:underline">
+            <button
+              className="text-sm text-blue-600 hover:underline"
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={loading}
+            >
               Forgot your password?
             </button>
           </div>
