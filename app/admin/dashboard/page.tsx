@@ -13,51 +13,43 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const updateData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        const [statsResponse, ordersResponse, productsResponse] = await Promise.all([
-          fetch('/api/admin/stats').then(async res => {
-            if (!res.ok) throw new Error(`Stats failed: ${res.status}`)
-            return res.json()
-          }),
-          fetch('/api/admin/orders').then(async res => {
-            if (!res.ok) throw new Error(`Orders failed: ${res.status}`)
-            return res.json()
-          }),
-          fetch('/api/admin/products').then(async res => {
-            if (!res.ok) throw new Error(`Products failed: ${res.status}`)
-            return res.json()
-          })
-        ])
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const [statsRes, ordersRes, productsRes] = await Promise.all([
+        fetch('/api/admin/stats').then(async res => {
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error || `Stats failed: ${res.status}`)
+          return data
+        }),
+        fetch('/api/admin/orders').then(async res => {
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error || `Orders failed: ${res.status}`)
+          return data
+        }),
+        fetch('/api/admin/products').then(async res => {
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error || `Products failed: ${res.status}`)
+          return data
+        })
+      ])
 
-        // Validate response structure
-        if (!statsResponse?.totalRevenue && statsResponse?.totalRevenue !== 0) {
-          throw new Error('Invalid stats format')
-        }
-        if (!Array.isArray(ordersResponse)) {
-          throw new Error('Orders must be an array')
-        }
-        if (!Array.isArray(productsResponse)) {
-          throw new Error('Products must be an array')
-        }
-
-        setStats(statsResponse)
-        setOrders(ordersResponse)
-        setProducts(productsResponse)
-      } catch (error) {
-        console.error('Dashboard fetch error:', error)
-        setError(error instanceof Error ? error.message : 'Failed to load dashboard')
-      } finally {
-        setLoading(false)
-      }
+      setStats(statsRes)
+      setOrders(ordersRes)
+      setProducts(productsRes)
+    } catch (error) {
+      console.error('Dashboard fetch error:', error)
+      setError(error instanceof Error ? error.message : 'Failed to load dashboard')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    updateData()
-    const interval = setInterval(updateData, 30000)
+  useEffect(() => {
+    fetchData()
+    const interval = setInterval(fetchData, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -65,7 +57,7 @@ export default function DashboardPage() {
     return (
       <div className="p-6 flex flex-col items-center justify-center h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 mb-4"></div>
-        <p>Loading dashboard data...</p>
+        <p>Loading admin dashboard...</p>
       </div>
     )
   }
@@ -77,7 +69,7 @@ export default function DashboardPage() {
           <p className="font-bold">Error</p>
           <p>{error}</p>
           <button 
-            onClick={() => window.location.reload()}
+            onClick={fetchData}
             className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
             Retry
@@ -97,20 +89,12 @@ export default function DashboardPage() {
     )
   }
 
+  // Calculate dashboard metrics
   const totalInventoryValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0)
   const avgOrderValue = orders.length > 0 ? stats.totalRevenue / orders.length : 0
   const topProducts = products
     .sort((a, b) => (b.price * b.stock) - (a.price * a.stock))
     .slice(0, 5)
-
-  const recentActivity = orders
-    .slice(0, 10)
-    .map(order => ({
-      type: 'order',
-      message: `New order ${order.orderId} from ${order.customerName}`,
-      amount: order.totalAmount,
-      time: order.createdAt
-    }))
 
   return (
     <div className="p-6">
@@ -122,13 +106,9 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold">৳{stats.totalRevenue.toFixed(2)}</p>
+              <p className="text-2xl font-bold">৳{stats.totalRevenue?.toFixed(2) || '0.00'}</p>
             </div>
             <DollarSign className="h-8 w-8 text-green-600" />
-          </div>
-          <div className="mt-2 flex items-center text-sm">
-            <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-            <span className="text-green-600">+12% from last month</span>
           </div>
         </Card>
 
@@ -140,10 +120,6 @@ export default function DashboardPage() {
             </div>
             <ShoppingCart className="h-8 w-8 text-blue-600" />
           </div>
-          <div className="mt-2 flex items-center text-sm">
-            <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-            <span className="text-green-600">+5% from last month</span>
-          </div>
         </Card>
 
         <Card className="p-6">
@@ -153,10 +129,6 @@ export default function DashboardPage() {
               <p className="text-2xl font-bold">৳{totalInventoryValue.toFixed(2)}</p>
             </div>
             <Package className="h-8 w-8 text-purple-600" />
-          </div>
-          <div className="mt-2 flex items-center text-sm">
-            <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
-            <span className="text-red-600">-3% from last month</span>
           </div>
         </Card>
 
@@ -168,85 +140,58 @@ export default function DashboardPage() {
             </div>
             <Users className="h-8 w-8 text-orange-600" />
           </div>
-          <div className="mt-2 flex items-center text-sm">
-            <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-            <span className="text-green-600">+2 new products</span>
-          </div>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Order Status Distribution */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Order Status Distribution</h2>
-          <div className="space-y-3">
-            {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(status => {
-              const count = orders.filter(o => o.status === status).length
-              const percentage = orders.length > 0 ? (count / orders.length) * 100 : 0
-              return (
-                <div key={status} className="flex items-center justify-between">
-                  <span className="capitalize text-sm font-medium">{status}</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-32 bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${
-                          status === 'delivered' ? 'bg-green-500' :
-                          status === 'shipped' ? 'bg-blue-500' :
-                          status === 'processing' ? 'bg-yellow-500' :
-                          status === 'cancelled' ? 'bg-red-500' :
-                          'bg-gray-500'
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm w-12 text-right">{count}</span>
+      {/* Order Status Distribution */}
+      <Card className="p-6 mb-8">
+        <h2 className="text-xl font-semibold mb-4">Order Status</h2>
+        <div className="space-y-3">
+          {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(status => {
+            const count = orders.filter(o => o.status === status).length
+            const percentage = orders.length > 0 ? (count / orders.length) * 100 : 0
+            return (
+              <div key={status} className="flex items-center justify-between">
+                <span className="capitalize text-sm font-medium">{status}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-32 bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${
+                        status === 'delivered' ? 'bg-green-500' :
+                        status === 'shipped' ? 'bg-blue-500' :
+                        status === 'processing' ? 'bg-yellow-500' :
+                        status === 'cancelled' ? 'bg-red-500' :
+                        'bg-gray-500'
+                      }`}
+                      style={{ width: `${percentage}%` }}
+                    ></div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        </Card>
-
-        {/* Top Products by Value */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Top Products by Inventory Value</h2>
-          <div className="space-y-3">
-            {topProducts.map((product, index) => (
-              <div key={product.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 text-xs flex items-center justify-center font-medium">
-                    {index + 1}
-                  </span>
-                  <div>
-                    <div className="font-medium text-sm">{product.name}</div>
-                    <div className="text-xs text-gray-500">Stock: {product.stock}</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-sm">৳{(product.price * product.stock).toFixed(2)}</div>
-                  <div className="text-xs text-gray-500">@৳{product.price}</div>
+                  <span className="text-sm w-12 text-right">{count}</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+            )
+          })}
+        </div>
+      </Card>
 
-      {/* Recent Activity */}
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
+      {/* Top Products */}
+      <Card className="p-6 mb-8">
+        <h2 className="text-xl font-semibold mb-4">Top Products</h2>
         <div className="space-y-3">
-          {recentActivity.map((activity, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          {topProducts.map((product, index) => (
+            <div key={product.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-sm">{activity.message}</span>
+                <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 text-xs flex items-center justify-center font-medium">
+                  {index + 1}
+                </span>
+                <div>
+                  <div className="font-medium text-sm">{product.name}</div>
+                  <div className="text-xs text-gray-500">Stock: {product.stock}</div>
+                </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-medium">৳{activity.amount.toFixed(2)}</div>
-                <div className="text-xs text-gray-500">
-                  {new Date(activity.time).toLocaleTimeString()}
-                </div>
+                <div className="font-bold text-sm">৳{(product.price * product.stock).toFixed(2)}</div>
+                <div className="text-xs text-gray-500">@৳{product.price}</div>
               </div>
             </div>
           ))}
