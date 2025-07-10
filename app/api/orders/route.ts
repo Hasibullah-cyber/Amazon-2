@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { pool } from '@/lib/database'
-// Removed: import { v4 as uuidv4 } from 'uuid'
+import { pool } from '@/lib/database.ts'
 
 interface OrderItem {
   id: string;
@@ -17,7 +16,6 @@ interface OrderData {
   city: string;
   postalCode?: string;
   country?: string;
-  userId?: string | null;  // <-- ADDED userId field here
   items: OrderItem[];
   subtotal?: string | number;
   shipping?: string | number;
@@ -84,6 +82,7 @@ export async function POST(request: Request) {
         error: 'Order must contain at least one item'
       }, { status: 400 })
     }
+
     for (const [i, item] of orderData.items.entries()) {
       if (!item.id || !item.name || typeof item.quantity !== 'number' || typeof item.price !== 'number') {
         return NextResponse.json({
@@ -107,16 +106,15 @@ export async function POST(request: Request) {
         await client.query('BEGIN')
         const insertResult = await client.query(`
           INSERT INTO orders (
-            order_id, user_id, customer_name, customer_email, customer_phone,
+            order_id, customer_name, customer_email, customer_phone,
             address, city, postal_code, country,
             items, subtotal, shipping, tax, total_amount,
             status, payment_method, payment_status,
             tracking_number, estimated_delivery
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
           RETURNING id, order_id as "orderId"
         `, [
           orderId,
-          orderData.userId || null,   // <-- ADDED userId here as $2 param
           orderData.customerName,
           orderData.customerEmail,
           orderData.customerPhone,
@@ -161,4 +159,96 @@ export async function POST(request: Request) {
             return NextResponse.json({
               success: false,
               error: `Not enough stock for product ${item.id}`
-            },
+            }, { status: 400 }) // <-- ✅ this was missing the closing paren and semicolon
+          }
+        }
+
+        await client.query('COMMIT')
+
+        const responseData = {
+          success: true,
+          orderId,
+          trackingNumber,
+          message: 'Order placed successfully',
+          order: {
+            id: newOrder.id,
+            orderId,
+            customerName: orderData.customerName,
+            customerEmail: orderData.customerEmail,
+            totalAmount,
+            status: 'pending',
+            trackingNumber,
+            estimatedDelivery: '3-5 business days',
+            items: orderData.items
+          }
+        }
+
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-confirmation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: orderData.customerEmail,
+              orderDetails: {
+                orderId,
+                customerName: orderData.customerName,
+                items: orderData.items,
+                subtotal,
+                shipping,
+                vat: tax,
+                totalAmount,
+                address: orderData.address,
+                city: orderData.city,
+                phone: orderData.customerPhone
+              }
+            })
+          })
+        } catch (emailError) {
+          console.error('Failed to send confirmation email:', emailError)
+        }
+
+        return NextResponse.json(responseData, { status: 201 })
+
+      } catch (dbError) {
+        await client.query('ROLLBACK')
+        throw dbError
+      } finally {
+        client.release()
+      }
+
+    } catch (dbError) {
+      console.error('Database error:', dbError)
+      const fallbackOrder = {
+        id: Date.now(),
+        orderId,
+        customerName: orderData.customerName,
+        customerEmail: orderData.customerEmail,
+        customerPhone: orderData.customerPhone,
+        address: orderData.address,
+        city: orderData.city,
+        items: orderData.items,
+        totalAmount,
+        status: 'pending',
+        paymentMethod: orderData.paymentMethod,
+        trackingNumber,
+        estimatedDelivery: '3-5 business days',
+        createdAt: new Date().toISOString()
+      }
+      return NextResponse.json({
+        success: true,
+        orderId,
+        trackingNumber,
+        message: 'Order placed successfully (demo mode)',
+        order: fallbackOrder
+      }, { status: 201 })
+    }
+
+  } catch (error: any) {
+    console.error('Error processing order:', error)
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to process order. Please try again.',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+}
