@@ -4,72 +4,48 @@ import { pool } from '@/lib/database'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const orderId = searchParams.get('orderId')
     const trackingNumber = searchParams.get('trackingNumber')
 
-    // Validate at least one identifier is provided
-    if (!orderId && !trackingNumber) {
+    if (!trackingNumber) {
       return NextResponse.json({
         success: false,
-        error: 'Either order ID or tracking number is required'
+        error: 'Tracking number is required'
       }, { status: 400 })
     }
 
     const client = await pool.connect()
 
     try {
-      // Base query with all necessary fields
-      let query = `
+      const result = await client.query(`
         SELECT 
-          o.order_id, 
-          o.tracking_number,
-          o.customer_name,
-          o.customer_email,
-          o.total_amount,
-          o.payment_method,
-          o.estimated_delivery,
-          o.status,
-          o.items,
-          o.address,
-          o.city,
-          o.phone,
-          o.created_at,
-          o.updated_at,
-          o.subtotal,
-          o.shipping,
-          o.vat
-        FROM orders o
-        WHERE 1=1
-      `
-      const params: string[] = []
-      let paramIndex = 1
-
-      // Add search conditions
-      if (orderId) {
-        query += ` AND (o.order_id = $${paramIndex} OR LOWER(o.order_id) = LOWER($${paramIndex}))`
-        params.push(orderId)
-        paramIndex++
-      }
-      
-      if (trackingNumber) {
-        query += ` AND (o.tracking_number = $${paramIndex} OR LOWER(o.tracking_number) = LOWER($${paramIndex}))`
-        params.push(trackingNumber)
-        paramIndex++
-      }
-
-      query += ` ORDER BY o.created_at DESC LIMIT 1`
-
-      const result = await client.query(query, params)
+          order_id as "orderId",
+          tracking_number as "trackingNumber",
+          customer_name as "customerName",
+          customer_email as "customerEmail",
+          total_amount as "totalAmount",
+          payment_method as "paymentMethod",
+          estimated_delivery as "estimatedDelivery",
+          status,
+          items,
+          address,
+          city,
+          phone,
+          subtotal,
+          shipping,
+          vat,
+          created_at as "createdAt",
+          updated_at as "updatedAt"
+        FROM orders 
+        WHERE tracking_number = $1
+        ORDER BY created_at DESC
+        LIMIT 1
+      `, [trackingNumber.trim()])
 
       if (result.rows.length === 0) {
         return NextResponse.json({
           success: false,
           error: 'Order not found',
-          details: {
-            message: 'No order matches the provided search criteria',
-            searchedOrderId: orderId,
-            searchedTrackingNumber: trackingNumber
-          }
+          trackingNumber: trackingNumber
         }, { status: 404 })
       }
 
@@ -85,43 +61,22 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Format the response
-      const responseData = {
-        success: true,
-        order: {
-          orderId: order.order_id,
-          trackingNumber: order.tracking_number,
-          customerName: order.customer_name,
-          customerEmail: order.customer_email,
-          totalAmount: order.total_amount,
-          paymentMethod: order.payment_method,
-          estimatedDelivery: order.estimated_delivery,
-          status: order.status,
-          items: order.items,
-          address: order.address,
-          city: order.city,
-          phone: order.phone,
-          createdAt: order.created_at,
-          updatedAt: order.updated_at,
-          subtotal: order.subtotal,
-          shipping: order.shipping,
-          vat: order.vat
-        }
-      }
-
-      return NextResponse.json(responseData)
+      return NextResponse.json({ 
+        success: true, 
+        order: order
+      })
     } finally {
       client.release()
     }
-  } catch (error) {
-    console.error('Database error:', error)
+  } catch (error: any) {
+    console.error('Tracking error:', error)
     return NextResponse.json({ 
       success: false,
-      error: 'Internal server error',
-      details: {
-        message: 'An unexpected error occurred while processing your request',
-        code: 'TRACK_ORDER_ERROR'
-      }
+      error: 'Failed to track order',
+      details: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        stack: error.stack
+      } : undefined
     }, { status: 500 })
   }
 }
