@@ -135,6 +135,7 @@ function PaymentContent() {
         city: checkoutData.city,
         postalCode: checkoutData.postalCode,
         country: 'Bangladesh',
+        userId: user?.id || null,   // <-- ADDED THIS LINE TO SEND USER ID
         items: items.map(item => ({
           id: item.id,
           name: item.name,
