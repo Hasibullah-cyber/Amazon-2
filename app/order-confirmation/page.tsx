@@ -32,7 +32,7 @@ interface OrderData {
   vat?: number
 }
 
-function OrderConfirmationComponent() {
+function OrderConfirmationContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [orderData, setOrderData] = useState<OrderData | null>(null)
@@ -47,15 +47,18 @@ function OrderConfirmationComponent() {
       const orderId = searchParams.get('orderId')
       
       try {
-        // 1. First try to load from localStorage if no orderId in params
-        if (!orderId && typeof window !== 'undefined') {
+        // 1. First try to load from localStorage
+        if (typeof window !== 'undefined') {
           const savedOrder = localStorage.getItem('latest-order')
           if (savedOrder) {
             const parsed = JSON.parse(savedOrder)
-            setOrderData(parsed)
-            setLoading(false)
-            sendNotifications(parsed)
-            return
+            // Use localStorage data if no orderId in URL or if it matches
+            if (!orderId || parsed.orderId === orderId) {
+              setOrderData(parsed)
+              setLoading(false)
+              sendNotifications(parsed)
+              return
+            }
           }
         }
 
@@ -69,7 +72,7 @@ function OrderConfirmationComponent() {
               const orderInfo: OrderData = {
                 orderId: data.order.orderId || orderId,
                 trackingNumber: data.order.trackingNumber || '',
-                customerName: data.order.customerName || '',
+                customerName: data.order.customerName || 'Customer',
                 customerEmail: data.order.customerEmail || '',
                 totalAmount: data.order.totalAmount || 0,
                 paymentMethod: data.order.paymentMethod || 'Unknown',
@@ -90,16 +93,17 @@ function OrderConfirmationComponent() {
               }
               sendNotifications(orderInfo)
             } else {
-              setError('Invalid order data received')
+              setError('Invalid order data received from server')
             }
           } else {
-            setError('Order not found')
+            setError(`Server returned ${response.status} error`)
           }
         } else {
-          setError('No order ID provided')
+          setError('No order ID provided in URL')
         }
       } catch (error) {
-        setError('Failed to load order details')
+        console.error("Order loading error:", error)
+        setError('Failed to load order details. Please try again later.')
       } finally {
         setLoading(false)
       }
@@ -109,8 +113,11 @@ function OrderConfirmationComponent() {
   }, [searchParams])
 
   const sendNotifications = async (orderData: OrderData) => {
-    if (!orderData?.customerEmail) return
-    
+    if (!orderData?.customerEmail) {
+      console.warn('No email available to send confirmation')
+      return
+    }
+
     setSendingNotifications(true)
     
     try {
@@ -120,7 +127,11 @@ function OrderConfirmationComponent() {
         orderDetails: {
           orderId: orderData.orderId,
           customerName: orderData.customerName,
-          items: orderData.items,
+          items: orderData.items.map(item => ({
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity
+          })),
           subtotal: orderData.subtotal || orderData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
           shipping: orderData.shipping || 120,
           vat: orderData.vat || 0,
@@ -139,14 +150,19 @@ function OrderConfirmationComponent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(emailData)
       })
+      
       const emailResult = await emailResponse.json()
       setEmailSent(emailResult.success)
+
+      if (!emailResult.success) {
+        console.error('Email failed:', emailResult.error)
+      }
 
       // Uncomment if you have SMS functionality
       // const smsResult = await notificationService.sendOrderConfirmationSMS(orderData)
       // setSmsSent(smsResult)
     } catch (error) {
-      console.error("Notification error:", error)
+      console.error('Notification error:', error)
     } finally {
       setSendingNotifications(false)
     }
@@ -167,11 +183,19 @@ function OrderConfirmationComponent() {
         <div className="max-w-4xl mx-auto px-4 text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Order Not Found</h1>
           <p className="text-gray-600 mb-6">
-            {error || "We couldn't find your order information."}
+            {error}
+            {searchParams.get('orderId') && (
+              <span className="block mt-2">Order ID: {searchParams.get('orderId')}</span>
+            )}
           </p>
-          <Button asChild>
-            <Link href="/">Return to Shopping</Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button asChild>
+              <Link href="/">Return to Shopping</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/contact">Contact Support</Link>
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -358,7 +382,7 @@ export default function OrderConfirmationPage() {
         <p className="mt-4 text-gray-600">Loading order details...</p>
       </div>
     }>
-      <OrderConfirmationComponent />
+      <OrderConfirmationContent />
     </Suspense>
   )
-                  }
+                    }
