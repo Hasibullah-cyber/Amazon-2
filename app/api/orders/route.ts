@@ -17,6 +17,7 @@ interface OrderData {
   city: string;
   postalCode?: string;
   country?: string;
+  userId?: string | null;  // <-- ADDED userId field here
   items: OrderItem[];
   subtotal?: string | number;
   shipping?: string | number;
@@ -77,7 +78,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Improved: validate each order item
     if (!Array.isArray(orderData.items) || orderData.items.length === 0) {
       return NextResponse.json({
         success: false,
@@ -93,7 +93,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // --- Use crypto.randomUUID() instead of uuidv4()
     const orderId = `ORD-${crypto.randomUUID()}`
     const trackingNumber = `TRK-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
 
@@ -108,15 +107,16 @@ export async function POST(request: Request) {
         await client.query('BEGIN')
         const insertResult = await client.query(`
           INSERT INTO orders (
-            order_id, customer_name, customer_email, customer_phone,
+            order_id, user_id, customer_name, customer_email, customer_phone,
             address, city, postal_code, country,
             items, subtotal, shipping, tax, total_amount,
             status, payment_method, payment_status,
             tracking_number, estimated_delivery
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
           RETURNING id, order_id as "orderId"
         `, [
           orderId,
+          orderData.userId || null,   // <-- ADDED userId here as $2 param
           orderData.customerName,
           orderData.customerEmail,
           orderData.customerPhone,
@@ -138,7 +138,6 @@ export async function POST(request: Request) {
 
         const newOrder = insertResult.rows[0]
 
-        // Insert order items and update stock
         for (const item of orderData.items) {
           await client.query(`
             INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
@@ -162,98 +161,4 @@ export async function POST(request: Request) {
             return NextResponse.json({
               success: false,
               error: `Not enough stock for product ${item.id}`
-            }, { status: 400 })
-          }
-        }
-
-        await client.query('COMMIT')
-
-        const responseData = {
-          success: true,
-          orderId,
-          trackingNumber,
-          message: 'Order placed successfully',
-          order: {
-            id: newOrder.id,
-            orderId,
-            customerName: orderData.customerName,
-            customerEmail: orderData.customerEmail,
-            totalAmount,
-            status: 'pending',
-            trackingNumber,
-            estimatedDelivery: '3-5 business days',
-            items: orderData.items
-          }
-        }
-
-        // Send confirmation email (don't block on error)
-        try {
-          await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-confirmation`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: orderData.customerEmail,
-              orderDetails: {
-                orderId,
-                customerName: orderData.customerName,
-                items: orderData.items,
-                subtotal,
-                shipping,
-                vat: tax,
-                totalAmount,
-                address: orderData.address,
-                city: orderData.city,
-                phone: orderData.customerPhone
-              }
-            })
-          })
-        } catch (emailError) {
-          console.error('Failed to send confirmation email:', emailError)
-        }
-
-        return NextResponse.json(responseData, { status: 201 })
-
-      } catch (dbError) {
-        await client.query('ROLLBACK')
-        throw dbError
-      } finally {
-        client.release()
-      }
-
-    } catch (dbError) {
-      console.error('Database error:', dbError)
-      // Demo fallback for local/dev
-      const fallbackOrder = {
-        id: Date.now(),
-        orderId,
-        customerName: orderData.customerName,
-        customerEmail: orderData.customerEmail,
-        customerPhone: orderData.customerPhone,
-        address: orderData.address,
-        city: orderData.city,
-        items: orderData.items,
-        totalAmount,
-        status: 'pending',
-        paymentMethod: orderData.paymentMethod,
-        trackingNumber,
-        estimatedDelivery: '3-5 business days',
-        createdAt: new Date().toISOString()
-      }
-      return NextResponse.json({
-        success: true,
-        orderId,
-        trackingNumber,
-        message: 'Order placed successfully (demo mode)',
-        order: fallbackOrder
-      }, { status: 201 })
-    }
-
-  } catch (error: any) {
-    console.error('Error processing order:', error)
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to process order. Please try again.',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
-  }
-}
+            },
