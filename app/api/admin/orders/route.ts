@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server'
 import { storeManager } from '@/lib/store'
 
@@ -7,15 +6,14 @@ export async function GET() {
     // First try to get orders from store manager
     const orders = await storeManager.getOrders()
     console.log('Fetched orders from store manager:', orders.length)
-    
-    if (orders.length > 0) {
-      return NextResponse.json(orders)
-    }
+
+    // Return orders even if empty array
+    return NextResponse.json(orders)
   } catch (error) {
     console.error('Error fetching orders from store manager:', error)
 
-    // Enhanced fallback data as backup
-  const fallbackOrders = [
+    // Fallback hardcoded orders array
+    const fallbackOrders = [
       {
         id: "1",
         orderId: "HS-1234567890",
