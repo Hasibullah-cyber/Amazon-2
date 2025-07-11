@@ -6,8 +6,19 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const orders = await storeManager.getOrders()
-    console.log('Fetched orders from store manager:', orders.length)
-    return NextResponse.json(orders)
+
+    // Ensure orders is a valid array
+    const formattedOrders = Array.isArray(orders) ? orders.map(order => ({
+      ...order,
+      items: order.items || [],
+      customerName: order.customerName || 'Unknown',
+      status: order.status || 'pending',
+      paymentStatus: order.paymentStatus || 'pending',
+    })) : []
+
+    console.log('Fetched orders from store manager:', formattedOrders.length)
+
+    return NextResponse.json(formattedOrders)
   } catch (error) {
     console.error('Error fetching orders from store manager:', error)
 
@@ -108,6 +119,7 @@ export async function GET() {
     ]
 
     console.log('Using fallback orders:', fallbackOrders.length)
+
     return NextResponse.json(fallbackOrders)
   }
 }
