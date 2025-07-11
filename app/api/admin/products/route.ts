@@ -8,9 +8,24 @@ export async function GET() {
     const client = await pool.connect()
     try {
       const result = await client.query(`
-        SELECT * FROM products ORDER BY created_at DESC
+        SELECT 
+          p.*,
+          c.name AS category_name
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        ORDER BY p.created_at DESC
       `)
-      return NextResponse.json(result.rows)
+
+      // Map result to include category object
+      const products = result.rows.map((row) => ({
+        ...row,
+        category: {
+          id: row.category_id,
+          name: row.category_name || 'Uncategorized'
+        }
+      }))
+
+      return NextResponse.json(products)
     } finally {
       client.release()
     }
@@ -23,8 +38,7 @@ export async function GET() {
         name: "Sample Product",
         description: "This is a sample product",
         price: 99.99,
-        category: "electronics",
-        subcategory: "headphones",
+        category: { name: "electronics" },
         image: "/placeholder.svg",
         stock: 50,
         rating: 4.5,
