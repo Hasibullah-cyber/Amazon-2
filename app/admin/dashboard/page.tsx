@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
-import { TrendingUp, TrendingDown, ShoppingCart, Package, Users, DollarSign } from "lucide-react"
+import { ShoppingCart, Package, Users, DollarSign } from "lucide-react"
+import { getBaseUrl } from "@/lib/getBaseUrl"
 
 export const dynamic = 'force-dynamic'
 
@@ -17,19 +18,21 @@ export default function DashboardPage() {
     try {
       setLoading(true)
       setError(null)
-      
+
+      const baseUrl = getBaseUrl()
+
       const [statsRes, ordersRes, productsRes] = await Promise.all([
-        fetch('/api/admin/stats').then(async res => {
+        fetch(`${baseUrl}/api/admin/stats`).then(async res => {
           const data = await res.json()
           if (!res.ok) throw new Error(data.error || `Stats failed: ${res.status}`)
           return data
         }),
-        fetch('/api/admin/orders').then(async res => {
+        fetch(`${baseUrl}/api/admin/orders`).then(async res => {
           const data = await res.json()
           if (!res.ok) throw new Error(data.error || `Orders failed: ${res.status}`)
           return data
         }),
-        fetch('/api/admin/products').then(async res => {
+        fetch(`${baseUrl}/api/admin/products`).then(async res => {
           const data = await res.json()
           if (!res.ok) throw new Error(data.error || `Products failed: ${res.status}`)
           return data
@@ -68,7 +71,7 @@ export default function DashboardPage() {
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
           <p className="font-bold">Error</p>
           <p>{error}</p>
-          <button 
+          <button
             onClick={fetchData}
             className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
@@ -89,7 +92,6 @@ export default function DashboardPage() {
     )
   }
 
-  // Calculate dashboard metrics
   const totalInventoryValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0)
   const avgOrderValue = orders.length > 0 ? stats.totalRevenue / orders.length : 0
   const topProducts = products
@@ -100,7 +102,6 @@ export default function DashboardPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Analytics Dashboard</h1>
 
-      {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card className="p-6">
           <div className="flex items-center justify-between">
@@ -143,7 +144,6 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Order Status Distribution */}
       <Card className="p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Order Status</h2>
         <div className="space-y-3">
@@ -174,7 +174,6 @@ export default function DashboardPage() {
         </div>
       </Card>
 
-      {/* Top Products */}
       <Card className="p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Top Products</h2>
         <div className="space-y-3">
