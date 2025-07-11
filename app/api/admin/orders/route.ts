@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server'
 import { storeManager } from '@/lib/store'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
-    // First try to get orders from store manager
     const orders = await storeManager.getOrders()
     console.log('Fetched orders from store manager:', orders.length)
-
-    // Return orders even if empty array
     return NextResponse.json(orders)
   } catch (error) {
     console.error('Error fetching orders from store manager:', error)
 
-    // Fallback hardcoded orders array
     const fallbackOrders = [
       {
         id: "1",
@@ -46,7 +44,7 @@ export async function GET() {
         updatedAt: new Date(Date.now() - 1800000).toISOString()
       },
       {
-        id: "2", 
+        id: "2",
         orderId: "HS-0987654321",
         userId: "user_2",
         customerName: "Jane Smith",
