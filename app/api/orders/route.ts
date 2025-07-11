@@ -64,11 +64,12 @@ export async function POST(request: Request) {
     const orderData: OrderData = await request.json()
     console.log('Received order data:', orderData)
 
-    const requiredFields = [
+    const requiredFields: (keyof OrderData)[] = [
       'customerName', 'customerEmail', 'customerPhone', 'address', 'city', 'items', 'totalAmount', 'paymentMethod'
     ]
     for (const field of requiredFields) {
-      if (!orderData[field as keyof OrderData]) {
+      const value = orderData[field]
+      if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
         return NextResponse.json({
           success: false,
           error: `Missing required field: ${field}`
@@ -159,7 +160,7 @@ export async function POST(request: Request) {
             return NextResponse.json({
               success: false,
               error: `Not enough stock for product ${item.id}`
-            }, { status: 400 }) // <-- ✅ this was missing the closing paren and semicolon
+            }, { status: 400 })
           }
         }
 
