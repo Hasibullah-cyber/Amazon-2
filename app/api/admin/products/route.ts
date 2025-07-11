@@ -1,32 +1,30 @@
-
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
     const client = await pool.connect()
-    
     try {
       const result = await client.query(`
         SELECT * FROM products ORDER BY created_at DESC
       `)
-      
       return NextResponse.json(result.rows)
     } finally {
       client.release()
     }
   } catch (error) {
     console.error('Database error fetching products, using fallback:', error)
-    
-    // Fallback products
+
     const fallbackProducts = [
       {
         id: "1",
         name: "Sample Product",
         description: "This is a sample product",
         price: 99.99,
-        category: "Electronics",
-        subcategory: "Headphones",
+        category: "electronics",
+        subcategory: "headphones",
         image: "/placeholder.svg",
         stock: 50,
         rating: 4.5,
@@ -34,7 +32,7 @@ export async function GET() {
         created_at: new Date().toISOString()
       }
     ]
-    
+
     return NextResponse.json(fallbackProducts)
   }
 }
@@ -42,27 +40,42 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const product = await request.json()
-    
+
+    const {
+      name,
+      description,
+      price,
+      category,
+      subcategory,
+      image = '/placeholder.svg',
+      stock = 0,
+      rating = 0,
+      reviews = 0
+    } = product
+
     const client = await pool.connect()
     try {
-      const result = await client.query(`
+      const result = await client.query(
+        `
         INSERT INTO products (
           name, description, price, category, subcategory, 
           image, stock, rating, reviews, created_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *
-      `, [
-        product.name,
-        product.description,
-        product.price,
-        product.category,
-        product.subcategory,
-        product.image || '/placeholder.svg',
-        product.stock || 0,
-        product.rating || 0,
-        product.reviews || 0,
-        new Date().toISOString()
-      ])
+        `,
+        [
+          name,
+          description,
+          price,
+          category,
+          subcategory,
+          image,
+          stock,
+          rating,
+          reviews,
+          new Date().toISOString()
+        ]
+      )
 
       return NextResponse.json(result.rows[0])
     } finally {
