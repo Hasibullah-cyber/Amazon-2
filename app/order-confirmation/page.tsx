@@ -47,12 +47,10 @@ function OrderConfirmationContent() {
       const orderId = searchParams.get('orderId')
       
       try {
-        // 1. First try to load from localStorage
         if (typeof window !== 'undefined') {
           const savedOrder = localStorage.getItem('latest-order')
           if (savedOrder) {
             const parsed = JSON.parse(savedOrder)
-            // Use localStorage data if no orderId in URL or if it matches
             if (!orderId || parsed.orderId === orderId) {
               setOrderData(parsed)
               setLoading(false)
@@ -62,7 +60,6 @@ function OrderConfirmationContent() {
           }
         }
 
-        // 2. If we have an orderId, fetch from API
         if (orderId) {
           const response = await fetch(`/api/orders/${orderId}`)
           
@@ -87,7 +84,6 @@ function OrderConfirmationContent() {
               }
               
               setOrderData(orderInfo)
-              // Store in localStorage for future access
               if (typeof window !== 'undefined') {
                 localStorage.setItem('latest-order', JSON.stringify(orderInfo))
               }
@@ -121,7 +117,6 @@ function OrderConfirmationContent() {
     setSendingNotifications(true)
     
     try {
-      // Prepare email data
       const emailData = {
         email: orderData.customerEmail,
         orderDetails: {
@@ -144,7 +139,6 @@ function OrderConfirmationContent() {
         }
       }
 
-      // Send email
       const emailResponse = await fetch('/api/send-confirmation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -154,13 +148,6 @@ function OrderConfirmationContent() {
       const emailResult = await emailResponse.json()
       setEmailSent(emailResult.success)
 
-      if (!emailResult.success) {
-        console.error('Email failed:', emailResult.error)
-      }
-
-      // Uncomment if you have SMS functionality
-      // const smsResult = await notificationService.sendOrderConfirmationSMS(orderData)
-      // setSmsSent(smsResult)
     } catch (error) {
       console.error('Notification error:', error)
     } finally {
@@ -204,59 +191,15 @@ function OrderConfirmationContent() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Success Header */}
         <div className="text-center mb-8">
           <CheckCircle2 className="h-16 w-16 text-green-600 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-black mb-2">Order Confirmed!</h1>
           <p className="text-gray-600">
             Thank you for your purchase. Your order <span className="font-medium">{orderData.orderId}</span> has been received.
           </p>
-
-          {/* Notification Status */}
-          <div className="mt-6 space-y-3 max-w-md mx-auto">
-            {sendingNotifications && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  <span className="text-blue-800">Sending confirmation...</span>
-                </div>
-              </div>
-            )}
-
-            {!sendingNotifications && (emailSent || smsSent) && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h3 className="font-medium text-green-800 mb-2">Confirmation Sent!</h3>
-                <div className="space-y-1 text-sm">
-                  {emailSent && (
-                    <div className="flex items-center text-green-700">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Email sent to {orderData.customerEmail}
-                    </div>
-                  )}
-                  {smsSent && (
-                    <div className="flex items-center text-green-700">
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      SMS sent to {orderData.phone || 'your phone'}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {!sendingNotifications && !emailSent && !smsSent && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-center text-yellow-800">
-                  <div className="text-sm">
-                    Order confirmed, but notifications could not be sent. Please save this page for your records.
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Order Details */}
           <div className="lg:col-span-2 space-y-6">
             <Card className="p-6">
               <h2 className="text-xl font-medium text-black mb-4 flex items-center">
@@ -283,7 +226,6 @@ function OrderConfirmationContent() {
               </div>
             </Card>
 
-            {/* Order Items */}
             <Card className="p-6">
               <h2 className="text-xl font-medium text-black mb-4 flex items-center">
                 <Package className="h-5 w-5 mr-2" />
@@ -311,7 +253,6 @@ function OrderConfirmationContent() {
               </div>
             </Card>
 
-            {/* Payment Information */}
             <Card className="p-6">
               <h2 className="text-xl font-medium text-black mb-4 flex items-center">
                 <CreditCard className="h-5 w-5 mr-2" />
@@ -332,7 +273,6 @@ function OrderConfirmationContent() {
             </Card>
           </div>
 
-          {/* Order Summary */}
           <div className="lg:col-span-1">
             <Card className="p-6 sticky top-4">
               <h3 className="text-xl font-medium text-black mb-4">Order Summary</h3>
@@ -363,7 +303,7 @@ function OrderConfirmationContent() {
                   <Link href="/">Continue Shopping</Link>
                 </Button>
                 <Button variant="outline" className="w-full mt-3" asChild>
-                  <Link href={`/track-order?orderId=${orderData.orderId}`}>Track Order</Link>
+                  <Link href={`/track-order?trackingNumber=${orderData.trackingNumber}`}>Track Order</Link>
                 </Button>
               </div>
             </Card>
@@ -385,4 +325,4 @@ export default function OrderConfirmationPage() {
       <OrderConfirmationContent />
     </Suspense>
   )
-                    }
+}
