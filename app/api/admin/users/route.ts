@@ -1,13 +1,13 @@
-
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
+
+export const dynamic = 'force-dynamic' // ⬅️ makes this API route always fresh
 
 export async function GET() {
   try {
     const client = await pool.connect()
 
     try {
-      // Get users from database
       const result = await client.query(`
         SELECT 
           id, email, name, created_at as "createdAt"
@@ -15,22 +15,22 @@ export async function GET() {
         ORDER BY created_at DESC
       `)
 
-      const users = result.rows
-      console.log('Admin: Fetched users from database:', users.length)
-      
-      // Add user statistics for admin dashboard
+      const users = result.rows || []
+
+      const now = new Date()
+      const weekAgo = new Date(now)
+      const monthAgo = new Date(now)
+      weekAgo.setDate(now.getDate() - 7)
+      monthAgo.setDate(now.getDate() - 30)
+
       const userStats = {
         totalUsers: users.length,
         newThisWeek: users.filter(user => {
           const userDate = new Date(user.createdAt)
-          const weekAgo = new Date()
-          weekAgo.setDate(weekAgo.getDate() - 7)
           return userDate > weekAgo
         }).length,
         newThisMonth: users.filter(user => {
           const userDate = new Date(user.createdAt)
-          const monthAgo = new Date()
-          monthAgo.setDate(monthAgo.getDate() - 30)
           return userDate > monthAgo
         }).length
       }
@@ -44,10 +44,15 @@ export async function GET() {
     }
   } catch (error) {
     console.error('Database error fetching users:', error)
+
     return NextResponse.json({ 
-      users: [], 
-      stats: { totalUsers: 0, newThisWeek: 0, newThisMonth: 0 },
-      error: 'Database connection failed' 
-    }, { status: 500 })
+      users: [],
+      stats: {
+        totalUsers: 0,
+        newThisWeek: 0,
+        newThisMonth: 0
+      },
+      error: 'Database connection failed'
+    }, { status: 200 })
   }
 }
