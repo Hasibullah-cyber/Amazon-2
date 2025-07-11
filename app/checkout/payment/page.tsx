@@ -127,6 +127,23 @@ function PaymentContent() {
 
     setIsProcessing(true)
     try {
+      // Save user data first
+      const userResponse = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: checkoutData.email,
+          name: checkoutData.name
+        }),
+      })
+
+      if (!userResponse.ok && userResponse.status !== 409) {
+        // 409 means user already exists - ignore this error
+        const userError = await userResponse.json()
+        throw new Error(userError.error || 'Failed to save user')
+      }
+
+      // Then place the order
       const orderData = {
         customerName: checkoutData.name,
         customerEmail: checkoutData.email,
@@ -135,7 +152,7 @@ function PaymentContent() {
         city: checkoutData.city,
         postalCode: checkoutData.postalCode,
         country: 'Bangladesh',
-        userId: user?.id || null,   // <-- ADDED THIS LINE TO SEND USER ID
+        userId: user?.id || null,
         items: items.map(item => ({
           id: item.id,
           name: item.name,
