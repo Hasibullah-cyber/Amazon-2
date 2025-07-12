@@ -22,7 +22,7 @@ export default function DashboardPage() {
       const baseUrl = getBaseUrl()
 
       const [statsRes, ordersRes, productsRes] = await Promise.all([
-        fetch(`${baseUrl}https://hasib-shop-mm94j2if2-hasibullah-cybers-projects.vercel.app/api/admin/orders').then(async res => {
+        fetch(`${baseUrl}/api/admin/stats').then(async res => {
           const data = await res.json()
           if (!res.ok) throw new Error(data.error || `Stats failed: ${res.status}`)
           return data
