@@ -15,21 +15,22 @@ export async function GET() {
   try {
     const client = await pool.connect()
     try {
-      // PostgreSQL-compatible queries
       const [productsResult, ordersResult, revenueResult, topProductsResult] = await Promise.all([
         client.query('SELECT COUNT(*) as total FROM products'),
         client.query('SELECT COUNT(*) as total FROM orders'),
-        client.query('SELECT SUM(total_amount) as total FROM orders WHERE created_at >= NOW() - INTERVAL \'30 days\''),
+        client.query(`
+          SELECT SUM(total_amount) as total 
+          FROM orders 
+          WHERE created_at >= NOW() - INTERVAL '30 days'
+        `),
         client.query(`
           SELECT 
-            product_name,
+            oi.product_name,
             COUNT(*) as order_count
-          FROM (
-            SELECT jsonb_array_elements(items) ->> 'name' AS product_name
-            FROM orders
-            WHERE created_at >= NOW() - INTERVAL '30 days'
-          ) sub
-          GROUP BY product_name
+          FROM order_items oi
+          JOIN orders o ON o.id = oi.order_id
+          WHERE o.created_at >= NOW() - INTERVAL '30 days'
+          GROUP BY oi.product_name
           ORDER BY order_count DESC
           LIMIT 5
         `)
@@ -43,9 +44,9 @@ export async function GET() {
           product_name: row.product_name,
           order_count: Number(row.order_count)
         })),
-        conversionRate: 3.2, // Mock data
-        avgOrderValue: 145.50, // Mock data
-        customerSatisfaction: 4.6 // Mock data
+        conversionRate: 3.2, // Mock
+        avgOrderValue: 145.5, // Mock
+        customerSatisfaction: 4.6 // Mock
       }
 
       return NextResponse.json(analytics)
@@ -54,7 +55,6 @@ export async function GET() {
     }
   } catch (error) {
     console.error('Error fetching analytics:', error)
-    // Return mock data if database is not available
     return NextResponse.json({
       totalProducts: 25,
       totalOrders: 150,
@@ -65,7 +65,7 @@ export async function GET() {
         { product_name: "Skincare Set", order_count: 6 }
       ],
       conversionRate: 3.2,
-      avgOrderValue: 145.50,
+      avgOrderValue: 145.5,
       customerSatisfaction: 4.6
     })
   }
@@ -74,9 +74,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const event = await request.json()
-    // Log analytics event (view, click, purchase, etc.)
     console.log('Analytics event:', event)
-    // In a real app, you'd save this to a database
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error logging analytics event:', error)
