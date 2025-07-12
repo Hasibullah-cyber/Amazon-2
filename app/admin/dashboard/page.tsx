@@ -22,7 +22,7 @@ export default function DashboardPage() {
       const baseUrl = getBaseUrl()
 
       const [statsRes, ordersRes, productsRes] = await Promise.all([
-        fetch(`${baseUrl}/api/admin/stats').then(async res => {
+        fetch(`${baseUrl}/api/admin/stats`).then(async res => {
           const data = await res.json()
           if (!res.ok) throw new Error(data.error || `Stats failed: ${res.status}`)
           return data
