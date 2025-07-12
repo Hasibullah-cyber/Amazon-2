@@ -467,7 +467,7 @@ class StoreManager {
   async getOrders(): Promise<Order[]> {
     try {
       // First try to get from API (database)
-      const response = await fetch('https://hasib-shop-mm94j2if2-hasibullah-cybers-projects.vercel.app')
+      const response = await fetch('https://hasib-shop-mm94j2if2-hasibullah-cybers-projects.vercel.app/api/admin/orders')
       if (response.ok) {
         const orders = await response.json()
         this.orders = orders
