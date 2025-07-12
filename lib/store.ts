@@ -43,7 +43,6 @@ export interface Order {
 
 // Extended product database including mobile phones and other categories
 const products: Product[] = [
-  // Electronics - Mobile Phones
   {
     id: "1001",
     name: "iPhone 15 Pro Max",
@@ -132,8 +131,6 @@ const products: Product[] = [
     category: "electronics",
     rating: 4.5
   },
-
-  // Fashion Items
   {
     id: "2001",
     name: "Nike Air Max 270",
@@ -200,8 +197,6 @@ const products: Product[] = [
     category: "fashion",
     rating: 4.5
   },
-
-  // Beauty Products
   {
     id: "3001",
     name: "Fair and Lovely Advanced Multi-Vitamin Cream",
@@ -279,8 +274,6 @@ const products: Product[] = [
     category: "beauty",
     rating: 4.6
   },
-
-  // Home & Living
   {
     id: "4001",
     name: "IKEA Table Lamp",
@@ -388,7 +381,13 @@ class StoreManager {
   private orders: Order[] = []
   private subscribers: ((state: { products: Product[], categories: Category[], orders: Order[] }) => void)[] = []
 
-  // Subscribe to store changes
+  private getApiUrl(path: string): string {
+    const baseUrl = typeof window === 'undefined' 
+      ? process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+      : window.location.origin
+    return `${baseUrl}${path}`
+  }
+
   subscribe(callback: (state: { products: Product[], categories: Category[], orders: Order[] }) => void) {
     this.subscribers.push(callback)
     return () => {
@@ -434,7 +433,6 @@ class StoreManager {
       product.name.toLowerCase().includes(searchTerm) ||
       product.description.toLowerCase().includes(searchTerm) ||
       product.category.toLowerCase().includes(searchTerm)
-    )
   }
 
   async getProductsByCategory(category: string): Promise<Product[]> {
@@ -457,8 +455,6 @@ class StoreManager {
   }
 
   async addSubcategory(categoryId: string, subcategory: { name: string; description: string }): Promise<void> {
-    // This is a placeholder for subcategory functionality
-    // In a real implementation, you might want to have a separate subcategories array
     console.log(`Adding subcategory ${subcategory.name} to category ${categoryId}`)
     this.notifySubscribers()
   }
@@ -466,117 +462,127 @@ class StoreManager {
   // Order methods
   async getOrders(): Promise<Order[]> {
     try {
-      // First try to get from API (database)
-      const response = await fetch('https://hasib-shop-mm94j2if2-hasibullah-cybers-projects.vercel.app/api/admin/orders')
-      if (response.ok) {
-        const orders = await response.json()
-        this.orders = orders
-        this.notifySubscribers()
-        console.log('Fetched orders from database:', orders.length)
-        return orders
-      }
+      const response = await fetch(this.getApiUrl('/api/admin/orders'), {
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+
+      const orders = await response.json()
+      this.orders = Array.isArray(orders) ? orders : []
+      this.notifySubscribers()
+      return this.orders
     } catch (error) {
-      console.error('Error fetching orders from API:', error)
-    }
-
-    // Fallback to localStorage
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('orders')
-      if (stored) {
-        const orders = JSON.parse(stored)
-        this.orders = orders
-        console.log('Using fallback orders from localStorage:', orders.length)
-        return orders
+      console.error('Error fetching orders:', error)
+      
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('orders')
+          if (stored) {
+            this.orders = JSON.parse(stored)
+            return this.orders
+          }
+        } catch (localStorageError) {
+          console.error('Error reading from localStorage:', localStorageError)
+        }
       }
-    }
 
-    console.log('No orders found in database or localStorage')
-    return []
+      return []
+    }
   }
 
   async getUserOrders(email: string): Promise<Order[]> {
     try {
-      const response = await fetch(`/api/user-orders?email=${encodeURIComponent(email)}`)
-      if (response.ok) {
-        return await response.json()
-      }
-    } catch (error) {
-      console.error('Error fetching user orders:', error)
-    }
-    return []
-  }
-
-  async updateOrderStatus(orderId: string, status: Order['status']): Promise<void> {
-    try {
-      const response = await fetch('/api/update-order-status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ orderId, status }),
+      const response = await fetch(this.getApiUrl(`/api/user-orders?email=${encodeURIComponent(email)}`), {
+        cache: 'no-store'
       })
 
-      if (response.ok) {
-        // Update local order status
-        const orderIndex = this.orders.findIndex(order => order.id === orderId)
-        if (orderIndex !== -1) {
-          this.orders[orderIndex].status = status
-          this.notifySubscribers()
-        }
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+      return await response.json()
     } catch (error) {
-      console.error('Error updating order status:', error)
-      throw error
+      console.error('Error fetching user orders:', error)
+      return []
     }
   }
 
-  async addOrder(order: Omit<Order, 'id' | 'createdAt'>): Promise<Order> {
-    const newOrder: Order = {
-      ...order,
-      id: (Date.now() + Math.random()).toString(),
-      createdAt: new Date().toISOString()
-    }
-    this.orders.push(newOrder)
-    this.notifySubscribers()
-    
-    // Send confirmation email
-    if (order.customerEmail) {
-      try {
-        console.log('Attempting to send confirmation email to:', order.customerEmail)
-        const response = await fetch('/api/send-confirmation', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: order.customerEmail,
-            orderDetails: newOrder
-          }),
-        })
+  async updateOrderStatus(orderId: string, status: Order['status']): Promise<boolean> {
+    try {
+      const response = await fetch(this.getApiUrl(`/api/admin/orders/${orderId}/status`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
 
-        const result = await response.json()
-        if (response.ok && result.success) {
-          console.log('✅ Confirmation email sent successfully')
-        } else {
-          console.error('❌ Failed to send confirmation email:', result.error)
-        }
-      } catch (error) {
-        console.error('❌ Error sending confirmation email:', error)
+      if (!response.ok) return false
+
+      const orderIndex = this.orders.findIndex(order => order.id === orderId)
+      if (orderIndex !== -1) {
+        this.orders[orderIndex].status = status
+        this.notifySubscribers()
       }
+      return true
+    } catch (error) {
+      console.error('Error updating order status:', error)
+      return false
     }
+  }
 
-    return newOrder
+  async addOrder(order: Omit<Order, 'id' | 'createdAt'>): Promise<Order | null> {
+    try {
+      const newOrder: Order = {
+        ...order,
+        id: (Date.now() + Math.random()).toString(),
+        createdAt: new Date().toISOString()
+      }
+
+      const response = await fetch(this.getApiUrl('/api/orders'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newOrder)
+      })
+
+      if (!response.ok) throw new Error('Failed to save order')
+
+      this.orders.push(newOrder)
+      this.notifySubscribers()
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('orders', JSON.stringify(this.orders))
+      }
+
+      if (order.customerEmail) {
+        try {
+          await fetch(this.getApiUrl('/api/send-confirmation'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: order.customerEmail,
+              orderDetails: newOrder
+            })
+          })
+        } catch (emailError) {
+          console.error('Error sending confirmation email:', emailError)
+        }
+      }
+
+      return newOrder
+    } catch (error) {
+      console.error('Error adding order:', error)
+      return null
+    }
   }
 
   async refresh(): Promise<void> {
-    await this.getOrders()
-    await this.getProducts()
-    await this.getCategories()
-  }
-
-  // Method to force sync with database
-  async syncWithDatabase(): Promise<void> {
-    await this.refresh()
+    try {
+      await Promise.all([
+        this.getOrders(),
+        this.getProducts(),
+        this.getCategories()
+      ])
+    } catch (error) {
+      console.error('Error refreshing store data:', error)
+    }
   }
 }
 
