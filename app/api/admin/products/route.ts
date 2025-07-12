@@ -12,11 +12,10 @@ export async function GET() {
           p.*,
           c.name AS category_name
         FROM products p
-        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN categories c ON p.category_id::TEXT = c.id
         ORDER BY p.created_at DESC
       `)
 
-      // Map result to include category object
       const products = result.rows.map((row) => ({
         ...row,
         category: {
