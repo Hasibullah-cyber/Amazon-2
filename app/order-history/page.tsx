@@ -40,17 +40,18 @@ export default function OrderHistoryPage() {
   }
 
   useEffect(() => {
-    if (user?.email) {
-      // Subscribe to real-time updates
-      const unsubscribe = storeManager.subscribe((state) => {
-        const userOrders = state.orders.filter(order => order.customerEmail === user.email)
-        setOrders(userOrders)
-        filterOrdersFunc(userOrders, searchTerm, filterStatus)
-      })
+    if (!user?.email) return
 
-      fetchOrders()
+    const unsubscribe = storeManager.subscribe((state) => {
+      const userOrders = state.orders.filter(order => order.customerEmail === user.email)
+      setOrders(userOrders)
+      filterOrdersFunc(userOrders, searchTerm, filterStatus)
+    })
 
-      return unsubscribe
+    fetchOrders()
+
+    return () => {
+      unsubscribe?.()
     }
   }, [user, searchTerm, filterStatus])
 
