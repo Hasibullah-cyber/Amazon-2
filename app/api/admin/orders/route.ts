@@ -1,29 +1,55 @@
 import { NextResponse } from 'next/server'
-import { storeManager } from '@/lib/store'
+import { pool } from '@/lib/database'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const orders = await storeManager.getOrders()
+    const client = await pool.connect()
 
-    const formattedOrders = Array.isArray(orders)
-      ? orders.map((order) => ({
-          ...order,
-          items: order.items || [],
-          customerName: order.customerName || 'Unknown',
-          status: order.status || 'pending',
-          paymentStatus: order.paymentStatus || 'pending',
-        }))
-      : []
+    const result = await client.query(`
+      SELECT 
+        o.*, 
+        u.name AS customer_name,
+        u.email AS customer_email,
+        u.phone AS customer_phone
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.user_id
+      ORDER BY o.created_at DESC
+    `)
 
-    console.log('Fetched orders from store manager:', formattedOrders.length)
+    client.release()
+
+    const formattedOrders = result.rows.map(order => ({
+      id: order.id,
+      orderId: order.order_id,
+      userId: order.user_id,
+      customerName: order.customer_name || 'Unknown',
+      customerEmail: order.customer_email || 'unknown@example.com',
+      customerPhone: order.customer_phone || 'N/A',
+      address: order.address,
+      city: order.city,
+      items: order.items || [],
+      subtotal: parseFloat(order.subtotal),
+      shipping: parseFloat(order.shipping),
+      vat: parseFloat(order.vat),
+      totalAmount: parseFloat(order.total_amount),
+      status: order.status || 'pending',
+      paymentMethod: order.payment_method || 'N/A',
+      paymentStatus: order.payment_status || 'pending',
+      estimatedDelivery: order.estimated_delivery || '',
+      trackingNumber: order.tracking_number || '',
+      notes: order.notes,
+      createdAt: order.created_at,
+      updatedAt: order.updated_at,
+    }))
+
+    console.log('Fetched orders from database:', formattedOrders.length)
 
     return NextResponse.json(formattedOrders)
   } catch (error) {
-    console.error('Error fetching orders from store manager:', error)
+    console.error('Error fetching orders from database:', error)
 
-    // Return static fallback sample orders
     const fallbackOrders = [
       {
         id: '1',
