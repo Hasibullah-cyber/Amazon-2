@@ -1,14 +1,13 @@
-
 import { NextRequest, NextResponse } from 'next/server'
 import { updateOrderStatus, pool } from '@/lib/database'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> }
+  { params }: { params: { orderId: string } }
 ) {
   try {
     const { status, notes } = await request.json()
-    const { orderId } = await params
+    const { orderId } = params
 
     if (!status) {
       return NextResponse.json({ error: 'Status is required' }, { status: 400 })
@@ -34,10 +33,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> }
+  { params }: { params: { orderId: string } }
 ) {
   try {
-    const { orderId } = await params
+    const { orderId } = params
     const client = await pool.connect()
 
     try {
@@ -70,10 +69,10 @@ export async function DELETE(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> }
+  { params }: { params: { orderId: string } }
 ) {
   try {
-    const { orderId } = await params
+    const { orderId } = params
     const client = await pool.connect()
 
     try {
