@@ -312,10 +312,17 @@ export async function updateOrderStatus(orderId: string, newStatus: string, note
       updateFields.push('delivered_at = CURRENT_TIMESTAMP')
     }
 
-    await client.query(
+    const updateResult = await client.query(
       `UPDATE orders SET ${updateFields.join(', ')} WHERE order_id = $${updateValues.length}`,
       updateValues
     )
+
+    if (updateResult.rowCount === 0) {
+      // No order found with that orderId
+      await client.query('ROLLBACK')
+      console.error(`Order with order_id=${orderId} not found`)
+      return false
+    }
 
     await client.query(
       'INSERT INTO order_status_history (order_id, status, notes, created_by) VALUES ($1, $2, $3, $4)',
