@@ -6,8 +6,18 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const client = await pool.connect()
-
-
+    
+    const result = await client.query(`
+      SELECT 
+        o.*, 
+        u.name AS customer_name,
+        u.email AS customer_email,
+        u.phone AS customer_phone
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.user_id
+      ORDER BY o.created_at DESC
+    `)
+    
     client.release()
 
     const formattedOrders = result.rows.map(order => ({
