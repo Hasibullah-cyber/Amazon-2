@@ -10,7 +10,7 @@ export async function GET() {
     const baseUrl =
       process.env.NODE_ENV === 'development'
         ? 'http://localhost:3000'
-        : 'https://your-vercel-project-name.vercel.app' // ✅ Replace this with your actual Vercel URL
+        : 'https://amazon-2-2ose.vercel.app' // ✅ Your deployed URL
 
     const res = await fetch(`${baseUrl}/api/admin/stats`, {
       signal: controller.signal,
