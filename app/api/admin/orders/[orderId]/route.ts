@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { updateOrderStatus, pool } from '@/lib/database'
+import { pool } from '@/lib/database'
 
+// ✅ PUT — Update Order Status
 export async function PUT(
   request: NextRequest,
   { params }: { params: { orderId: string } }
@@ -18,19 +19,44 @@ export async function PUT(
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
 
-    const success = await updateOrderStatus(orderId, status, notes)
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
 
-    if (success) {
+      // Update main order status
+      const updateResult = await client.query(
+        `UPDATE orders SET status = $1, updated_at = NOW() WHERE order_id = $2`,
+        [status, orderId]
+      )
+
+      if (updateResult.rowCount === 0) {
+        await client.query('ROLLBACK')
+        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      }
+
+      // Insert into order_status_history
+      await client.query(
+        `INSERT INTO order_status_history (order_id, status, notes, created_at)
+         VALUES ($1, $2, $3, NOW())`,
+        [orderId, status, notes || null]
+      )
+
+      await client.query('COMMIT')
       return NextResponse.json({ success: true, message: 'Order status updated successfully' })
-    } else {
+    } catch (error) {
+      await client.query('ROLLBACK')
+      console.error('Failed to update order status:', error)
       return NextResponse.json({ error: 'Failed to update order status' }, { status: 500 })
+    } finally {
+      client.release()
     }
   } catch (error) {
-    console.error('Error updating order status:', error)
+    console.error('Error in PUT /orderId:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
+// ✅ DELETE — Delete Order and History
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { orderId: string } }
@@ -41,13 +67,10 @@ export async function DELETE(
 
     try {
       await client.query('BEGIN')
-      
-      // Delete order status history first
+
       await client.query('DELETE FROM order_status_history WHERE order_id = $1', [orderId])
-      
-      // Delete the order
       const result = await client.query('DELETE FROM orders WHERE order_id = $1', [orderId])
-      
+
       await client.query('COMMIT')
 
       if (result.rowCount === 0) {
@@ -57,16 +80,18 @@ export async function DELETE(
       return NextResponse.json({ success: true, message: 'Order deleted successfully' })
     } catch (error) {
       await client.query('ROLLBACK')
-      throw error
+      console.error('Error deleting order:', error)
+      return NextResponse.json({ error: 'Failed to delete order' }, { status: 500 })
     } finally {
       client.release()
     }
   } catch (error) {
-    console.error('Error deleting order:', error)
-    return NextResponse.json({ error: 'Failed to delete order' }, { status: 500 })
+    console.error('DELETE /orderId error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
+// ✅ GET — Fetch Order Details + History
 export async function GET(
   request: NextRequest,
   { params }: { params: { orderId: string } }
@@ -76,7 +101,6 @@ export async function GET(
     const client = await pool.connect()
 
     try {
-      // Get order details
       const orderResult = await client.query(`
         SELECT 
           id, order_id as "orderId", user_id as "userId", customer_name as "customerName",
@@ -93,7 +117,6 @@ export async function GET(
         return NextResponse.json({ error: 'Order not found' }, { status: 404 })
       }
 
-      // Get order status history
       const historyResult = await client.query(`
         SELECT status, notes, created_at as "createdAt"
         FROM order_status_history
@@ -103,8 +126,8 @@ export async function GET(
 
       const order = {
         ...orderResult.rows[0],
-        items: typeof orderResult.rows[0].items === 'string' 
-          ? JSON.parse(orderResult.rows[0].items) 
+        items: typeof orderResult.rows[0].items === 'string'
+          ? JSON.parse(orderResult.rows[0].items)
           : orderResult.rows[0].items,
         statusHistory: historyResult.rows
       }
@@ -114,7 +137,7 @@ export async function GET(
       client.release()
     }
   } catch (error) {
-    console.error('Error fetching order:', error)
+    console.error('GET /orderId error:', error)
     return NextResponse.json({ error: 'Failed to fetch order' }, { status: 500 })
   }
 }
