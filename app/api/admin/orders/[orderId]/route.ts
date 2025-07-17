@@ -23,7 +23,7 @@ export async function PUT(
     try {
       await client.query('BEGIN')
 
-      // Update main order status
+      // Update the order status
       const updateResult = await client.query(
         `UPDATE orders SET status = $1, updated_at = NOW() WHERE order_id = $2`,
         [status, orderId]
@@ -34,7 +34,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Order not found' }, { status: 404 })
       }
 
-      // Insert into order_status_history
+      // Insert status change into history
       await client.query(
         `INSERT INTO order_status_history (order_id, status, notes, created_at)
          VALUES ($1, $2, $3, NOW())`,
@@ -42,16 +42,16 @@ export async function PUT(
       )
 
       await client.query('COMMIT')
-      return NextResponse.json({ success: true, message: 'Order status updated successfully' })
+      return NextResponse.json({ success: true, message: 'Order status updated' })
     } catch (error) {
       await client.query('ROLLBACK')
-      console.error('Failed to update order status:', error)
+      console.error('PUT error:', error)
       return NextResponse.json({ error: 'Failed to update order status' }, { status: 500 })
     } finally {
       client.release()
     }
   } catch (error) {
-    console.error('Error in PUT /orderId:', error)
+    console.error('PUT outer error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -64,12 +64,11 @@ export async function DELETE(
   try {
     const { orderId } = params
     const client = await pool.connect()
-
     try {
       await client.query('BEGIN')
 
-      await client.query('DELETE FROM order_status_history WHERE order_id = $1', [orderId])
-      const result = await client.query('DELETE FROM orders WHERE order_id = $1', [orderId])
+      await client.query(`DELETE FROM order_status_history WHERE order_id = $1`, [orderId])
+      const result = await client.query(`DELETE FROM orders WHERE order_id = $1`, [orderId])
 
       await client.query('COMMIT')
 
@@ -77,21 +76,21 @@ export async function DELETE(
         return NextResponse.json({ error: 'Order not found' }, { status: 404 })
       }
 
-      return NextResponse.json({ success: true, message: 'Order deleted successfully' })
+      return NextResponse.json({ success: true, message: 'Order deleted' })
     } catch (error) {
       await client.query('ROLLBACK')
-      console.error('Error deleting order:', error)
+      console.error('DELETE error:', error)
       return NextResponse.json({ error: 'Failed to delete order' }, { status: 500 })
     } finally {
       client.release()
     }
   } catch (error) {
-    console.error('DELETE /orderId error:', error)
+    console.error('DELETE outer error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-// ✅ GET — Fetch Order Details + History
+// ✅ GET — Fetch Order Details + Status History
 export async function GET(
   request: NextRequest,
   { params }: { params: { orderId: string } }
@@ -99,16 +98,16 @@ export async function GET(
   try {
     const { orderId } = params
     const client = await pool.connect()
-
     try {
       const orderResult = await client.query(`
         SELECT 
-          id, order_id as "orderId", user_id as "userId", customer_name as "customerName",
-          customer_email as "customerEmail", customer_phone as "customerPhone",
-          address, city, items, subtotal, shipping, vat, total_amount as "totalAmount",
-          status, payment_method as "paymentMethod", payment_status as "paymentStatus",
-          estimated_delivery as "estimatedDelivery", tracking_number as "trackingNumber",
-          notes, created_at as "createdAt", updated_at as "updatedAt"
+          id, order_id AS "orderId", user_id AS "userId", customer_name AS "customerName",
+          customer_email AS "customerEmail", customer_phone AS "customerPhone",
+          address, city, items, subtotal, shipping, vat,
+          total_amount AS "totalAmount", status,
+          payment_method AS "paymentMethod", payment_status AS "paymentStatus",
+          estimated_delivery AS "estimatedDelivery", tracking_number AS "trackingNumber",
+          notes, created_at AS "createdAt", updated_at AS "updatedAt"
         FROM orders 
         WHERE order_id = $1
       `, [orderId])
@@ -118,7 +117,7 @@ export async function GET(
       }
 
       const historyResult = await client.query(`
-        SELECT status, notes, created_at as "createdAt"
+        SELECT status, notes, created_at AS "createdAt"
         FROM order_status_history
         WHERE order_id = $1
         ORDER BY created_at ASC
@@ -137,7 +136,7 @@ export async function GET(
       client.release()
     }
   } catch (error) {
-    console.error('GET /orderId error:', error)
+    console.error('GET error:', error)
     return NextResponse.json({ error: 'Failed to fetch order' }, { status: 500 })
   }
-}
+                                               }
