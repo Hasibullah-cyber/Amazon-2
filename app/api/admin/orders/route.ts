@@ -24,18 +24,9 @@ export async function GET() {
       id: order.id,
       orderId: order.order_id,
       userId: order.user_id,
-      customerName:
-        order.customer_name && order.customer_name.trim() !== ''
-          ? order.customer_name
-          : 'Unknown',
-      customerEmail:
-        order.customer_email && order.customer_email.trim() !== ''
-          ? order.customer_email
-          : 'unknown@example.com',
-      customerPhone:
-        order.customer_phone && order.customer_phone.trim() !== ''
-          ? order.customer_phone
-          : 'N/A',
+      customerName: order.customer_name,
+      customerEmail: order.customer_email,
+      customerPhone: order.customer_phone,
       address: order.address,
       city: order.city,
       items: order.items || [],
