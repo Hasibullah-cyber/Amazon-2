@@ -16,12 +16,13 @@ function validateProduct(data: any) {
 // ✅ GET all products with pagination
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const page = parseInt(searchParams.get('page') || '1', 10)
+  const limit = parseInt(searchParams.get('limit') || '20', 10)
   const offset = (page - 1) * limit
 
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT 
         p.*, 
         c.name AS category_name 
@@ -29,14 +30,16 @@ export async function GET(req: NextRequest) {
       LEFT JOIN categories c ON p.category_id::TEXT = c.id
       ORDER BY p.created_at DESC
       LIMIT $1 OFFSET $2
-    `, [limit, offset])
+      `,
+      [limit, offset]
+    )
 
     const products = result.rows.map((row) => ({
       ...row,
       category: {
         id: row.category_id,
-        name: row.category_name || 'Uncategorized'
-      }
+        name: row.category_name || 'Uncategorized',
+      },
     }))
 
     return NextResponse.json({ products, page, limit })
@@ -45,17 +48,17 @@ export async function GET(req: NextRequest) {
 
     const fallbackProducts = [
       {
-        id: "1",
-        name: "Sample Product",
-        description: "This is a sample product",
+        id: '1',
+        name: 'Sample Product',
+        description: 'This is a sample product',
         price: 99.99,
-        category: { id: "sample", name: "electronics" },
-        image: "/placeholder.svg",
+        category: { id: 'sample', name: 'electronics' },
+        image: '/placeholder.svg',
         stock: 50,
         rating: 4.5,
         reviews: 123,
-        created_at: new Date().toISOString()
-      }
+        created_at: new Date().toISOString(),
+      },
     ]
 
     return NextResponse.json({ products: fallbackProducts, page: 1, limit: 1 })
@@ -72,16 +75,19 @@ export async function POST(request: NextRequest) {
       name,
       description,
       price,
-      category,         // category_id
+      category,
       subcategory = null,
       image = '/placeholder.svg',
       stock = 0,
       rating = 0,
-      reviews = 0
+      reviews = 0,
     } = body
 
     // 🔒 Prevent duplicate product names
-    const duplicateCheck = await pool.query('SELECT id FROM products WHERE name = $1', [name])
+    const duplicateCheck = await pool.query(
+      'SELECT id FROM products WHERE name = $1',
+      [name]
+    )
     if (duplicateCheck.rowCount > 0) {
       throw new Error('Product with this name already exists')
     }
@@ -120,13 +126,26 @@ export async function POST(request: NextRequest) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
       RETURNING *
       `,
-      [name, description, price, category, subcategory, image, stock, rating, reviews]
+      [
+        name,
+        description,
+        price,
+        category,
+        subcategory,
+        image,
+        stock,
+        rating,
+        reviews,
+      ]
     )
 
     return NextResponse.json(result.rows[0])
   } catch (error: any) {
     console.error('Error creating product:', error)
-    return NextResponse.json({ error: error.message || 'Failed to create product' }, { status: 400 })
+    return NextResponse.json(
+      { error: error.message || 'Failed to create product' },
+      { status: 400 }
+    )
   }
 }
 
@@ -142,11 +161,14 @@ export async function PATCH(request: NextRequest) {
 
     if (fields.length === 0) throw new Error('No fields to update')
 
-    const setClause = fields.map((field, i) => `${field} = $${i + 1}`).join(', ')
-    const result = await pool.query(
-      `UPDATE products SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *`,
-      [...values, id]
-    )
+    const setClause = fields
+      .map((field, i) => `${field} = $${i + 1}`)
+      .join(', ')
+    const query = `UPDATE products SET ${setClause} WHERE id = $${
+      fields.length + 1
+    } RETURNING *`
+
+    const result = await pool.query(query, [...values, id])
 
     if (result.rowCount === 0) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
@@ -155,6 +177,9 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json(result.rows[0])
   } catch (error: any) {
     console.error('Error patching product:', error)
-    return NextResponse.json({ error: error.message || 'Failed to update product' }, { status: 400 })
+    return NextResponse.json(
+      { error: error.message || 'Failed to update product' },
+      { status: 400 }
+    )
   }
 }
