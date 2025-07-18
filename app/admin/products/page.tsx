@@ -1,20 +1,21 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { storeManager } from "@/lib/store"
-import { Search, Plus, Edit, Trash2, Package, AlertTriangle, X } from "lucide-react"
+import { Search, Plus, Edit, AlertTriangle, Package, X } from "lucide-react"
 
 export const dynamic = 'force-dynamic'
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([])
-  const [filteredProducts, setFilteredProducts] = useState<any[]>([])
+  const [categories, setCategories] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
+  const [filteredProducts, setFilteredProducts] = useState<any[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState<any>(null)
   const [formData, setFormData] = useState({
@@ -25,47 +26,42 @@ export default function ProductsPage() {
     category: "electronics",
     subcategory: ""
   })
-  const [categories, setCategories] = useState<any[]>([])
+
+  const fetchData = useCallback(async () => {
+    try {
+      const allProducts = await storeManager.getProducts()
+      const allCategories = await storeManager.getCategories()
+      setProducts(allProducts)
+      setCategories(allCategories)
+    } catch (error) {
+      console.error("Error loading products and categories:", error)
+    }
+  }, [])
 
   useEffect(() => {
-    const updateProducts = async () => {
-      try {
-        const allProducts = await storeManager.getProducts()
-        const allCategories = await storeManager.getCategories()
-        setProducts(allProducts)
-        setCategories(allCategories)
-        filterProducts(allProducts, searchTerm, categoryFilter)
-      } catch (error) {
-        console.error('Error fetching products and categories:', error)
-      }
-    }
-
-    updateProducts()
-    const unsubscribe = storeManager.subscribe(() => {
-      updateProducts()
-    })
-
+    fetchData()
+    const unsubscribe = storeManager.subscribe(fetchData)
     return unsubscribe
-  }, [searchTerm, categoryFilter])
+  }, [fetchData])
 
-  const filterProducts = (productsList: any[], search: string, category: string) => {
-    let filtered = productsList
+  useEffect(() => {
+    let filtered = [...products]
 
-    if (search) {
-      filtered = filtered.filter(product => 
-        product.name.toLowerCase().includes(search.toLowerCase()) ||
-        product.id.includes(search)
+    if (searchTerm) {
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.id.includes(searchTerm)
       )
     }
 
-    if (category !== "all") {
-      filtered = filtered.filter(product => product.category === category)
+    if (categoryFilter !== "all") {
+      filtered = filtered.filter(p => p.category === categoryFilter)
     }
 
     setFilteredProducts(filtered)
-  }
+  }, [products, searchTerm, categoryFilter])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const productData = {
@@ -74,31 +70,23 @@ export default function ProductsPage() {
       price: parseFloat(formData.price),
       stock: parseInt(formData.stock),
       category: formData.category,
+      subcategory: formData.subcategory,
       image: "/placeholder.svg?height=400&width=400",
       rating: 4.0,
       reviews: 0
     }
 
-    if (editingProduct) {
-      storeManager.updateProduct(editingProduct.id, productData)
-    } else {
-      storeManager.addProduct(productData)
+    try {
+      if (editingProduct) {
+        await storeManager.updateProduct(editingProduct.id, productData)
+      } else {
+        await storeManager.addProduct(productData)
+      }
+      await fetchData()
+      resetForm()
+    } catch (error) {
+      console.error("Failed to submit product:", error)
     }
-
-    resetForm()
-  }
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      stock: "",
-      category: "electronics",
-      subcategory: ""
-    })
-    setShowAddForm(false)
-    setEditingProduct(null)
   }
 
   const handleEdit = (product: any) => {
@@ -114,16 +102,27 @@ export default function ProductsPage() {
     setShowAddForm(true)
   }
 
-  const handleStockUpdate = (productId: string, newStock: number) => {
-    storeManager.updateProduct(productId, { stock: newStock })
+  const handleStockUpdate = async (productId: string, newStock: number) => {
+    try {
+      await storeManager.updateProduct(productId, { stock: newStock })
+      await fetchData()
+    } catch (error) {
+      console.error("Failed to update stock:", error)
+    }
   }
 
-  const categoryOptions = [
-    { value: "electronics", label: "Electronics" },
-    { value: "fashion", label: "Fashion" },
-    { value: "home-living", label: "Home & Living" },
-    { value: "beauty", label: "Beauty & Personal Care" }
-  ]
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      description: "",
+      price: "",
+      stock: "",
+      category: "electronics",
+      subcategory: ""
+    })
+    setEditingProduct(null)
+    setShowAddForm(false)
+  }
 
   return (
     <div className="p-6">
@@ -135,19 +134,16 @@ export default function ProductsPage() {
         </Button>
       </div>
 
-      {/* Filters and Search */}
       <Card className="p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search by Product Name or ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search by Product Name or ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
           <select
             value={categoryFilter}
@@ -155,14 +151,13 @@ export default function ProductsPage() {
             className="border rounded-md px-3 py-2"
           >
             <option value="all">All Categories</option>
-            {categoryOptions.map(cat => (
-              <option key={cat.value} value={cat.value}>{cat.label}</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
         </div>
       </Card>
 
-      {/* Product Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card className="p-4 text-center">
           <div className="text-2xl font-bold">{products.length}</div>
@@ -188,24 +183,20 @@ export default function ProductsPage() {
         </Card>
       </div>
 
-      {/* Products Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredProducts.map((product) => (
+        {filteredProducts.map(product => (
           <Card key={product.id} className="p-4">
             <div className="flex justify-between items-start mb-2">
               <h3 className="font-medium text-lg">{product.name}</h3>
-              <div className="flex gap-1">
-                <Button size="sm" variant="outline" onClick={() => handleEdit(product)}>
-                  <Edit className="h-3 w-3" />
-                </Button>
-              </div>
+              <Button size="sm" variant="outline" onClick={() => handleEdit(product)}>
+                <Edit className="h-3 w-3" />
+              </Button>
             </div>
-
             <p className="text-sm text-gray-600 mb-2">{product.description}</p>
             <div className="text-sm text-gray-500 mb-2">ID: {product.id}</div>
 
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between">
                 <span className="font-medium">Price:</span>
                 <span className="text-lg font-bold">৳{product.price}</span>
               </div>
@@ -215,21 +206,24 @@ export default function ProductsPage() {
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
-                    value={product.stock}
-                    onChange={(e) => handleStockUpdate(product.id, parseInt(e.target.value) || 0)}
-                    className="w-20 h-8 text-center"
+                    defaultValue={product.stock}
                     min="0"
+                    className="w-20 h-8 text-center"
+                    onBlur={(e) => {
+                      const newStock = parseInt(e.target.value)
+                      if (!isNaN(newStock) && newStock !== product.stock) {
+                        handleStockUpdate(product.id, newStock)
+                      }
+                    }}
                   />
-                  {product.stock < 10 && (
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                  )}
+                  {product.stock < 10 && <AlertTriangle className="h-4 w-4 text-red-500" />}
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="font-medium">Category:</span>
                 <span className="text-sm px-2 py-1 bg-gray-100 rounded">
-                  {categoryOptions.find(c => c.value === product.category)?.label}
+                  {categories.find(c => c.id === product.category)?.name}
                 </span>
               </div>
 
@@ -260,7 +254,6 @@ export default function ProductsPage() {
         </Card>
       )}
 
-      {/* Add/Edit Product Modal */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <Card className="max-w-md w-full">
@@ -275,82 +268,60 @@ export default function ProductsPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Product Name</label>
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    required
-                  />
-                </div>
-
+                <Input
+                  placeholder="Product Name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+                <Textarea
+                  placeholder="Description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  required
+                />
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Price (৳)</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData({...formData, price: e.target.value})}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Stock</label>
-                    <Input
-                      type="number"
-                      value={formData.stock}
-                      onChange={(e) => setFormData({...formData, stock: e.target.value})}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Category</label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value, subcategory: ""})}
-                    className="w-full border rounded-md px-3 py-2"
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Price"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     required
-                  >
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Stock"
+                    value={formData.stock}
+                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                    required
+                  />
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Subcategory</label>
-                  <select
-                    value={formData.subcategory}
-                    onChange={(e) => setFormData({...formData, subcategory: e.target.value})}
-                    className="w-full border rounded-md px-3 py-2"
-                  >
-                    <option value="">Select subcategory (optional)</option>
-                    {categories.find(cat => cat.id === formData.category)?.subcategories?.map((sub: any) => (
-                      <option key={sub.id} value={sub.id}>{sub.name}</option>
-                    ))}
-                  </select>
-                </div>
-
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value, subcategory: "" })}
+                  className="w-full border rounded-md px-3 py-2"
+                  required
+                >
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+                <select
+                  value={formData.subcategory}
+                  onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                  className="w-full border rounded-md px-3 py-2"
+                >
+                  <option value="">Select subcategory (optional)</option>
+                  {categories.find(c => c.id === formData.category)?.subcategories?.map((sub: any) => (
+                    <option key={sub.id} value={sub.id}>{sub.name}</option>
+                  ))}
+                </select>
                 <div className="flex gap-2 pt-4">
                   <Button type="submit" className="flex-1">
                     {editingProduct ? "Update Product" : "Add Product"}
                   </Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
+                  <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
                 </div>
               </form>
             </div>
@@ -359,4 +330,4 @@ export default function ProductsPage() {
       )}
     </div>
   )
-}
+                  }
