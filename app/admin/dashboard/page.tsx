@@ -69,7 +69,7 @@ export default function DashboardPage() {
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
           return res.json()
         })
-      ))
+      )
 
       // Validate and normalize responses
       const [statsData, ordersData, productsData] = responses
@@ -97,10 +97,17 @@ export default function DashboardPage() {
   }, [])
 
   // Safe calculations
-  const totalInventoryValue = products.reduce((sum, p) => sum + (Number(p.price) * Number(p.stock || 0)), 0)
-  const avgOrderValue = orders.length > 0 ? (Number(stats?.totalRevenue || 0) / orders.length : 0
+  const totalInventoryValue = products.reduce(
+    (sum, p) => sum + (Number(p.price) * Number(p.stock || 0)),
+    0
+  )
+  const avgOrderValue = orders.length > 0 
+    ? Number(stats?.totalRevenue || 0) / orders.length 
+    : 0
   const topProducts = [...products]
-    .sort((a, b) => (Number(b.price) * Number(b.stock)) - (Number(a.price) * Number(a.stock)))
+    .sort((a, b) => 
+      (Number(b.price) * Number(b.stock)) - (Number(a.price) * Number(a.stock))
+    )
     .slice(0, 5)
 
   if (loading) {
@@ -140,8 +147,100 @@ export default function DashboardPage() {
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-6">Analytics Dashboard</h1>
 
-        {/* Dashboard content remains the same */}
-        {/* ... */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                <p className="text-2xl font-bold">৳{Number(stats?.totalRevenue ?? 0).toFixed(2)}</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-green-600" />
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Average Order Value</p>
+                <p className="text-2xl font-bold">৳{avgOrderValue.toFixed(2)}</p>
+              </div>
+              <ShoppingCart className="h-8 w-8 text-blue-600" />
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Inventory Value</p>
+                <p className="text-2xl font-bold">৳{totalInventoryValue.toFixed(2)}</p>
+              </div>
+              <Package className="h-8 w-8 text-purple-600" />
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Active Products</p>
+                <p className="text-2xl font-bold">{products.filter(p => p.stock > 0).length}</p>
+              </div>
+              <Users className="h-8 w-8 text-orange-600" />
+            </div>
+          </Card>
+        </div>
+
+        <Card className="p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-4">Order Status</h2>
+          <div className="space-y-3">
+            {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(status => {
+              const count = orders.filter(o => o.status === status).length
+              const percentage = orders.length > 0 ? (count / orders.length) * 100 : 0
+              return (
+                <div key={status} className="flex items-center justify-between">
+                  <span className="capitalize text-sm font-medium">{status}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-32 bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${
+                          status === 'delivered' ? 'bg-green-500' :
+                          status === 'shipped' ? 'bg-blue-500' :
+                          status === 'processing' ? 'bg-yellow-500' :
+                          status === 'cancelled' ? 'bg-red-500' :
+                          'bg-gray-500'
+                        }`}
+                        style={{ width: `${percentage}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm w-12 text-right">{count}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+
+        <Card className="p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-4">Top Products</h2>
+          <div className="space-y-3">
+            {topProducts.map((product, index) => (
+              <div key={product.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                <div className="flex items-center gap-3">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 text-xs flex items-center justify-center font-medium">
+                    {index + 1}
+                  </span>
+                  <div>
+                    <div className="font-medium text-sm">{product.name}</div>
+                    <div className="text-xs text-gray-500">Stock: {product.stock}</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-sm">৳{(product.price * product.stock).toFixed(2)}</div>
+                  <div className="text-xs text-gray-500">@৳{product.price}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     </ErrorBoundary>
   )
