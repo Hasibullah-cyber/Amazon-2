@@ -1,14 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
-
-export const dynamic = 'force-dynamic'
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useAdminAuth } from "@/components/admin-auth-provider"
 import { AdminLoginModal } from "@/components/admin-login-modal"
-import { Package, Users, ShoppingCart, TrendingUp, AlertTriangle, Eye, Edit, Trash2, FolderOpen } from "lucide-react"
+import {
+  Package, Users, ShoppingCart, TrendingUp,
+  AlertTriangle, Eye, Edit
+} from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 export default function AdminHome() {
   const [stats, setStats] = useState<any>(null)
@@ -49,15 +52,11 @@ export default function AdminHome() {
     try {
       const response = await fetch(`/api/admin/orders/${orderId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error: ${response.status}`)
     } catch (error) {
       console.error('Error updating order status:', error)
     }
@@ -75,16 +74,22 @@ export default function AdminHome() {
           >
             Admin Login
           </button>
-          <AdminLoginModal 
-            isOpen={showAdminLogin} 
-            onClose={() => setShowAdminLogin(false)} 
-          />
+          <AdminLoginModal isOpen={showAdminLogin} onClose={() => setShowAdminLogin(false)} />
         </div>
       </div>
     )
   }
 
   if (!stats) return <div className="p-6">Loading admin dashboard...</div>
+
+  // fallback values to prevent undefined access
+  const {
+    totalOrders = 0,
+    totalRevenue = 0,
+    pendingOrders = 0,
+    lowStockProducts = 0,
+    recentOrders = []
+  } = stats || {}
 
   return (
     <div className="p-6">
@@ -112,37 +117,34 @@ export default function AdminHome() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold">{stats.totalOrders}</p>
+              <p className="text-2xl font-bold">{totalOrders}</p>
             </div>
             <ShoppingCart className="h-8 w-8 text-blue-600" />
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold">৳{stats.totalRevenue.toFixed(2)}</p>
+              <p className="text-2xl font-bold">৳{totalRevenue.toFixed(2)}</p>
             </div>
             <TrendingUp className="h-8 w-8 text-green-600" />
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Pending Orders</p>
-              <p className="text-2xl font-bold">{stats.pendingOrders}</p>
+              <p className="text-2xl font-bold">{pendingOrders}</p>
             </div>
             <Package className="h-8 w-8 text-orange-600" />
           </div>
         </Card>
-
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Low Stock Items</p>
-              <p className="text-2xl font-bold">{stats.lowStockProducts}</p>
+              <p className="text-2xl font-bold">{lowStockProducts}</p>
             </div>
             <AlertTriangle className="h-8 w-8 text-red-600" />
           </div>
@@ -198,12 +200,12 @@ export default function AdminHome() {
               </tr>
             </thead>
             <tbody>
-              {stats && stats.recentOrders && stats.recentOrders.map((order: any) => (
+              {recentOrders.map((order: any) => (
                 <tr key={order.id} className="border-b hover:bg-gray-50">
                   <td className="p-2 font-mono text-sm">{order.orderId}</td>
                   <td className="p-2">{order.customerName}</td>
-                  <td className="p-2">{order.items.length} items</td>
-                  <td className="p-2">৳{order.totalAmount.toFixed(2)}</td>
+                  <td className="p-2">{order.items?.length || 0} items</td>
+                  <td className="p-2">৳{order.totalAmount?.toFixed(2)}</td>
                   <td className="p-2">
                     <select
                       value={order.status}
@@ -245,7 +247,7 @@ export default function AdminHome() {
           </Link>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {products && products.slice(0, 6).map((product) => (
+          {products.slice(0, 6).map((product: any) => (
             <div key={product.id} className="border p-4 rounded-lg hover:shadow-md transition">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-medium truncate">{product.name}</h3>
@@ -254,7 +256,7 @@ export default function AdminHome() {
               <p className="text-gray-600 text-sm mb-2">ID: {product.id}</p>
               <div className="flex justify-between items-center">
                 <span className={`text-sm ${
-                  product.stock > 20 ? "text-green-600" : 
+                  product.stock > 20 ? "text-green-600" :
                   product.stock > 10 ? "text-yellow-600" : "text-red-600"
                 }`}>
                   {product.stock} in stock
@@ -271,4 +273,4 @@ export default function AdminHome() {
       </Card>
     </div>
   )
-            }
+}
