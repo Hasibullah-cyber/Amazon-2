@@ -1,10 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Component } from "react"
 import { Card } from "@/components/ui/card"
 import { ShoppingCart, Package, Users, DollarSign } from "lucide-react"
 import { getBaseUrl } from "@/lib/getBaseUrl"
-import { ErrorBoundary } from "react-error-boundary"
 
 interface Stats {
   totalRevenue?: number
@@ -24,21 +23,39 @@ interface Order {
   [key: string]: any
 }
 
-function ErrorFallback({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) {
-  return (
-    <div className="p-6">
-      <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
-        <p className="font-bold">Dashboard Error</p>
-        <pre className="text-sm whitespace-pre-wrap">{error.message}</pre>
-        <button
-          onClick={resetErrorBoundary}
-          className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-        >
-          Try Again
-        </button>
-      </div>
-    </div>
-  )
+class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
+  constructor(props: {children: React.ReactNode}) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('ErrorBoundary caught an error', error, info)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-6">
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+            <p className="font-bold">Dashboard Error</p>
+            <pre className="text-sm whitespace-pre-wrap">{this.state.error?.message}</pre>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
 }
 
 export const dynamic = 'force-dynamic'
@@ -133,13 +150,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <ErrorBoundary
-      FallbackComponent={ErrorFallback}
-      onReset={() => {
-        setError(null)
-        fetchData()
-      }}
-    >
+    <ErrorBoundary>
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-6">Analytics Dashboard</h1>
 
