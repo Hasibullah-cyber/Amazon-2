@@ -7,11 +7,16 @@ import { Button } from "@/components/ui/button"
 import { useAdminAuth } from "@/components/admin-auth-provider"
 import { AdminLoginModal } from "@/components/admin-login-modal"
 import {
-  Package, Users, ShoppingCart, TrendingUp,
-  AlertTriangle, Eye, Edit
+  Package,
+  Users,
+  ShoppingCart,
+  TrendingUp,
+  AlertTriangle,
+  Eye,
+  Edit,
 } from "lucide-react"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
 export default function AdminHome() {
   const [stats, setStats] = useState<any>(null)
@@ -24,24 +29,31 @@ export default function AdminHome() {
     const updateData = async () => {
       try {
         const [statsResponse, ordersResponse, productsResponse] = await Promise.all([
-          fetch('/api/admin/stats'),
-          fetch('/api/admin/orders'),
-          fetch('/api/admin/products')
+          fetch("/api/admin/stats"),
+          fetch("/api/admin/orders"),
+          fetch("/api/admin/products"),
         ])
 
         if (statsResponse.ok && ordersResponse.ok && productsResponse.ok) {
           const [fetchedStats, fetchedOrders, fetchedProducts] = await Promise.all([
             statsResponse.json(),
             ordersResponse.json(),
-            productsResponse.json()
+            productsResponse.json(),
           ])
 
           setStats(fetchedStats)
           setOrders(fetchedOrders)
           setProducts(fetchedProducts)
+        } else {
+          console.error(
+            "One or more admin API responses failed:",
+            statsResponse.status,
+            ordersResponse.status,
+            productsResponse.status
+          )
         }
       } catch (error) {
-        console.error('Error fetching admin data:', error)
+        console.error("Error fetching admin data:", error)
       }
     }
 
@@ -51,14 +63,15 @@ export default function AdminHome() {
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       const response = await fetch(`/api/admin/orders/${orderId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
-      });
+      })
 
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`)
+      // Optionally, refresh orders here or update state
     } catch (error) {
-      console.error('Error updating order status:', error)
+      console.error("Error updating order status:", error)
     }
   }
 
@@ -67,7 +80,9 @@ export default function AdminHome() {
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
           <h1 className="text-2xl font-bold mb-4">Admin Access Required</h1>
-          <p className="text-gray-600 mb-6">You need to be logged in as an admin to access this page.</p>
+          <p className="text-gray-600 mb-6">
+            You need to be logged in as an admin to access this page.
+          </p>
           <button
             onClick={() => setShowAdminLogin(true)}
             className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
@@ -88,7 +103,7 @@ export default function AdminHome() {
     totalRevenue = 0,
     pendingOrders = 0,
     lowStockProducts = 0,
-    recentOrders = []
+    recentOrders = [],
   } = stats || {}
 
   return (
@@ -126,7 +141,7 @@ export default function AdminHome() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold">৳{totalRevenue.toFixed(2)}</p>
+              <p className="text-2xl font-bold">৳{Number(totalRevenue ?? 0).toFixed(2)}</p>
             </div>
             <TrendingUp className="h-8 w-8 text-green-600" />
           </div>
@@ -200,39 +215,50 @@ export default function AdminHome() {
               </tr>
             </thead>
             <tbody>
-              {recentOrders.map((order: any) => (
-                <tr key={order.id} className="border-b hover:bg-gray-50">
-                  <td className="p-2 font-mono text-sm">{order.orderId}</td>
-                  <td className="p-2">{order.customerName}</td>
-                  <td className="p-2">{order.items?.length || 0} items</td>
-                  <td className="p-2">৳{order.totalAmount?.toFixed(2)}</td>
-                  <td className="p-2">
-                    <select
-                      value={order.status}
-                      onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
-                      className={`px-2 py-1 rounded-full text-xs border ${
-                        order.status === "delivered" ? "bg-green-100 text-green-800 border-green-200" :
-                        order.status === "shipped" ? "bg-blue-100 text-blue-800 border-blue-200" :
-                        order.status === "processing" ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
-                        "bg-gray-100 text-gray-800 border-gray-200"
-                      }`}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="processing">Processing</option>
-                      <option value="shipped">Shipped</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </td>
-                  <td className="p-2">
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline">
-                        <Eye className="h-3 w-3" />
-                      </Button>
-                    </div>
+              {Array.isArray(recentOrders) && recentOrders.length > 0 ? (
+                recentOrders.map((order: any) => (
+                  <tr key={order.id} className="border-b hover:bg-gray-50">
+                    <td className="p-2 font-mono text-sm">{order.orderId || order.id}</td>
+                    <td className="p-2">{order.customerName || "Unknown"}</td>
+                    <td className="p-2">{order.items?.length || 0} items</td>
+                    <td className="p-2">৳{order.totalAmount?.toFixed(2) || "0.00"}</td>
+                    <td className="p-2">
+                      <select
+                        value={order.status || "pending"}
+                        onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                        className={`px-2 py-1 rounded-full text-xs border ${
+                          order.status === "delivered"
+                            ? "bg-green-100 text-green-800 border-green-200"
+                            : order.status === "shipped"
+                            ? "bg-blue-100 text-blue-800 border-blue-200"
+                            : order.status === "processing"
+                            ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                            : "bg-gray-100 text-gray-800 border-gray-200"
+                        }`}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="processing">Processing</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </td>
+                    <td className="p-2">
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline">
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="p-2 text-center" colSpan={6}>
+                    No recent orders found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -255,10 +281,11 @@ export default function AdminHome() {
               </div>
               <p className="text-gray-600 text-sm mb-2">ID: {product.id}</p>
               <div className="flex justify-between items-center">
-                <span className={`text-sm ${
-                  product.stock > 20 ? "text-green-600" :
-                  product.stock > 10 ? "text-yellow-600" : "text-red-600"
-                }`}>
+                <span
+                  className={`text-sm ${
+                    product.stock > 20 ? "text-green-600" : product.stock > 10 ? "text-yellow-600" : "text-red-600"
+                  }`}
+                >
                   {product.stock} in stock
                 </span>
                 <div className="flex gap-1">
