@@ -40,8 +40,8 @@ export default function DashboardPage() {
       ])
 
       setStats(statsRes)
-      setOrders(ordersRes)
-      setProducts(productsRes)
+      setOrders(ordersRes || [])
+      setProducts(productsRes || [])
     } catch (error) {
       console.error('Dashboard fetch error:', error)
       setError(error instanceof Error ? error.message : 'Failed to load dashboard')
@@ -92,11 +92,17 @@ export default function DashboardPage() {
     )
   }
 
-  const totalInventoryValue = products.reduce((sum, p) => sum + (p.price * p.stock), 0)
-  const avgOrderValue = orders.length > 0 ? stats.totalRevenue / orders.length : 0
-  const topProducts = products
-    .sort((a, b) => (b.price * b.stock) - (a.price * a.stock))
-    .slice(0, 5)
+  const totalRevenue = Number(stats.totalRevenue ?? 0)
+  const totalInventoryValue = Array.isArray(products)
+    ? products.reduce((sum, p) => sum + (Number(p.price || 0) * Number(p.stock || 0)), 0)
+    : 0
+  const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0
+
+  const topProducts = Array.isArray(products)
+    ? [...products]
+        .sort((a, b) => (b.price * b.stock) - (a.price * a.stock))
+        .slice(0, 5)
+    : []
 
   return (
     <div className="p-6">
@@ -107,7 +113,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold">৳{stats.totalRevenue?.toFixed(2) || '0.00'}</p>
+              <p className="text-2xl font-bold">৳{totalRevenue.toFixed(2)}</p>
             </div>
             <DollarSign className="h-8 w-8 text-green-600" />
           </div>
@@ -189,8 +195,10 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="font-bold text-sm">৳{(product.price * product.stock).toFixed(2)}</div>
-                <div className="text-xs text-gray-500">@৳{product.price}</div>
+                <div className="font-bold text-sm">
+                  ৳{(Number(product.price || 0) * Number(product.stock || 0)).toFixed(2)}
+                </div>
+                <div className="text-xs text-gray-500">@৳{Number(product.price || 0).toFixed(2)}</div>
               </div>
             </div>
           ))}
