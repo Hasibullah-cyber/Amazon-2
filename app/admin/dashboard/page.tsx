@@ -58,22 +58,18 @@ export default function DashboardPage() {
       const baseUrl = getBaseUrl()
       if (!baseUrl) throw new Error("Base URL not configured")
 
-      const endpoints = [
-        `${baseUrl}/api/admin/stats`,
-        `${baseUrl}/api/admin/orders`,
-        `${baseUrl}/api/admin/products`
-      ]
+      const statsResponse = await fetch(`${baseUrl}/api/admin/stats`)
+      const ordersResponse = await fetch(`${baseUrl}/api/admin/orders`)
+      const productsResponse = await fetch(`${baseUrl}/api/admin/products`)
 
-      const responses = await Promise.all(endpoints.map(url => 
-        fetch(url).then(res => {
-          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
-          return res.json()
-        })
-      )
+      if (!statsResponse.ok) throw new Error(`Stats failed: ${statsResponse.status}`)
+      if (!ordersResponse.ok) throw new Error(`Orders failed: ${ordersResponse.status}`)
+      if (!productsResponse.ok) throw new Error(`Products failed: ${productsResponse.status}`)
 
-      // Validate and normalize responses
-      const [statsData, ordersData, productsData] = responses
-      
+      const statsData = await statsResponse.json()
+      const ordersData = await ordersResponse.json()
+      const productsData = await productsResponse.json()
+
       if (!statsData) throw new Error("No stats data received")
       if (!ordersData) throw new Error("No orders data received")
       if (!productsData) throw new Error("No products data received")
