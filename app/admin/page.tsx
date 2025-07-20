@@ -111,7 +111,6 @@ export default function AdminHome() {
       })
 
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`)
-      // Optionally, refresh orders here or update state
     } catch (error) {
       console.error("Error updating order status:", error)
     }
@@ -139,7 +138,6 @@ export default function AdminHome() {
 
   if (!stats) return <div className="p-6">Loading admin dashboard...</div>
 
-  // fallback values to prevent undefined access
   const {
     totalOrders = 0,
     totalRevenue = 0,
@@ -315,29 +313,37 @@ export default function AdminHome() {
           </Link>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {products.slice(0, 6).map((product: any) => (
-            <div key={product.id} className="border p-4 rounded-lg hover:shadow-md transition">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-medium truncate">{product.name}</h3>
-                <span className="text-sm font-bold">৳{product.price}</span>
-              </div>
-              <p className="text-gray-600 text-sm mb-2">ID: {product.id}</p>
-              <div className="flex justify-between items-center">
-                <span
-                  className={`text-sm ${
-                    product.stock > 20 ? "text-green-600" : product.stock > 10 ? "text-yellow-600" : "text-red-600"
-                  }`}
-                >
-                  {product.stock} in stock
-                </span>
-                <div className="flex gap-1">
-                  <Button size="sm" variant="outline">
-                    <Edit className="h-3 w-3" />
-                  </Button>
+          {Array.isArray(products) ? (
+            products.slice(0, 6).map((product: any) => (
+              <div key={product.id} className="border p-4 rounded-lg hover:shadow-md transition">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-medium truncate">{product.name}</h3>
+                  <span className="text-sm font-bold">৳{product.price}</span>
+                </div>
+                <p className="text-gray-600 text-sm mb-2">ID: {product.id}</p>
+                <div className="flex justify-between items-center">
+                  <span
+                    className={`text-sm ${
+                      product.stock > 20
+                        ? "text-green-600"
+                        : product.stock > 10
+                        ? "text-yellow-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {product.stock} in stock
+                  </span>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline">
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p className="text-sm text-red-500">Error loading products.</p>
+          )}
         </div>
       </Card>
     </div>
