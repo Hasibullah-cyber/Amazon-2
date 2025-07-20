@@ -1,48 +1,6 @@
 "use client"
 
-// Show console logs & errors on screen (for debugging on phone)
-if (typeof window !== "undefined") {
-  const debugBox = document.createElement("div")
-  debugBox.style.position = "fixed"
-  debugBox.style.bottom = "0"
-  debugBox.style.left = "0"
-  debugBox.style.maxHeight = "40vh"
-  debugBox.style.overflowY = "auto"
-  debugBox.style.zIndex = "9999"
-  debugBox.style.background = "#000"
-  debugBox.style.color = "#0f0"
-  debugBox.style.fontSize = "12px"
-  debugBox.style.padding = "4px"
-  debugBox.style.borderTopRightRadius = "6px"
-  debugBox.style.width = "100%"
-  document.body.appendChild(debugBox)
-
-  const log = console.log
-  const error = console.error
-
-  console.log = function (...args) {
-    log.apply(console, args)
-    const msg = document.createElement("div")
-    msg.textContent = "[LOG] " + args.join(" ")
-    debugBox.appendChild(msg)
-  }
-
-  console.error = function (...args) {
-    error.apply(console, args)
-    const msg = document.createElement("div")
-    msg.style.color = "#f55"
-    msg.textContent = "[ERROR] " + args.join(" ")
-    debugBox.appendChild(msg)
-  }
-
-  window.onerror = function (message, source, lineno, colno, err) {
-    const msg = document.createElement("div")
-    msg.style.color = "#f55"
-    msg.textContent = `[ERROR] ${message} at ${source}:${lineno}:${colno}`
-    debugBox.appendChild(msg)
-  }
-}
-
+import { debugFetch } from "@/lib/debug-fetch"
 import { useEffect, useState, Component } from "react"
 import { Card } from "@/components/ui/card"
 import { ShoppingCart, Package, Users, DollarSign } from "lucide-react"
