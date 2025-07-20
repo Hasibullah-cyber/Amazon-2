@@ -35,7 +35,15 @@ export async function GET(req: NextRequest) {
     )
 
     const products = result.rows.map((row) => ({
-      ...row,
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      price: row.price,
+      image: row.image,
+      stock: row.stock,
+      rating: row.rating,
+      reviews: row.reviews,
+      created_at: row.created_at,
       category: {
         id: row.category_id,
         name: row.category_name || 'Uncategorized',
@@ -52,12 +60,15 @@ export async function GET(req: NextRequest) {
         name: 'Sample Product',
         description: 'This is a sample product',
         price: 99.99,
-        category: { id: 'sample', name: 'electronics' },
         image: '/placeholder.svg',
         stock: 50,
         rating: 4.5,
         reviews: 123,
         created_at: new Date().toISOString(),
+        category: {
+          id: 'sample',
+          name: 'electronics',
+        },
       },
     ]
 
