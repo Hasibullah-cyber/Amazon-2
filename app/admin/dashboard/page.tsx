@@ -1,6 +1,5 @@
 "use client"
 
-import { debugFetch } from "@/lib/debug-fetch"
 import { useEffect, useState, Component } from "react"
 import { Card } from "@/components/ui/card"
 import { ShoppingCart, Package, Users, DollarSign } from "lucide-react"
