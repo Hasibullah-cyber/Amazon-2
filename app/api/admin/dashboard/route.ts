@@ -21,7 +21,7 @@ export async function GET() {
         client.query('SELECT COUNT(*) as total FROM products'),
         client.query('SELECT COUNT(*) as total FROM orders'),
         client.query(`
-          SELECT SUM(total_amount) as total 
+          SELECT COALESCE(SUM(total_amount), 0) as total 
           FROM orders 
           WHERE created_at >= NOW() - INTERVAL '30 days'
         `),
@@ -46,7 +46,7 @@ export async function GET() {
           product_name: row.product_name,
           order_count: Number(row.order_count)
         })),
-        conversionRate: 3.2,
+        conversionRate: 3.2, // Hardcoded fallback
         avgOrderValue: 145.5,
         customerSatisfaction: 4.6
       }
