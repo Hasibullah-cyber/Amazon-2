@@ -19,7 +19,6 @@ export default function OrderHistoryPage() {
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
 
-  // Fetch orders function with useCallback to avoid unnecessary re-creations
   const fetchOrders = useCallback(async () => {
     if (!user?.email) {
       setLoading(false)
@@ -44,7 +43,6 @@ export default function OrderHistoryPage() {
     }
   }, [user?.email])
 
-  // Filter orders whenever orders, searchTerm, or filterStatus change
   useEffect(() => {
     let filtered = orders
 
@@ -61,13 +59,11 @@ export default function OrderHistoryPage() {
       filtered = filtered.filter(order => order.status === filterStatus)
     }
 
-    // Sort newest first
     filtered.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
 
     setFilteredOrders(filtered)
   }, [orders, searchTerm, filterStatus])
 
-  // Fetch orders on mount or when user.email changes
   useEffect(() => {
     fetchOrders()
   }, [fetchOrders])
@@ -120,7 +116,6 @@ export default function OrderHistoryPage() {
           </Button>
         </div>
 
-        {/* Filters */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -157,8 +152,7 @@ export default function OrderHistoryPage() {
             <p className="text-gray-600 mb-4">
               {orders.length === 0
                 ? "You haven't placed any orders yet."
-                : "No orders match your search criteria."
-              }
+                : "No orders match your search criteria."}
             </p>
             <Button asChild>
               <Link href="/">Start Shopping</Link>
@@ -182,7 +176,7 @@ export default function OrderHistoryPage() {
                       <span className="ml-1 capitalize">{order.status || "unknown"}</span>
                     </Badge>
                     <p className="text-lg font-bold mt-1">
-                      ৳{order.totalAmount ? order.totalAmount.toFixed(2) : "0.00"}
+                      ৳{Number(order.totalAmount || 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
