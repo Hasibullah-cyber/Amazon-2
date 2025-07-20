@@ -2,32 +2,35 @@ import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database.ts'
 
 interface OrderItem {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
+  id: string
+  name: string
+  quantity: number
+  price: number
+  sku?: string // Optional SKU for product_sku
 }
 
 interface OrderData {
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  address: string;
-  city: string;
-  postalCode?: string;
-  country?: string;
-  items: OrderItem[];
-  subtotal?: string | number;
-  shipping?: string | number;
-  tax?: string | number;
-  totalAmount: string | number;
-  paymentMethod: string;
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  address: string
+  city: string
+  postalCode?: string
+  country?: string
+  items: OrderItem[]
+  subtotal?: string | number
+  shipping?: string | number
+  tax?: string | number
+  totalAmount: string | number
+  paymentMethod: string
 }
 
+// GET handler to fetch orders list from database
 export async function GET() {
   try {
     const client = await pool.connect()
     try {
+      // Select orders with relevant fields, sorted by creation date descending
       const result = await client.query(`
         SELECT 
           id, order_id as "orderId", customer_name as "customerName",
@@ -40,16 +43,20 @@ export async function GET() {
         FROM orders 
         ORDER BY created_at DESC
       `)
-      return NextResponse.json(result.rows.map(row => ({
-        ...row,
-        items: (() => {
-          try {
-            return typeof row.items === 'string' ? JSON.parse(row.items) : (row.items ?? []);
-          } catch {
-            return [];
-          }
-        })()
-      })))
+
+      // Parse JSON items for each order (stored as string in DB)
+      return NextResponse.json(
+        result.rows.map(row => ({
+          ...row,
+          items: (() => {
+            try {
+              return typeof row.items === 'string' ? JSON.parse(row.items) : (row.items ?? [])
+            } catch {
+              return []
+            }
+          })(),
+        }))
+      )
     } finally {
       client.release()
     }
@@ -59,43 +66,54 @@ export async function GET() {
   }
 }
 
+// POST handler to create a new order
 export async function POST(request: Request) {
   try {
+    // Parse JSON request body into OrderData type
     const orderData: OrderData = await request.json()
     console.log('Received order data:', orderData)
 
+    // Required fields validation
     const requiredFields: (keyof OrderData)[] = [
       'customerName', 'customerEmail', 'customerPhone', 'address', 'city', 'items', 'totalAmount', 'paymentMethod'
     ]
     for (const field of requiredFields) {
       const value = orderData[field]
-      if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) {
+      if (
+        value === undefined ||
+        value === null ||
+        (typeof value === 'string' && value.trim() === '')
+      ) {
         return NextResponse.json({
           success: false,
-          error: `Missing required field: ${field}`
+          error: `Missing required field: ${field}`,
         }, { status: 400 })
       }
     }
 
+    // Validate items array
     if (!Array.isArray(orderData.items) || orderData.items.length === 0) {
       return NextResponse.json({
         success: false,
-        error: 'Order must contain at least one item'
+        error: 'Order must contain at least one item',
       }, { status: 400 })
     }
 
+    // Validate individual item fields
     for (const [i, item] of orderData.items.entries()) {
       if (!item.id || !item.name || typeof item.quantity !== 'number' || typeof item.price !== 'number') {
         return NextResponse.json({
           success: false,
-          error: `Missing or invalid item fields at index ${i}`
+          error: `Missing or invalid item fields at index ${i}`,
         }, { status: 400 })
       }
     }
 
+    // Generate unique order and tracking IDs
     const orderId = `ORD-${crypto.randomUUID()}`
     const trackingNumber = `TRK-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
 
+    // Parse numeric totals, with fallback defaults
     const subtotal = parseFloat(orderData.subtotal as string) || parseFloat(orderData.totalAmount as string) || 0
     const shipping = parseFloat(orderData.shipping as string) || 100
     const tax = parseFloat(orderData.tax as string) || 0
@@ -104,7 +122,10 @@ export async function POST(request: Request) {
     try {
       const client = await pool.connect()
       try {
+        // Start DB transaction to keep data consistent
         await client.query('BEGIN')
+
+        // Insert new order row with all data
         const insertResult = await client.query(`
           INSERT INTO orders (
             order_id, customer_name, customer_email, customer_phone,
@@ -128,7 +149,7 @@ export async function POST(request: Request) {
           shipping,
           tax,
           totalAmount,
-          'pending',
+          'pending', // initial order status
           orderData.paymentMethod,
           orderData.paymentMethod === 'Cash on Delivery' ? 'pending' : 'completed',
           trackingNumber,
@@ -137,35 +158,45 @@ export async function POST(request: Request) {
 
         const newOrder = insertResult.rows[0]
 
+        // Insert each item into order_items and update stock
         for (const item of orderData.items) {
           await client.query(`
-            INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO order_items (
+              order_id, product_id, product_name, product_sku, quantity, unit_price, total_price
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
           `, [
             orderId,
             item.id,
             item.name,
+            item.sku || '', // SKU may be missing
             item.quantity,
             item.price,
             item.price * item.quantity
           ])
+
+          // Decrement stock and ensure enough stock available
           const stockUpdateResult = await client.query(`
             UPDATE products
             SET stock = stock - $1, updated_at = CURRENT_TIMESTAMP
             WHERE id = $2 AND stock >= $1
             RETURNING stock
           `, [item.quantity, item.id])
+
           if (stockUpdateResult.rowCount === 0) {
+            // Not enough stock - rollback whole transaction and return error
             await client.query('ROLLBACK')
             return NextResponse.json({
               success: false,
-              error: `Not enough stock for product ${item.id}`
+              error: `Not enough stock for product ${item.id}`,
             }, { status: 400 })
           }
         }
 
+        // Commit transaction after all inserts & updates succeed
         await client.query('COMMIT')
 
+        // Prepare success response with order info
         const responseData = {
           success: true,
           orderId,
@@ -180,10 +211,11 @@ export async function POST(request: Request) {
             status: 'pending',
             trackingNumber,
             estimatedDelivery: '3-5 business days',
-            items: orderData.items
-          }
+            items: orderData.items,
+          },
         }
 
+        // Send confirmation email asynchronously (fail silently)
         try {
           await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-confirmation`, {
             method: 'POST',
@@ -200,9 +232,9 @@ export async function POST(request: Request) {
                 totalAmount,
                 address: orderData.address,
                 city: orderData.city,
-                phone: orderData.customerPhone
-              }
-            })
+                phone: orderData.customerPhone,
+              },
+            }),
           })
         } catch (emailError) {
           console.error('Failed to send confirmation email:', emailError)
@@ -211,6 +243,7 @@ export async function POST(request: Request) {
         return NextResponse.json(responseData, { status: 201 })
 
       } catch (dbError) {
+        // Rollback on any DB error during transaction
         await client.query('ROLLBACK')
         throw dbError
       } finally {
@@ -218,6 +251,7 @@ export async function POST(request: Request) {
       }
 
     } catch (dbError) {
+      // If DB fails, fallback to demo mode with local order info
       console.error('Database error:', dbError)
       const fallbackOrder = {
         id: Date.now(),
@@ -233,23 +267,23 @@ export async function POST(request: Request) {
         paymentMethod: orderData.paymentMethod,
         trackingNumber,
         estimatedDelivery: '3-5 business days',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       }
       return NextResponse.json({
         success: true,
         orderId,
         trackingNumber,
         message: 'Order placed successfully (demo mode)',
-        order: fallbackOrder
+        order: fallbackOrder,
       }, { status: 201 })
     }
-
   } catch (error: any) {
+    // Catch-all error handler for unexpected errors
     console.error('Error processing order:', error)
     return NextResponse.json({
       success: false,
       error: 'Failed to process order. Please try again.',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 })
   }
 }
