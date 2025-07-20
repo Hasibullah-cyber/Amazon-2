@@ -13,8 +13,8 @@ interface Stats {
 interface Product {
   id: string
   name: string
-  price: number
-  stock: number
+  price: number | string
+  stock: number | string
 }
 
 interface Order {
@@ -87,14 +87,9 @@ export default function DashboardPage() {
       const ordersData = await ordersResponse.json()
       const productsData = await productsResponse.json()
 
-      if (!statsData) throw new Error("No stats data received")
-      if (!ordersData) throw new Error("No orders data received")
-      if (!productsData) throw new Error("No products data received")
-
       setStats(statsData)
       setOrders(Array.isArray(ordersData) ? ordersData : ordersData.orders || [])
       setProducts(Array.isArray(productsData) ? productsData : productsData.products || [])
-      
     } catch (error) {
       console.error('Dashboard fetch error:', error)
       setError(error instanceof Error ? error.message : 'Failed to load dashboard')
@@ -109,20 +104,20 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [])
 
+  // ✅ Safe cast
+  const toNum = (val: number | string | null | undefined) =>
+    typeof val === 'number' ? val : parseFloat(val || '0')
+
   const totalInventoryValue = products.reduce(
-    (sum, p) => sum + (Number(p.price ?? 0) * Number(p.stock ?? 0)),
+    (sum, p) => sum + toNum(p.price) * toNum(p.stock),
     0
   )
-
-  const avgOrderValue = orders.length > 0 
-    ? Number(stats?.totalRevenue ?? 0) / orders.length 
+  const avgOrderValue = orders.length > 0
+    ? Number(stats?.totalRevenue || 0) / orders.length
     : 0
 
   const topProducts = [...products]
-    .sort((a, b) => 
-      (Number(b.price ?? 0) * Number(b.stock ?? 0)) -
-      (Number(a.price ?? 0) * Number(a.stock ?? 0))
-    )
+    .sort((a, b) => (toNum(b.price) * toNum(b.stock)) - (toNum(a.price) * toNum(a.stock)))
     .slice(0, 5)
 
   if (loading) {
@@ -191,7 +186,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active Products</p>
-                <p className="text-2xl font-bold">{products.filter(p => Number(p.stock ?? 0) > 0).length}</p>
+                <p className="text-2xl font-bold">{products.filter(p => toNum(p.stock) > 0).length}</p>
               </div>
               <Users className="h-8 w-8 text-orange-600" />
             </div>
@@ -239,12 +234,12 @@ export default function DashboardPage() {
                   </span>
                   <div>
                     <div className="font-medium text-sm">{product.name}</div>
-                    <div className="text-xs text-gray-500">Stock: {Number(product.stock ?? 0)}</div>
+                    <div className="text-xs text-gray-500">Stock: {toNum(product.stock)}</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-bold text-sm">৳{(Number(product.price ?? 0) * Number(product.stock ?? 0)).toFixed(2)}</div>
-                  <div className="text-xs text-gray-500">@৳{Number(product.price ?? 0).toFixed(2)}</div>
+                  <div className="font-bold text-sm">৳{(toNum(product.price) * toNum(product.stock)).toFixed(2)}</div>
+                  <div className="text-xs text-gray-500">@৳{toNum(product.price).toFixed(2)}</div>
                 </div>
               </div>
             ))}
