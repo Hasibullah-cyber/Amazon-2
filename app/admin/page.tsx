@@ -71,9 +71,9 @@ export default function AdminHome() {
     const updateData = async () => {
       try {
         const [statsResponse, ordersResponse, productsResponse] = await Promise.all([
-          fetch("/api/admin/stats"),
-          fetch("/api/admin/orders"),
-          fetch("/api/admin/products"),
+  debugFetch("/api/admin/stats"),
+  debugFetch("/api/admin/orders"),
+  debugFetch("/api/admin/products"),
         ])
 
         if (statsResponse.ok && ordersResponse.ok && productsResponse.ok) {
