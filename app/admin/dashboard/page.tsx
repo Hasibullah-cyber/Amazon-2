@@ -3,7 +3,6 @@
 import { useEffect, useState, Component } from "react"
 import { Card } from "@/components/ui/card"
 import { ShoppingCart, Package, Users, DollarSign } from "lucide-react"
-import { getBaseUrl } from "@/lib/getBaseUrl"
 
 interface Stats {
   totalRevenue?: number
@@ -67,17 +66,19 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  function safeNumber(value: any): number {
+    const n = Number(value)
+    return isNaN(n) ? 0 : n
+  }
+
   const fetchData = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const baseUrl = getBaseUrl()
-      if (!baseUrl) throw new Error("Base URL not configured")
-
-      const statsResponse = await fetch(`${baseUrl}/api/admin/stats`)
-      const ordersResponse = await fetch(`${baseUrl}/api/admin/orders`)
-      const productsResponse = await fetch(`${baseUrl}/api/admin/products`)
+      const statsResponse = await fetch('/api/admin/stats')
+      const ordersResponse = await fetch('/api/admin/orders')
+      const productsResponse = await fetch('/api/admin/products')
 
       if (!statsResponse.ok) throw new Error(`Stats failed: ${statsResponse.status}`)
       if (!ordersResponse.ok) throw new Error(`Orders failed: ${ordersResponse.status}`)
@@ -88,8 +89,8 @@ export default function DashboardPage() {
       const productsData = await productsResponse.json()
 
       setStats(statsData)
-      setOrders(Array.isArray(ordersData) ? ordersData : ordersData.orders || [])
-      setProducts(Array.isArray(productsData) ? productsData : productsData.products || [])
+      setOrders(Array.isArray(ordersData) ? ordersData : ordersData?.orders ?? [])
+      setProducts(Array.isArray(productsData) ? productsData : productsData?.products ?? [])
     } catch (error) {
       console.error('Dashboard fetch error:', error)
       setError(error instanceof Error ? error.message : 'Failed to load dashboard')
@@ -105,17 +106,17 @@ export default function DashboardPage() {
   }, [])
 
   const totalInventoryValue = products.reduce(
-    (sum, p) => sum + Number(p.price) * Number(p.stock),
+    (sum, p) => sum + safeNumber(p.price) * safeNumber(p.stock),
     0
   )
 
   const avgOrderValue = orders.length > 0
-    ? Number(stats?.totalRevenue || 0) / orders.length
+    ? safeNumber(stats?.totalRevenue) / orders.length
     : 0
 
   const topProducts = [...products]
     .sort((a, b) =>
-      (Number(b.price) * Number(b.stock)) - (Number(a.price) * Number(a.stock))
+      (safeNumber(b.price) * safeNumber(b.stock)) - (safeNumber(a.price) * safeNumber(a.stock))
     )
     .slice(0, 5)
 
@@ -155,7 +156,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                <p className="text-2xl font-bold">৳{Number(stats?.totalRevenue ?? 0).toFixed(2)}</p>
+                <p className="text-2xl font-bold">৳{safeNumber(stats?.totalRevenue).toFixed(2)}</p>
               </div>
               <DollarSign className="h-8 w-8 text-green-600" />
             </div>
@@ -185,7 +186,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active Products</p>
-                <p className="text-2xl font-bold">{products.filter(p => Number(p.stock) > 0).length}</p>
+                <p className="text-2xl font-bold">{products.filter(p => safeNumber(p.stock) > 0).length}</p>
               </div>
               <Users className="h-8 w-8 text-orange-600" />
             </div>
@@ -233,12 +234,12 @@ export default function DashboardPage() {
                   </span>
                   <div>
                     <div className="font-medium text-sm">{product.name}</div>
-                    <div className="text-xs text-gray-500">Stock: {Number(product.stock)}</div>
+                    <div className="text-xs text-gray-500">Stock: {safeNumber(product.stock)}</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-bold text-sm">৳{(Number(product.price) * Number(product.stock)).toFixed(2)}</div>
-                  <div className="text-xs text-gray-500">@৳{Number(product.price).toFixed(2)}</div>
+                  <div className="font-bold text-sm">৳{(safeNumber(product.price) * safeNumber(product.stock)).toFixed(2)}</div>
+                  <div className="text-xs text-gray-500">@৳{safeNumber(product.price).toFixed(2)}</div>
                 </div>
               </div>
             ))}
