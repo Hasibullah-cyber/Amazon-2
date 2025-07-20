@@ -41,7 +41,7 @@ if (typeof window !== "undefined") {
     debugBox.appendChild(msg)
   }
 }
-
+import { debugFetch } from "@/lib/debug-fetch"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
