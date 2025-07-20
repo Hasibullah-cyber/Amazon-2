@@ -15,6 +15,10 @@ export async function GET() {
     const totalOrdersRes = await client.query(`SELECT COUNT(*) FROM orders`);
     const totalOrders = Number(totalOrdersRes.rows[0].count);
 
+    // Total users
+    const totalUsersRes = await client.query(`SELECT COUNT(*) FROM users`);
+    const totalUsers = Number(totalUsersRes.rows[0].count);
+
     // Monthly revenue (sum of order totals excluding cancelled)
     const monthlyRevenueRes = await client.query(`
       SELECT COALESCE(SUM(total), 0) AS monthly_revenue
@@ -59,6 +63,7 @@ export async function GET() {
     return NextResponse.json({
       totalProducts,
       totalOrders,
+      totalUsers,            // added users count here
       monthlyRevenue,
       orderStatusCounts,
       topProducts,
@@ -74,6 +79,7 @@ export async function GET() {
       {
         totalProducts: 0,
         totalOrders: 0,
+        totalUsers: 0,        // fallback for users count
         monthlyRevenue: 0,
         orderStatusCounts: {},
         topProducts: [],
