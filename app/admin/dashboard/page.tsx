@@ -109,17 +109,19 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // Safe calculations
   const totalInventoryValue = products.reduce(
-    (sum, p) => sum + (Number(p.price) * Number(p.stock || 0)),
+    (sum, p) => sum + (Number(p.price ?? 0) * Number(p.stock ?? 0)),
     0
   )
+
   const avgOrderValue = orders.length > 0 
-    ? Number(stats?.totalRevenue || 0) / orders.length 
+    ? Number(stats?.totalRevenue ?? 0) / orders.length 
     : 0
+
   const topProducts = [...products]
     .sort((a, b) => 
-      (Number(b.price) * Number(b.stock)) - (Number(a.price) * Number(a.stock))
+      (Number(b.price ?? 0) * Number(b.stock ?? 0)) -
+      (Number(a.price ?? 0) * Number(a.stock ?? 0))
     )
     .slice(0, 5)
 
@@ -189,7 +191,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active Products</p>
-                <p className="text-2xl font-bold">{products.filter(p => p.stock > 0).length}</p>
+                <p className="text-2xl font-bold">{products.filter(p => Number(p.stock ?? 0) > 0).length}</p>
               </div>
               <Users className="h-8 w-8 text-orange-600" />
             </div>
@@ -237,12 +239,12 @@ export default function DashboardPage() {
                   </span>
                   <div>
                     <div className="font-medium text-sm">{product.name}</div>
-                    <div className="text-xs text-gray-500">Stock: {product.stock}</div>
+                    <div className="text-xs text-gray-500">Stock: {Number(product.stock ?? 0)}</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-bold text-sm">৳{(product.price * product.stock).toFixed(2)}</div>
-                  <div className="text-xs text-gray-500">@৳{product.price}</div>
+                  <div className="font-bold text-sm">৳{(Number(product.price ?? 0) * Number(product.stock ?? 0)).toFixed(2)}</div>
+                  <div className="text-xs text-gray-500">@৳{Number(product.price ?? 0).toFixed(2)}</div>
                 </div>
               </div>
             ))}
