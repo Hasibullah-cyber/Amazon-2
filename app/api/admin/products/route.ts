@@ -3,17 +3,13 @@ import { pool } from '@/lib/database'
 
 export const dynamic = 'force-dynamic'
 
-// ✅ Validate incoming product data
 function validateProduct(data: any) {
   const requiredFields = ['name', 'description', 'price', 'category']
   for (const field of requiredFields) {
-    if (!data[field]) {
-      throw new Error(`Missing required field: ${field}`)
-    }
+    if (!data[field]) throw new Error(`Missing required field: ${field}`)
   }
 }
 
-// ✅ GET: Paginated list of products
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const page = parseInt(searchParams.get('page') || '1', 10)
@@ -21,18 +17,13 @@ export async function GET(req: NextRequest) {
   const offset = (page - 1) * limit
 
   try {
-    const result = await pool.query(
-      `
-      SELECT 
-        p.*, 
-        c.name AS category_name 
+    const result = await pool.query(`
+      SELECT p.*, c.name AS category_name 
       FROM products p
       LEFT JOIN categories c ON p.category_id::TEXT = c.id
       ORDER BY p.created_at DESC
       LIMIT $1 OFFSET $2
-      `,
-      [limit, offset]
-    )
+    `, [limit, offset])
 
     const products = result.rows.map((row) => ({
       id: row.id,
@@ -56,86 +47,89 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ products, page, limit })
   } catch (error) {
     console.error('Database error fetching products:', error)
-
-    return NextResponse.json(
-      {
-        products: [],
-        page: 1,
-        limit: 20,
-        error: 'Failed to fetch products',
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ products: [], page: 1, limit: 20 }, { status: 200 })
   }
 }
 
-// ✅ PATCH: Update an existing product
-export async function PATCH(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
     const data = await req.json()
+    validateProduct(data)
 
     const {
-      id,
       name,
       description,
       price,
-      stock,
-      image,
+      stock = 0,
+      image = '/placeholder.svg',
       category,
-      featured,
-      is_active,
+      rating = 4.0,
+      reviews = 0
     } = data
 
-    if (!id) {
-      return NextResponse.json({ error: 'Product ID is required' }, { status: 400 })
-    }
-
-    validateProduct({ name, description, price, category })
-
-    // Check if the category exists or insert it
-    let categoryId = category?.id
-    if (!categoryId) {
-      const result = await pool.query(
-        `INSERT INTO categories (name) VALUES ($1) RETURNING id`,
-        [category.name]
-      )
-      categoryId = result.rows[0].id
-    }
-
-    // Update product
-    await pool.query(
-      `
-      UPDATE products SET
-        name = $1,
-        description = $2,
-        price = $3,
-        stock = $4,
-        image = $5,
-        category_id = $6,
-        featured = $7,
-        is_active = $8,
-        updated_at = NOW()
-      WHERE id = $9
-      `,
-      [
-        name,
-        description,
-        price,
-        stock,
-        image,
-        categoryId,
-        featured ?? false,
-        is_active ?? true,
-        id,
-      ]
+    const result = await pool.query(
+      `INSERT INTO products (name, description, price, stock, image, category_id, rating, reviews)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+      [name, description, price, stock, image, category, rating, reviews]
     )
+
+    return NextResponse.json(result.rows[0], { status: 201 })
+  } catch (error) {
+    console.error('POST /products error:', error)
+    return NextResponse.json({ error: 'Invalid product data' }, { status: 400 })
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const { id, updates } = await req.json()
+
+    if (!id || !updates) {
+      return NextResponse.json({ error: 'Missing product id or updates' }, { status: 400 })
+    }
+
+    const fields = []
+    const values = []
+    let paramIndex = 1
+
+    if (updates.name) {
+      fields.push(`name = $${paramIndex++}`)
+      values.push(updates.name)
+    }
+    if (updates.description) {
+      fields.push(`description = $${paramIndex++}`)
+      values.push(updates.description)
+    }
+    if (updates.price !== undefined) {
+      fields.push(`price = $${paramIndex++}`)
+      values.push(updates.price)
+    }
+    if (updates.stock !== undefined) {
+      fields.push(`stock = $${paramIndex++}`)
+      values.push(updates.stock)
+    }
+    if (updates.image) {
+      fields.push(`image = $${paramIndex++}`)
+      values.push(updates.image)
+    }
+    if (updates.category?.id) {
+      fields.push(`category_id = $${paramIndex++}`)
+      values.push(updates.category.id)
+    }
+
+    if (fields.length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
+
+    values.push(id)
+    const query = `UPDATE products SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${paramIndex}`
+
+    await pool.query(query, values)
 
     return NextResponse.json({ success: true })
-  } catch (err) {
-    console.error('[PATCH /api/admin/products] Error updating product:', err)
-    return NextResponse.json(
-      { error: 'Failed to update product' },
-      { status: 500 }
-    )
+  } catch (error) {
+    console.error('PATCH /admin/products error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
