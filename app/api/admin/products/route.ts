@@ -3,6 +3,7 @@ import { pool } from '@/lib/database'
 
 export const dynamic = 'force-dynamic'
 
+// ✅ Validate incoming product data
 function validateProduct(data: any) {
   const requiredFields = ['name', 'description', 'price', 'category']
   for (const field of requiredFields) {
@@ -12,6 +13,7 @@ function validateProduct(data: any) {
   }
 }
 
+// ✅ GET: Paginated list of products
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const page = parseInt(searchParams.get('page') || '1', 10)
@@ -57,24 +59,83 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(
       {
-        products: [
-          {
-            id: '1',
-            name: 'Sample Product',
-            description: 'This is a sample product',
-            price: 99.99,
-            stock: 50,
-            image: '/placeholder.svg',
-            rating: 4.5,
-            reviews: 123,
-            created_at: new Date().toISOString(),
-            category: { id: 'sample', name: 'electronics' },
-          },
-        ],
+        products: [],
         page: 1,
-        limit: 1,
+        limit: 20,
+        error: 'Failed to fetch products',
       },
-      { status: 200 }
+      { status: 500 }
+    )
+  }
+}
+
+// ✅ PATCH: Update an existing product
+export async function PATCH(req: NextRequest) {
+  try {
+    const data = await req.json()
+
+    const {
+      id,
+      name,
+      description,
+      price,
+      stock,
+      image,
+      category,
+      featured,
+      is_active,
+    } = data
+
+    if (!id) {
+      return NextResponse.json({ error: 'Product ID is required' }, { status: 400 })
+    }
+
+    validateProduct({ name, description, price, category })
+
+    // Check if the category exists or insert it
+    let categoryId = category?.id
+    if (!categoryId) {
+      const result = await pool.query(
+        `INSERT INTO categories (name) VALUES ($1) RETURNING id`,
+        [category.name]
+      )
+      categoryId = result.rows[0].id
+    }
+
+    // Update product
+    await pool.query(
+      `
+      UPDATE products SET
+        name = $1,
+        description = $2,
+        price = $3,
+        stock = $4,
+        image = $5,
+        category_id = $6,
+        featured = $7,
+        is_active = $8,
+        updated_at = NOW()
+      WHERE id = $9
+      `,
+      [
+        name,
+        description,
+        price,
+        stock,
+        image,
+        categoryId,
+        featured ?? false,
+        is_active ?? true,
+        id,
+      ]
+    )
+
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error('[PATCH /api/admin/products] Error updating product:', err)
+    return NextResponse.json(
+      { error: 'Failed to update product' },
+      { status: 500 }
     )
   }
 }
