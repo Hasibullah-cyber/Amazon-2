@@ -41,7 +41,6 @@ export interface Order {
   estimatedDelivery: string
 }
 
-// COMPLETE PRODUCT LIST - ALL ITEMS INCLUDED EXACTLY AS YOU PROVIDED
 const products: Product[] = [
   {
     id: "1001",
@@ -374,7 +373,6 @@ const categories: Category[] = [
   }
 ];
 
-// Store manager implementation
 class StoreManager {
   private products: Product[] = products;
   private categories: Category[] = categories;
@@ -402,10 +400,23 @@ class StoreManager {
 
   // Product methods
   async getProducts(): Promise<Product[]> {
-    return this.products;
+    try {
+      const response = await fetch(this.getApiUrl('/api/admin/products'), { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Failed to fetch products: ${response.statusText}`);
+      const data = await response.json();
+      if (data.products && Array.isArray(data.products)) {
+        this.products = data.products;
+      }
+      this.notifySubscribers();
+      return this.products;
+    } catch (err) {
+      console.error('Failed to fetch products:', err);
+      return this.products;
+    }
   }
 
   async getProduct(id: string): Promise<Product | null> {
+    // Local lookup, no API call
     return this.products.find(p => p.id === id) || null;
   }
 
@@ -420,10 +431,30 @@ class StoreManager {
   }
 
   async updateProduct(productId: string, updates: Partial<Product>): Promise<void> {
-    const productIndex = this.products.findIndex(p => p.id === productId);
-    if (productIndex !== -1) {
-      this.products[productIndex] = { ...this.products[productIndex], ...updates };
+    try {
+      const bodyPayload = {
+        id: productId,
+        updates: {
+          ...updates,
+          ...(typeof updates.category === 'string' ? { category: { id: updates.category } } : {})
+        }
+      };
+
+      const response = await fetch(this.getApiUrl('/api/admin/products'), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyPayload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Update failed: ${response.statusText}`);
+      }
+
+      // Reload products after update
+      await this.getProducts();
       this.notifySubscribers();
+    } catch (error) {
+      console.error('Error updating product:', error);
     }
   }
 
@@ -531,60 +562,4 @@ class StoreManager {
 
   async addOrder(order: Omit<Order, 'id' | 'createdAt'>): Promise<Order | null> {
     try {
-      const newOrder: Order = {
-        ...order,
-        id: (Date.now() + Math.random()).toString(),
-        createdAt: new Date().toISOString()
-      };
-
-      const response = await fetch(this.getApiUrl('/api/orders'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newOrder)
-      });
-
-      if (!response.ok) throw new Error('Failed to save order');
-
-      this.orders.push(newOrder);
-      this.notifySubscribers();
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('orders', JSON.stringify(this.orders));
-      }
-
-      if (order.customerEmail) {
-        try {
-          await fetch(this.getApiUrl('/api/send-confirmation'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: order.customerEmail,
-              orderDetails: newOrder
-            })
-          });
-        } catch (emailError) {
-          console.error('Error sending confirmation email:', emailError);
-        }
-      }
-
-      return newOrder;
-    } catch (error) {
-      console.error('Error adding order:', error);
-      return null;
-    }
-  }
-
-  async refresh(): Promise<void> {
-    try {
-      await Promise.all([
-        this.getOrders(),
-        this.getProducts(),
-        this.getCategories()
-      ]);
-    } catch (error) {
-      console.error('Error refreshing store data:', error);
-    }
-  }
-}
-
-export const storeManager = new StoreManager();
+      const newOrder:
