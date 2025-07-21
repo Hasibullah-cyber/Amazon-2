@@ -25,12 +25,12 @@ interface OrderData {
   paymentMethod: string
 }
 
-// GET handler to fetch orders list from database
+// GET handler to fetch all orders from the database
 export async function GET() {
   try {
     const client = await pool.connect()
     try {
-      // Select orders with relevant fields, sorted by creation date descending
+      // Select all orders, mapping DB column names to camelCase
       const result = await client.query(`
         SELECT 
           id, order_id as "orderId", customer_name as "customerName",
@@ -44,7 +44,7 @@ export async function GET() {
         ORDER BY created_at DESC
       `)
 
-      // Parse JSON items for each order (stored as string in DB)
+      // Parse 'items' JSON string for each order, default empty array if parse fails
       return NextResponse.json(
         result.rows.map(row => ({
           ...row,
@@ -69,11 +69,11 @@ export async function GET() {
 // POST handler to create a new order
 export async function POST(request: Request) {
   try {
-    // Parse JSON request body into OrderData type
+    // Parse JSON body to OrderData type
     const orderData: OrderData = await request.json()
     console.log('Received order data:', orderData)
 
-    // Required fields validation
+    // Validate required fields presence and not empty
     const requiredFields: (keyof OrderData)[] = [
       'customerName', 'customerEmail', 'customerPhone', 'address', 'city', 'items', 'totalAmount', 'paymentMethod'
     ]
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Validate items array
+    // Ensure there is at least one item in the order
     if (!Array.isArray(orderData.items) || orderData.items.length === 0) {
       return NextResponse.json({
         success: false,
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    // Validate individual item fields
+    // Validate each item has required fields
     for (const [i, item] of orderData.items.entries()) {
       if (!item.id || !item.name || typeof item.quantity !== 'number' || typeof item.price !== 'number') {
         return NextResponse.json({
@@ -109,11 +109,11 @@ export async function POST(request: Request) {
       }
     }
 
-    // Generate unique order and tracking IDs
+    // Generate unique IDs for order and tracking number
     const orderId = `ORD-${crypto.randomUUID()}`
     const trackingNumber = `TRK-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
 
-    // Parse numeric totals, with fallback defaults
+    // Parse numeric values for totals with fallback defaults
     const subtotal = parseFloat(orderData.subtotal as string) || parseFloat(orderData.totalAmount as string) || 0
     const shipping = parseFloat(orderData.shipping as string) || 100
     const tax = parseFloat(orderData.tax as string) || 0
@@ -122,10 +122,10 @@ export async function POST(request: Request) {
     try {
       const client = await pool.connect()
       try {
-        // Start DB transaction to keep data consistent
+        // Start DB transaction for atomic inserts and updates
         await client.query('BEGIN')
 
-        // Insert new order row with all data
+        // Insert main order record
         const insertResult = await client.query(`
           INSERT INTO orders (
             order_id, customer_name, customer_email, customer_phone,
@@ -149,7 +149,7 @@ export async function POST(request: Request) {
           shipping,
           tax,
           totalAmount,
-          'pending', // initial order status
+          'pending', // Initial order status
           orderData.paymentMethod,
           orderData.paymentMethod === 'Cash on Delivery' ? 'pending' : 'completed',
           trackingNumber,
@@ -158,24 +158,25 @@ export async function POST(request: Request) {
 
         const newOrder = insertResult.rows[0]
 
-        // Insert each item into order_items and update stock
+        // For each item, insert into order_items table and update product stock
         for (const item of orderData.items) {
+          // Insert the ordered item
           await client.query(`
             INSERT INTO order_items (
               order_id, product_id, product_name, product_sku, quantity, unit_price, total_price
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7)
           `, [
-            orderId,
+            newOrder.id,           // Use DB primary key id here (not orderId string)
             item.id,
             item.name,
-            item.sku || '', // SKU may be missing
+            item.sku || '',
             item.quantity,
             item.price,
             item.price * item.quantity
           ])
 
-          // Decrement stock and ensure enough stock available
+          // Update stock quantity for the product
           const stockUpdateResult = await client.query(`
             UPDATE products
             SET stock = stock - $1, updated_at = CURRENT_TIMESTAMP
@@ -184,7 +185,7 @@ export async function POST(request: Request) {
           `, [item.quantity, item.id])
 
           if (stockUpdateResult.rowCount === 0) {
-            // Not enough stock - rollback whole transaction and return error
+            // Not enough stock: rollback entire transaction and return error
             await client.query('ROLLBACK')
             return NextResponse.json({
               success: false,
@@ -193,10 +194,10 @@ export async function POST(request: Request) {
           }
         }
 
-        // Commit transaction after all inserts & updates succeed
+        // Commit all DB changes after success
         await client.query('COMMIT')
 
-        // Prepare success response with order info
+        // Prepare response with order details
         const responseData = {
           success: true,
           orderId,
@@ -215,7 +216,7 @@ export async function POST(request: Request) {
           },
         }
 
-        // Send confirmation email asynchronously (fail silently)
+        // Send order confirmation email asynchronously (do not block response)
         try {
           await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-confirmation`, {
             method: 'POST',
@@ -243,15 +244,14 @@ export async function POST(request: Request) {
         return NextResponse.json(responseData, { status: 201 })
 
       } catch (dbError) {
-        // Rollback on any DB error during transaction
+        // Rollback if any DB error happens during transaction
         await client.query('ROLLBACK')
         throw dbError
       } finally {
         client.release()
       }
-
     } catch (dbError) {
-      // If DB fails, fallback to demo mode with local order info
+      // Fallback demo mode if DB connection fails
       console.error('Database error:', dbError)
       const fallbackOrder = {
         id: Date.now(),
@@ -278,7 +278,7 @@ export async function POST(request: Request) {
       }, { status: 201 })
     }
   } catch (error: any) {
-    // Catch-all error handler for unexpected errors
+    // Catch all unexpected errors
     console.error('Error processing order:', error)
     return NextResponse.json({
       success: false,
