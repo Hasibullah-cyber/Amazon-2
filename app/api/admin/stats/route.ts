@@ -1,92 +1,74 @@
-import { NextResponse } from "next/server";
-import { pool } from "@/lib/database";
+import { NextResponse } from 'next/server'
+import { pool } from '@/lib/database'
 
-export const dynamic = "force-dynamic";
+interface AnalyticsData {
+  totalProducts: number
+  totalOrders: number
+  monthlyRevenue: number
+  topProducts: { product_name: string; order_count: number }[]
+  conversionRate: number
+  avgOrderValue: number
+  customerSatisfaction: number
+}
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const client = await pool.connect();
+    const client = await pool.connect()
 
-    // ✅ Total products
-    const totalProductsRes = await client.query(`SELECT COUNT(*) FROM products`);
-    const totalProducts = Number(totalProductsRes.rows[0].count);
+    const [productCount, orderCount, revenueResult, topProductsResult, avgOrderValueResult] =
+      await Promise.all([
+        client.query('SELECT COUNT(*) FROM products'),
+        client.query('SELECT COUNT(*) FROM orders'),
+        client.query(`
+          SELECT COALESCE(SUM(total_price), 0) AS monthly_revenue
+          FROM orders
+          WHERE created_at >= date_trunc('month', CURRENT_DATE)
+        `),
+        client.query(`
+          SELECT p.name AS product_name, COUNT(oi.product_id) AS order_count
+          FROM order_items oi
+          JOIN products p ON oi.product_id = p.id
+          GROUP BY p.name
+          ORDER BY order_count DESC
+          LIMIT 5
+        `),
+        client.query(`
+          SELECT COALESCE(AVG(total_price), 0) AS avg_order_value
+          FROM orders
+        `),
+      ])
 
-    // ✅ Total orders
-    const totalOrdersRes = await client.query(`SELECT COUNT(*) FROM orders`);
-    const totalOrders = Number(totalOrdersRes.rows[0].count);
+    const data: AnalyticsData = {
+      totalProducts: parseInt(productCount.rows[0].count),
+      totalOrders: parseInt(orderCount.rows[0].count),
+      monthlyRevenue: parseFloat(revenueResult.rows[0].monthly_revenue),
+      topProducts: topProductsResult.rows.map((row) => ({
+        product_name: row.product_name,
+        order_count: parseInt(row.order_count),
+      })),
+      conversionRate: 2.1, // Static or calculated elsewhere
+      avgOrderValue: parseFloat(avgOrderValueResult.rows[0].avg_order_value),
+      customerSatisfaction: 91.2, // Static or placeholder
+    }
 
-    // ✅ Total users
-    const totalUsersRes = await client.query(`SELECT COUNT(*) FROM users`);
-    const totalUsers = Number(totalUsersRes.rows[0].count);
-
-    // ✅ Monthly revenue (from total_amount, excluding cancelled)
-    const monthlyRevenueRes = await client.query(`
-      SELECT COALESCE(SUM(total_amount), 0) AS monthly_revenue
-      FROM orders
-      WHERE status != 'cancelled'
-        AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)
-    `);
-    const monthlyRevenue = Number(monthlyRevenueRes.rows[0].monthly_revenue);
-
-    // ✅ Order counts grouped by status
-    const orderStatusCountsRes = await client.query(`
-      SELECT status, COUNT(*) as count
-      FROM orders
-      GROUP BY status
-    `);
-    const orderStatusCounts = orderStatusCountsRes.rows.reduce((acc, row) => {
-      acc[row.status] = Number(row.count);
-      return acc;
-    }, {} as Record<string, number>);
-
-    // ✅ Top 5 products by total quantity sold
-    const topProductsRes = await client.query(`
-      SELECT p.id, p.name, SUM(oi.quantity) AS total_sold
-      FROM order_items oi
-      JOIN products p ON oi.product_id = p.id
-      GROUP BY p.id, p.name
-      ORDER BY total_sold DESC
-      LIMIT 5
-    `);
-    const topProducts = topProductsRes.rows;
-
-    // 🧪 Dummy data for conversion rate & satisfaction
-    const conversionRate = 3.5;
-    const customerSatisfaction = 90.0;
-
-    // ✅ Average order value
-    const avgOrderValue = totalOrders > 0 ? monthlyRevenue / totalOrders : 0;
-
-    client.release();
-
-    return NextResponse.json({
-      totalProducts,
-      totalOrders,
-      totalUsers,
-      monthlyRevenue,
-      totalRevenue: monthlyRevenue,
-      orderStatusCounts,
-      topProducts,
-      conversionRate,
-      avgOrderValue,
-      customerSatisfaction,
-    }, { status: 200 });
-
+    client.release()
+    return NextResponse.json(data)
   } catch (error) {
-    console.error("[API][ADMIN][STATS] Error:", error);
+    console.error('[ADMIN_STATS_ERROR]', error)
 
-    // Return safe fallback for UI
-    return NextResponse.json({
+    // Fallback static data if DB fails
+    const fallbackData: AnalyticsData = {
       totalProducts: 0,
       totalOrders: 0,
-      totalUsers: 0,
       monthlyRevenue: 0,
-      totalRevenue: 0,
-      orderStatusCounts: {},
       topProducts: [],
       conversionRate: 0,
       avgOrderValue: 0,
       customerSatisfaction: 0,
-    }, { status: 200 });
+    }
+
+    return NextResponse.json(fallbackData, { status: 500 })
   }
 }
