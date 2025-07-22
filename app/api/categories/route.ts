@@ -1,12 +1,24 @@
 import { NextResponse } from 'next/server'
-import { pool } from '@/lib/database'  // PostgreSQL connection
+import { pool } from '@/lib/database'
 
 export const dynamic = 'force-dynamic'
 
 // ✅ GET: Return all categories with subcategories and product count
 export async function GET() {
   try {
-    const result = await pool.query(`
+    const { rows } = await pool.query<{
+      id: number
+      name: string
+      slug: string
+      description: string | null
+      subcategories: Array<{
+        id: number
+        name: string
+        slug: string
+        description: string | null
+        productCount: number
+      }>
+    }>(`
       SELECT 
         c.id,
         c.name,
@@ -37,10 +49,13 @@ export async function GET() {
       ORDER BY c.name
     `)
 
-    return NextResponse.json(result.rows)
+    return NextResponse.json(rows)
   } catch (error) {
     console.error('Error fetching categories:', error)
-    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to fetch categories', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    )
   }
 }
 
@@ -49,18 +64,43 @@ export async function POST(request: Request) {
   try {
     const { name, slug, description } = await request.json()
 
-    if (!name || !slug) {
-      return NextResponse.json({ error: 'Name and slug are required' }, { status: 400 })
+    if (!name?.trim() || !slug?.trim()) {
+      return NextResponse.json(
+        { error: 'Name and slug are required and cannot be empty' },
+        { status: 400 }
+      )
     }
 
-    const result = await pool.query(
-      `INSERT INTO categories (name, slug, description) VALUES ($1, $2, $3) RETURNING *`,
-      [name, slug, description || null]
+    const { rows } = await pool.query<{
+      id: number
+      name: string
+      slug: string
+      description: string | null
+    }>(
+      `INSERT INTO categories (name, slug, description) 
+       VALUES ($1, $2, $3) 
+       RETURNING id, name, slug, description`,
+      [name.trim(), slug.trim(), description?.trim() || null]
     )
 
-    return NextResponse.json(result.rows[0])
+    return NextResponse.json(rows[0], { status: 201 })
   } catch (error) {
     console.error('Error adding category:', error)
-    return NextResponse.json({ error: 'Failed to add category' }, { status: 500 })
+    
+    // Handle duplicate slug error
+    if (error instanceof Error && error.message.includes('duplicate key')) {
+      return NextResponse.json(
+        { error: 'Category with this slug already exists' },
+        { status: 409 }
+      )
+    }
+
+    return NextResponse.json(
+      { 
+        error: 'Failed to add category',
+        details: error instanceof Error ? error.message : String(error)
+      },
+      { status: 500 }
+    )
   }
 }
