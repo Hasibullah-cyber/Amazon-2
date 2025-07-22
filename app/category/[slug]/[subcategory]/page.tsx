@@ -1,6 +1,5 @@
 export const dynamic = 'force-dynamic'
 
-
 // Show console logs & errors on screen (for debugging on phone)
 if (typeof window !== "undefined") {
   const debugBox = document.createElement("div")
@@ -43,8 +42,6 @@ if (typeof window !== "undefined") {
     debugBox.appendChild(msg)
   }
 }
-
-
 
 import { notFound } from "next/navigation"
 import Image from "next/image"
@@ -118,7 +115,6 @@ export default async function SubcategoryPage({ params }: Props) {
     const { slug, subcategory } = params
     console.log("📦 Params:", { slug, subcategory })
 
-    // ✅ Fetch category
     const categoryRows = await safeQuery<Category>(
       'SELECT id, name, slug FROM categories WHERE slug = $1',
       [slug]
@@ -126,10 +122,9 @@ export default async function SubcategoryPage({ params }: Props) {
     const category = categoryRows[0]
     if (!category) {
       console.warn("⚠️ Category not found:", slug)
-      notFound()
+      return notFound()
     }
 
-    // ✅ Fetch subcategory
     const subcatRows = await safeQuery<Subcategory>(
       'SELECT id, name, description, slug, category_id FROM subcategories WHERE slug = $1',
       [subcategory]
@@ -137,10 +132,9 @@ export default async function SubcategoryPage({ params }: Props) {
     const subcat = subcatRows[0]
     if (!subcat || subcat.category_id !== category.id) {
       console.warn("⚠️ Subcategory not found or does not belong to category:", subcategory)
-      notFound()
+      return notFound()
     }
 
-    // ✅ Fetch products
     const products = await safeQuery<Product>(
       'SELECT id, name, description, price, image, rating, reviews FROM products WHERE subcategory_id = $1',
       [subcat.id]
@@ -210,4 +204,4 @@ export default async function SubcategoryPage({ params }: Props) {
     console.error("❌ Page crashed:", error)
     throw error
   }
-}
+      }
