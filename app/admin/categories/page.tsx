@@ -21,7 +21,6 @@ export default function CategoriesPage() {
   })
   const [loading, setLoading] = useState(false)
 
-  // Fetch categories and subscribe to updates
   useEffect(() => {
     const updateCategories = async () => {
       try {
@@ -43,7 +42,6 @@ export default function CategoriesPage() {
     return unsubscribe
   }, [])
 
-  // Reset form data
   const resetForm = () => {
     setFormData({ name: "", description: "" })
     setShowAddForm(false)
@@ -55,7 +53,6 @@ export default function CategoriesPage() {
     setSelectedCategory("")
   }
 
-  // Add category handler
   const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.name.trim() || !formData.description.trim()) return
@@ -68,7 +65,6 @@ export default function CategoriesPage() {
     }
   }
 
-  // Add subcategory handler
   const handleSubcategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedCategory || !formData.name.trim() || !formData.description.trim()) return
@@ -98,15 +94,15 @@ export default function CategoriesPage() {
           {categories.length === 0 ? (
             <p>No categories found.</p>
           ) : (
-            categories.map((category) => (
-              <Card key={category.id} className="p-6">
+            categories.map((cat) => (
+              <Card key={cat.id} className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="font-bold text-lg">{category.name}</h3>
+                  <h3 className="font-bold text-lg">{cat.name}</h3>
                   <Button 
                     size="sm" 
                     variant="outline"
                     onClick={() => {
-                      setSelectedCategory(category.id)
+                      setSelectedCategory(cat.id)
                       setShowSubcategoryForm(true)
                       setFormData({ name: "", description: "" })
                     }}
@@ -115,13 +111,13 @@ export default function CategoriesPage() {
                   </Button>
                 </div>
 
-                <p className="text-gray-600 mb-4">{category.description}</p>
+                <p className="text-gray-600 mb-4">{cat.description}</p>
 
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm text-gray-700">Subcategories:</h4>
-                  {category.subcategories?.length > 0 ? (
+                  {cat.subcategories?.length > 0 ? (
                     <ul className="space-y-1">
-                      {category.subcategories.map((sub: any) => (
+                      {cat.subcategories.map((sub: any) => (
                         <li key={sub.id} className="text-sm bg-gray-50 p-2 rounded">
                           <div className="font-medium">{sub.name}</div>
                           <div className="text-gray-600 text-xs">{sub.description}</div>
