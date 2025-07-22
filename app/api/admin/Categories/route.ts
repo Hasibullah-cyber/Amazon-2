@@ -1,22 +1,20 @@
-// app/api/categories/route.ts
-
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
 export const dynamic = 'force-dynamic'
 
-// Simple slugify helper (lowercase, spaces to dashes, remove non-alphanum except dash)
+// Helper to create slugs
 function slugify(text: string) {
   return text
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-')       // Replace spaces with -
-    .replace(/[^\w\-]+/g, '')   // Remove all non-word chars except dash
-    .replace(/\-\-+/g, '-')     // Replace multiple - with single -
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-')
 }
 
-// GET all categories with nested subcategories including slug
+// ✅ GET — Fetch categories with subcategories (schema-aligned)
 export async function GET() {
   try {
     const result = await pool.query(`
@@ -43,14 +41,30 @@ export async function GET() {
       ORDER BY c.name
     `)
 
-    return NextResponse.json(result.rows)
+    const cleaned = result.rows.map(row => ({
+      id: row.id,
+      name: String(row.name ?? ''),
+      slug: String(row.slug ?? ''),
+      description: row.description ? String(row.description) : '',
+      subcategories: Array.isArray(row.subcategories)
+        ? row.subcategories.map((sub: any) => ({
+            id: sub.id,
+            name: String(sub.name ?? ''),
+            slug: String(sub.slug ?? ''),
+            description: sub.description ? String(sub.description) : '',
+            category_id: sub.category_id
+          }))
+        : []
+    }))
+
+    return NextResponse.json(cleaned)
   } catch (error) {
     console.error('Error fetching categories:', error)
     return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 })
   }
 }
 
-// POST add new category, auto-generating slug
+// ✅ POST — Add a new category (slug auto-generated)
 export async function POST(request: NextRequest) {
   try {
     const { name, description } = await request.json()
@@ -61,13 +75,12 @@ export async function POST(request: NextRequest) {
 
     const slug = slugify(name)
 
-    // Insert category with slug
-    const insertResult = await pool.query(
-      `INSERT INTO categories (name, description, slug) VALUES ($1, $2, $3) RETURNING *`,
-      [name, description, slug]
+    const result = await pool.query(
+      `INSERT INTO categories (name, slug, description) VALUES ($1, $2, $3) RETURNING *`,
+      [name, slug, description]
     )
 
-    return NextResponse.json(insertResult.rows[0], { status: 201 })
+    return NextResponse.json(result.rows[0], { status: 201 })
   } catch (error) {
     console.error('Error adding category:', error)
     return NextResponse.json({ error: 'Failed to add category' }, { status: 500 })
