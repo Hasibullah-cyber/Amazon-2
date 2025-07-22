@@ -73,55 +73,64 @@ export default async function SubcategoryPage({ params }: { params: { slug: stri
   const products = productResult.rows
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b">
-        <div className="container mx-auto px-4 py-3">
-          <nav className="flex items-center space-x-2 text-sm text-gray-600">
-            <Link href="/" className="hover:text-blue-600">Home</Link>
+    <div className="min-h-screen bg-[#f6f6f6]">
+      {/* Breadcrumb Navigation */}
+      <div className="bg-white border-b py-3">
+        <div className="container mx-auto px-4">
+          <nav className="flex items-center text-sm text-gray-600 space-x-1">
+            <Link href="/" className="hover:text-[#C7511F] transition-colors">Home</Link>
             <ChevronRight className="w-4 h-4" />
-            <Link href={`/category/${slug}`} className="hover:text-blue-600 capitalize">{category.name}</Link>
+            <Link href={`/category/${slug}`} className="capitalize hover:text-[#C7511F] transition-colors">{category.name}</Link>
             <ChevronRight className="w-4 h-4" />
-            <span className="text-gray-900 font-medium">{subcat.name}</span>
+            <span className="text-gray-900 font-semibold">{subcat.name}</span>
           </nav>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{subcat.name}</h1>
-          <p className="text-gray-600 text-lg">{subcat.description}</p>
-          <p className="text-sm text-gray-500 mt-2">{products.length} product(s) available</p>
-        </div>
+      {/* Header Section */}
+      <div className="container mx-auto px-4 py-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">{subcat.name}</h1>
+        <p className="text-gray-600 text-base">{subcat.description}</p>
+        <p className="text-sm text-gray-500 mt-1">{products.length} product(s) available</p>
+      </div>
 
+      {/* Product Grid */}
+      <div className="container mx-auto px-4 pb-12">
         {products.length === 0 ? (
-          <div className="text-center text-gray-500">No products found in this subcategory.</div>
+          <div className="text-center text-gray-500 py-12 text-lg">No products found in this subcategory.</div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
             {products.map((product) => (
-              <div key={product.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+              <div
+                key={product.id}
+                className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition duration-200"
+              >
                 <Link href={`/product/${product.id}`}>
-                  <div className="aspect-square p-4">
+                  <div className="aspect-square p-4 bg-white">
                     <Image
                       src={product.image || "/placeholder.svg?height=300&width=300"}
                       alt={product.name}
                       width={300}
                       height={300}
-                      className="w-full h-full object-contain hover:scale-105 transition-transform"
+                      className="object-contain w-full h-full transition-transform hover:scale-105"
                     />
                   </div>
                 </Link>
-                <div className="p-4 pt-0">
+
+                <div className="p-4 pt-2">
                   <Link href={`/product/${product.id}`}>
-                    <h3 className="font-medium text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 transition-colors">
+                    <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2 hover:text-[#C7511F] transition-colors">
                       {product.name}
                     </h3>
                   </Link>
                   <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+
                   <div className="flex items-center space-x-1 mb-2">
                     {product.rating ? renderStars(product.rating) : <span className="text-gray-400">No rating</span>}
-                    <span className="text-xs text-gray-500 ml-2">({product.reviews})</span>
+                    <span className="text-xs text-gray-500 ml-1">({product.reviews})</span>
                   </div>
-                  <p className="text-lg font-semibold text-[#C7511F]">৳{product.price.toFixed(2)}</p>
+
+                  <p className="text-lg font-bold text-[#C7511F]">৳{product.price.toFixed(2)}</p>
                 </div>
               </div>
             ))}
@@ -130,4 +139,4 @@ export default async function SubcategoryPage({ params }: { params: { slug: stri
       </div>
     </div>
   )
-}
+        }
