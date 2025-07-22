@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const result = await pool.query(
       `SELECT p.*, c.name AS category_name 
        FROM products p
-       LEFT JOIN categories c ON p.category_id::TEXT = c.id
+       LEFT JOIN categories c ON p.category_id = c.id
        ORDER BY p.created_at DESC
        LIMIT $1 OFFSET $2`,
       [limit, offset]
