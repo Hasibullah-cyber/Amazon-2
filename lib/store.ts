@@ -6,7 +6,7 @@ export interface Product {
   image: string;
   reviews: number;
   stock: number;
-  category: string;
+  category: string | { id: string; name: string };
   rating?: number;
 }
 
@@ -42,35 +42,10 @@ export interface Order {
 }
 
 class StoreManager {
-  // 🛒 Initialize with your product list here if you want local static data.
-  // If you fetch products from your backend, you can leave this empty.
-  private products: Product[] = [
-    // Example product entry:
-    // {
-    //   id: "1001",
-    //   name: "Example Product",
-    //   description: "This is a sample product description.",
-    //   price: 99.99,
-    //   image: "/path/to/image.jpg",
-    //   reviews: 10,
-    //   stock: 20,
-    //   category: "electronics",
-    //   rating: 4.5
-    // }
-  ];
-
-  // 🗂 Initialize with your category list here if you want local static categories.
-  // Leave empty if you fetch categories dynamically.
-  private categories: Category[] = [
-    // Example category entry:
-    // {
-    //   id: "electronics",
-    //   name: "Electronics",
-    //   description: "All electronic gadgets and devices."
-    // }
-  ];
-
+  private products: Product[] = [];
+  private categories: Category[] = [];
   private orders: Order[] = [];
+
   private subscribers: ((state: { products: Product[]; categories: Category[]; orders: Order[] }) => void)[] = [];
 
   private getApiUrl(path: string): string {
@@ -129,7 +104,7 @@ class StoreManager {
         id: productId,
         updates: {
           ...updates,
-          category: { id: updates.category }, // category sent as object with id per your API fix
+          category: { id: updates.category }, // send category id as object
         },
       }),
     });
@@ -143,16 +118,36 @@ class StoreManager {
       (product) =>
         product.name.toLowerCase().includes(searchTerm) ||
         product.description.toLowerCase().includes(searchTerm) ||
-        product.category.toLowerCase().includes(searchTerm)
+        (typeof product.category === 'string'
+          ? product.category.toLowerCase().includes(searchTerm)
+          : product.category.name.toLowerCase().includes(searchTerm))
     );
   }
 
   async getProductsByCategory(category: string): Promise<Product[]> {
-    return this.products.filter((p) => p.category === category);
+    return this.products.filter((p) => {
+      if (typeof p.category === 'string') return p.category === category;
+      return p.category?.id === category;
+    });
   }
 
   async getCategories(): Promise<Category[]> {
-    return this.categories;
+    try {
+      const response = await fetch(this.getApiUrl('/api/admin/categories'), {
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) throw new Error(`Failed to fetch categories: ${response.statusText}`);
+
+      const data = await response.json();
+      this.categories = data.categories ?? [];
+      this.notifySubscribers();
+      return this.categories;
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      return this.categories;
+    }
   }
 
   async addCategory(category: Omit<Category, 'id'>): Promise<Category> {
@@ -262,7 +257,6 @@ class StoreManager {
         localStorage.setItem('orders', JSON.stringify(this.orders));
       }
 
-      // Send confirmation email
       if (order.customerEmail) {
         try {
           await fetch(this.getApiUrl('/api/send-confirmation'), {
