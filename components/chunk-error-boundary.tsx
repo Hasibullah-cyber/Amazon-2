@@ -4,6 +4,7 @@ import React, { Component, ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
+  fallback?: ReactNode
 }
 
 interface State {
@@ -18,32 +19,48 @@ export class ChunkErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return {
-      hasError: true,
-      error: error
+    // Special handling for hydration errors
+    if (error.message.includes('hydrat') || error.message.includes('Minified React error')) {
+      return {
+        hasError: true,
+        error: new Error('Content mismatch between server and client')
+      }
     }
+    return { hasError: true, error }
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ChunkErrorBoundary caught an error:', error, errorInfo)
+    console.error('Error Boundary caught:', error, errorInfo)
+    // You can add error logging to a service here
+  }
+
+  handleRetry = () => {
+    this.setState({ hasError: false, error: undefined })
+    window.location.reload() // Full reload for chunk errors
   }
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="flex flex-col items-center justify-center p-8 text-center">
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">Something went wrong</h2>
-            <p className="text-gray-600 mb-4">
-              We're having trouble loading this section. Please try again.
+      return this.props.fallback || (
+        <div className="flex flex-col items-center justify-center min-h-[300px] p-6 text-center">
+          <div className="max-w-md">
+            <h2 className="text-xl font-semibold text-gray-800 mb-3">
+              {this.state.error?.message.includes('hydrat') 
+                ? 'Content Loading Error' 
+                : 'Something Went Wrong'}
+            </h2>
+            <p className="text-gray-600 mb-6">
+              {this.state.error?.message.includes('hydrat')
+                ? 'The page content did not load properly. Please refresh.'
+                : 'We encountered an error while loading this page.'}
             </p>
+            <button
+              onClick={this.handleRetry}
+              className="px-5 py-2.5 bg-[#FFD814] hover:bg-[#F7CA00] rounded-md text-sm font-medium shadow-sm"
+            >
+              Reload Page
+            </button>
           </div>
-          <button
-            onClick={() => this.setState({ hasError: false, error: undefined })}
-            className="amazon-button px-4 py-2"
-          >
-            Try Again
-          </button>
         </div>
       )
     }
