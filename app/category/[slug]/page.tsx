@@ -1,5 +1,3 @@
-// app/category/[slug]/page.tsx
-
 export const dynamic = 'force-dynamic'
 
 import { notFound } from 'next/navigation'
@@ -26,12 +24,8 @@ interface Category {
 export default async function CategoryPage({ params }: { params: { slug: string } }) {
   const { slug } = params
 
-  console.log('Category slug param:', slug) // DEBUG: Remove in production
-
-  let category: Category | null = null
-
   try {
-    const result = await pool.query<Category>(
+    const result = await pool.query(
       `
       SELECT 
         c.id,
@@ -65,68 +59,68 @@ export default async function CategoryPage({ params }: { params: { slug: string 
       [slug]
     )
 
-    console.log('Category query rows:', result.rows) // DEBUG: Remove in production
+    if (result.rows.length === 0) return notFound()
 
-    if (result.rows.length === 0) {
-      return notFound()
+    const category: Category = {
+      ...result.rows[0],
+      subcategories: JSON.parse(result.rows[0].subcategories)
     }
 
-    category = result.rows[0]
-  } catch (err) {
-    console.error('Error loading category:', err)
-    return notFound()
-  }
+    return (
+      <div className="bg-gray-100 min-h-screen">
+        <div className="container mx-auto px-4 py-4">
 
-  return (
-    <div className="bg-gray-100 min-h-screen">
-      <div className="container mx-auto px-4 py-4">
-        {/* Breadcrumb */}
-        <div className="flex items-center text-sm mb-4">
-          <Link href="/" className="text-[#565959] hover:text-[#C7511F] hover:underline">
-            Home
-          </Link>
-          <ChevronRight className="h-4 w-4 mx-1 text-gray-400" />
-          <span className="font-medium">{category.name}</span>
-        </div>
+          {/* Breadcrumb */}
+          <div className="flex items-center text-sm mb-4">
+            <Link href="/" className="text-[#565959] hover:text-[#C7511F] hover:underline">
+              Home
+            </Link>
+            <ChevronRight className="h-4 w-4 mx-1 text-gray-400" />
+            <span className="font-medium">{category.name}</span>
+          </div>
 
-        {/* Category Info */}
-        <div className="bg-white p-6 mb-6 rounded-sm">
-          <h1 className="text-3xl font-bold text-black mb-2">{category.name}</h1>
-          <p className="text-gray-600 text-lg">{category.description}</p>
-        </div>
+          {/* Category Info */}
+          <div className="bg-white p-6 mb-6 rounded-sm">
+            <h1 className="text-3xl font-bold text-black mb-2">{category.name}</h1>
+            <p className="text-gray-600 text-lg">{category.description}</p>
+          </div>
 
-        {/* Subcategories */}
-        <div className="bg-white p-6 rounded-sm">
-          <h2 className="text-2xl font-medium text-black mb-6">
-            Browse {category.name} Categories
-          </h2>
+          {/* Subcategories */}
+          <div className="bg-white p-6 rounded-sm">
+            <h2 className="text-2xl font-medium text-black mb-6">
+              Browse {category.name} Categories
+            </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {category.subcategories.map((sub) => (
-              <Link
-                key={sub.id}
-                href={`/category/${category.slug}/${sub.slug}`}
-                className="block p-4 border border-gray-200 rounded-sm hover:shadow-md hover:border-[#ff9900] transition-all group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-black group-hover:text-[#C7511F] mb-1">
-                      {sub.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-2">
-                      {sub.description}
-                    </p>
-                    <span className="text-xs text-gray-500">
-                      {sub.productcount} items
-                    </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {category.subcategories.map((sub) => (
+                <Link
+                  key={sub.id}
+                  href={`/category/${category.slug}/${sub.slug}`}
+                  className="block p-4 border border-gray-200 rounded-sm hover:shadow-md hover:border-[#ff9900] transition-all group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-black group-hover:text-[#C7511F] mb-1">
+                        {sub.name}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-2">
+                        {sub.description}
+                      </p>
+                      <span className="text-xs text-gray-500">
+                        {sub.productcount} items
+                      </span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-[#ff9900]" />
                   </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-[#ff9900]" />
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  } catch (error) {
+    console.error('Error loading category:', error)
+    return notFound()
+  }
 }
