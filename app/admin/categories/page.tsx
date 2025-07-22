@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react"
 
 export const dynamic = 'force-dynamic'
+
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { storeManager } from "@/lib/store"
-import { Plus, Edit, Trash2, FolderPlus, X } from "lucide-react"
+import { Plus, FolderPlus, X } from "lucide-react"
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<any[]>([])
@@ -38,15 +39,16 @@ export default function CategoriesPage() {
     return unsubscribe
   }, [])
 
-  const handleCategorySubmit = (e: React.FormEvent) => {
+  const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    storeManager.addCategory(formData)
+    await storeManager.addCategory(formData)
     resetForm()
   }
 
-  const handleSubcategorySubmit = (e: React.FormEvent) => {
+  const handleSubcategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    storeManager.addSubcategory(selectedCategory, formData)
+    if (!selectedCategory) return
+    await storeManager.addSubcategory(selectedCategory, formData)
     resetSubcategoryForm()
   }
 
