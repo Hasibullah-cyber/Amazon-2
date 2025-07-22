@@ -8,7 +8,7 @@ import { ChevronRight } from 'lucide-react'
 import { pool } from '@/lib/database'
 
 interface Subcategory {
-  id: string
+  id: number
   name: string
   slug: string
   description: string | null
@@ -25,10 +25,13 @@ interface Category {
 
 export default async function CategoryPage({ params }: { params: { slug: string } }) {
   const { slug } = params
+
+  console.log('Category slug param:', slug) // DEBUG: Remove in production
+
   let category: Category | null = null
 
   try {
-    const result = await pool.query(
+    const result = await pool.query<Category>(
       `
       SELECT 
         c.id,
@@ -56,13 +59,18 @@ export default async function CategoryPage({ params }: { params: { slug: string 
         WHERE is_active = true
         GROUP BY subcategory_id
       ) pc ON pc.subcategory_id = s.id
-      WHERE c.slug = $1
+      WHERE LOWER(c.slug) = LOWER($1)
       GROUP BY c.id
       `,
       [slug]
     )
 
-    if (result.rows.length === 0) return notFound()
+    console.log('Category query rows:', result.rows) // DEBUG: Remove in production
+
+    if (result.rows.length === 0) {
+      return notFound()
+    }
+
     category = result.rows[0]
   } catch (err) {
     console.error('Error loading category:', err)
