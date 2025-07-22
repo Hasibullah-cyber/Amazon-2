@@ -30,7 +30,6 @@ interface Category {
   slug: string
 }
 
-// Helper to render stars based on rating
 const renderStars = (rating: number) => {
   const stars = []
   const fullStars = Math.floor(rating)
@@ -55,13 +54,18 @@ async function getCategoryBySlug(slug: string): Promise<Category | null> {
 }
 
 async function getSubcategoryBySlug(slug: string): Promise<Subcategory | null> {
-  const result = await pool.query('SELECT id, name, description, slug, category_id FROM subcategories WHERE slug = $1', [slug])
+  const result = await pool.query(
+    'SELECT id, name, description, slug, category_id FROM subcategories WHERE slug = $1',
+    [slug]
+  )
   return result.rows[0] || null
 }
 
 async function getProductsBySubcategoryId(subcategoryId: number): Promise<Product[]> {
   const result = await pool.query(
-    'SELECT id, name, description, price, image, rating, reviews FROM products WHERE subcategory_id = $1',
+    `SELECT id, name, description, price, image, rating, reviews 
+     FROM products 
+     WHERE subcategory_id = $1`,
     [subcategoryId]
   )
   return result.rows
@@ -79,11 +83,13 @@ export default async function SubcategoryPage({ params }: Props) {
 
   const category = await getCategoryBySlug(slug)
   if (!category) {
+    console.error("Category not found:", slug)
     notFound()
   }
 
   const subcat = await getSubcategoryBySlug(subcategory)
   if (!subcat || subcat.category_id !== category.id) {
+    console.error("Subcategory not found or does not belong to category:", subcategory)
     notFound()
   }
 
@@ -105,51 +111,49 @@ export default async function SubcategoryPage({ params }: Props) {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{subcat.name}</h1>
           <p className="text-gray-600 text-lg">{subcat.description}</p>
-          <p className="text-sm text-gray-500 mt-2">{products.length} products available</p>
+          <p className="text-sm text-gray-500 mt-2">{products.length} product{products.length !== 1 ? 's' : ''} available</p>
         </div>
 
-        {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <div key={product.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
-              <Link href={`/product/${product.id}`}>
-                <div className="aspect-square p-4">
-                  <Image
-                    src={product.image || "/placeholder.svg?height=300&width=300"}
-                    alt={product.name}
-                    width={300}
-                    height={300}
-                    className="w-full h-full object-contain hover:scale-105 transition-transform"
-                  />
-                </div>
-              </Link>
-              
-              <div className="p-4 pt-0">
+        {products.length === 0 ? (
+          <div className="text-center text-gray-500">No products found for this subcategory.</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {products.map((product) => (
+              <div key={product.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
                 <Link href={`/product/${product.id}`}>
-                  <h3 className="font-medium text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 transition-colors">
-                    {product.name}
-                  </h3>
+                  <div className="aspect-square p-4">
+                    <Image
+                      src={product.image || "/placeholder.svg?height=300&width=300"}
+                      alt={product.name}
+                      width={300}
+                      height={300}
+                      className="w-full h-full object-contain hover:scale-105 transition-transform"
+                    />
+                  </div>
                 </Link>
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
 
-                {/* Rating */}
-                <div className="flex items-center space-x-1 mb-2">
-                  {product.rating ? renderStars(product.rating) : <span className="text-gray-400">No rating</span>}
-                  <span className="text-xs text-gray-500 ml-2">({product.reviews})</span>
+                <div className="p-4 pt-0">
+                  <Link href={`/product/${product.id}`}>
+                    <h3 className="font-medium text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 transition-colors">
+                      {product.name}
+                    </h3>
+                  </Link>
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+
+                  <div className="flex items-center space-x-1 mb-2">
+                    {product.rating ? renderStars(product.rating) : <span className="text-gray-400">No rating</span>}
+                    <span className="text-xs text-gray-500 ml-2">({product.reviews})</span>
+                  </div>
+
+                  <p className="text-lg font-semibold text-[#C7511F]">৳{product.price.toFixed(2)}</p>
                 </div>
-
-                <p className="text-lg font-semibold text-[#C7511F]">৳{product.price.toFixed(2)}</p>
-
-                {/* AddToCartButton component, import and use if available */}
-                {/* <AddToCartButton productId={product.id} /> */}
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
