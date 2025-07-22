@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'  // PostgreSQL connection
 
 export const dynamic = 'force-dynamic'
-
 // ✅ GET: Return all categories with their subcategories and product count per subcategory
 export async function GET() {
   try {
