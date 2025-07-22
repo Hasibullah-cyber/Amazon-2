@@ -1,33 +1,39 @@
 import { NextResponse } from 'next/server'
-import { pool } from '@/lib/database'  // your PostgreSQL connection
+import { pool } from '@/lib/database'  // PostgreSQL connection
 
+export const dynamic = 'force-dynamic'
+
+// ✅ GET: Return all categories with their subcategories and product count per subcategory
 export async function GET() {
   try {
-    // Get categories with subcategories and counts of products per subcategory
     const result = await pool.query(`
       SELECT 
         c.id AS category_id,
         c.name AS category_name,
         c.slug AS category_slug,
         c.description AS category_description,
-        json_agg(
-          json_build_object(
-            'id', s.id,
-            'name', s.name,
-            'slug', s.slug,
-            'description', s.description,
-            'productCount', COALESCE(pc.count, 0)
-          )
-          ORDER BY s.name
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', s.id,
+              'name', s.name,
+              'slug', s.slug,
+              'description', s.description,
+              'productCount', COALESCE(pc.count, 0)
+            )
+            ORDER BY s.name
+          ) FILTER (WHERE s.id IS NOT NULL),
+          '[]'
         ) AS subcategories
       FROM categories c
       LEFT JOIN subcategories s ON s.category_id = c.id
       LEFT JOIN (
         SELECT subcategory_id, COUNT(*) AS count
         FROM products
+        WHERE subcategory_id IS NOT NULL
         GROUP BY subcategory_id
       ) pc ON pc.subcategory_id = s.id
-      GROUP BY c.id
+      GROUP BY c.id, c.name, c.slug, c.description
       ORDER BY c.name
     `)
 
@@ -38,6 +44,7 @@ export async function GET() {
   }
 }
 
+// ✅ POST: Create a new category
 export async function POST(request: Request) {
   try {
     const { name, slug, description } = await request.json()
