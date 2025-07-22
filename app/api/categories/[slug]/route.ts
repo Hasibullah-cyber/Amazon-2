@@ -32,6 +32,7 @@ export async function GET(
       [category.id]
     )
 
+    
     // ✅ 3. Return both category and its products
     return NextResponse.json({
       category,
