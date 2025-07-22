@@ -3,15 +3,15 @@ import { pool } from '@/lib/database'  // PostgreSQL connection
 
 export const dynamic = 'force-dynamic'
 
-// ✅ GET: Return all categories with their subcategories and product count per subcategory
+// ✅ GET: Return all categories with subcategories and product count
 export async function GET() {
   try {
     const result = await pool.query(`
       SELECT 
-        c.id AS category_id,
-        c.name AS category_name,
-        c.slug AS category_slug,
-        c.description AS category_description,
+        c.id,
+        c.name,
+        c.slug,
+        c.description,
         COALESCE(
           json_agg(
             json_build_object(
