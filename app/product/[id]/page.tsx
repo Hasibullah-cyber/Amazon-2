@@ -28,24 +28,35 @@ export default function ProductPage() {
   const { addToCart } = useCart()
   const { addToWishlist } = useWishlist()
   const { toast } = useToast()
+
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
 
   useEffect(() => {
+    if (!params.id) return
     loadProduct()
-    loadRelatedProducts()
   }, [params.id])
+
+  useEffect(() => {
+    if (product) {
+      loadRelatedProducts()
+    }
+  }, [product])
 
   const loadProduct = async () => {
     try {
-      const productData = await storeManager.getProduct(params.id as string)
+      console.log("🧪 Fetching product with ID:", params.id)
+      const productData = await storeManager.getProduct(String(params.id))
       if (productData) {
+        console.log("✅ Product loaded:", productData)
         setProduct(productData as Product)
+      } else {
+        console.warn("⚠️ No product found for ID:", params.id)
       }
     } catch (error) {
-      console.error('Error loading product:', error)
+      console.error("❌ Error loading product:", error)
       toast({
         title: "Error",
         description: "Failed to load product details",
@@ -58,23 +69,33 @@ export default function ProductPage() {
 
   const loadRelatedProducts = async () => {
     try {
+      console.log("📦 Loading related products...")
       const allProducts = await storeManager.getProducts()
-      // Get products from same category first, then fill with popular products
-      let related = allProducts.filter(p => p.id !== params.id && p.category === product?.category)
-      
-      // If not enough products in same category, add from other categories
+      console.log("📦 All products loaded:", allProducts.length)
+
+      const currentCategory = product?.category
+      if (!currentCategory) {
+        console.warn("⚠️ Product category is undefined")
+        return
+      }
+
+      let related = allProducts.filter(
+        p => p.id !== product.id && p.category === currentCategory
+      )
+
       if (related.length < 4) {
-        const otherProducts = allProducts
-          .filter(p => p.id !== params.id && p.category !== product?.category)
-          .sort((a, b) => b.reviews - a.reviews) // Sort by popularity (reviews)
-        related = [...related, ...otherProducts].slice(0, 4)
+        const others = allProducts
+          .filter(p => p.id !== product.id && p.category !== currentCategory)
+          .sort((a, b) => b.reviews - a.reviews)
+        related = [...related, ...others].slice(0, 4)
       } else {
         related = related.slice(0, 4)
       }
-      
-      setRelatedProducts(related as Product[])
+
+      console.log("✅ Related products:", related.length)
+      setRelatedProducts(related)
     } catch (error) {
-      console.error('Error loading related products:', error)
+      console.error("❌ Error loading related products:", error)
     }
   }
 
@@ -86,7 +107,7 @@ export default function ProductPage() {
       name: product.name,
       price: product.price,
       image: product.image,
-      quantity
+      quantity,
     })
 
     toast({
@@ -103,7 +124,7 @@ export default function ProductPage() {
       name: product.name,
       price: product.price,
       image: product.image,
-      category: product.category
+      category: product.category,
     })
 
     toast({
