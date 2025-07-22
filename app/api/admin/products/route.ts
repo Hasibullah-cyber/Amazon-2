@@ -11,22 +11,26 @@ function validateProduct(data: any) {
   }
 }
 
-// ✅ GET — Paginated product list with category info
+// ✅ GET — Fetch paginated or full product list
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const page = parseInt(searchParams.get('page') || '1', 10)
-  const limit = parseInt(searchParams.get('limit') || '20', 10)
-  const offset = (page - 1) * limit
+  const limitParam = searchParams.get('limit')
+  const limit = limitParam === 'all' ? null : parseInt(limitParam || '20', 10)
+  const offset = (page - 1) * (limit ?? 0)
 
   try {
-    const result = await pool.query(
-      `SELECT p.*, c.name AS category_name 
-       FROM products p
-       LEFT JOIN categories c ON p.category_id = c.id
-       ORDER BY p.created_at DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
-    )
+    const query = `
+      SELECT p.*, c.name AS category_name 
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      ORDER BY p.created_at DESC
+      ${limit ? 'LIMIT $1 OFFSET $2' : ''}
+    `
+
+    const result = limit
+      ? await pool.query(query, [limit, offset])
+      : await pool.query(query)
 
     const products = result.rows.map((row) => ({
       id: row.id,
@@ -47,11 +51,11 @@ export async function GET(req: NextRequest) {
       },
     }))
 
-    return NextResponse.json({ products, page, limit })
+    return NextResponse.json({ products, page, limit: limit ?? 'all' })
   } catch (error) {
     console.error('GET /admin/products error:', error)
     return NextResponse.json(
-      { products: [], page: 1, limit },
+      { products: [], page: 1, limit: limit ?? 'all' },
       { status: 200 }
     )
   }
@@ -108,27 +112,27 @@ export async function PATCH(req: NextRequest) {
     const values: any[] = []
     let i = 1
 
-    if (updates.name) {
+    if ('name' in updates) {
       fields.push(`name = $${i++}`)
       values.push(updates.name)
     }
-    if (updates.description) {
+    if ('description' in updates) {
       fields.push(`description = $${i++}`)
       values.push(updates.description)
     }
-    if (updates.price !== undefined) {
+    if ('price' in updates) {
       fields.push(`price = $${i++}`)
       values.push(updates.price)
     }
-    if (updates.stock !== undefined) {
+    if ('stock' in updates) {
       fields.push(`stock = $${i++}`)
       values.push(updates.stock)
     }
-    if (updates.image) {
+    if ('image' in updates) {
       fields.push(`image = $${i++}`)
       values.push(updates.image)
     }
-    if (updates.category?.id) {
+    if ('category' in updates && updates.category?.id) {
       fields.push(`category_id = $${i++}`)
       values.push(updates.category.id)
     }
