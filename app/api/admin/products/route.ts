@@ -16,7 +16,9 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const page = parseInt(searchParams.get('page') || '1', 10)
   const limitParam = searchParams.get('limit')
-  const limit = limitParam === 'all' ? null : parseInt(limitParam || '20', 10)
+
+  // If limit param is 'all' or not provided, fetch all products (no limit)
+  const limit = limitParam === 'all' || !limitParam ? null : parseInt(limitParam, 10)
   const offset = (page - 1) * (limit ?? 0)
 
   try {
@@ -158,4 +160,4 @@ export async function PATCH(req: NextRequest) {
       { status: 500 }
     )
   }
-}
+        }
