@@ -56,14 +56,14 @@ export default async function CategoryPage({ params }: { params: { slug: string 
       WHERE LOWER(c.slug) = LOWER($1)
       GROUP BY c.id
       `,
-      [slug]
+      [slug.trim()]
     )
 
     if (result.rows.length === 0) return notFound()
 
     const category: Category = {
       ...result.rows[0],
-      subcategories: result.rows[0].subcategories // ✅ FIXED: don't JSON.parse
+      subcategories: result.rows[0].subcategories // Already parsed JSON array
     }
 
     return (
