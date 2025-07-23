@@ -11,39 +11,15 @@ function validateProduct(data: any) {
   }
 }
 
-// ✅ GET — Fetch paginated or full product list
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const page = parseInt(searchParams.get('page') || '1', 10)
-  const limitParam = searchParams.get('limit')
-  const isAll = limitParam === 'all'
-  const limit = isAll ? null : parseInt(limitParam || '20', 10)
-  const offset = (page - 1) * (limit ?? 0)
-
+// ✅ GET — Fetch full product list (no limit)
+export async function GET() {
   try {
-    let result
-
-    if (limit) {
-      result = await pool.query(
-        `
-        SELECT p.*, c.name AS category_name 
-        FROM products p
-        LEFT JOIN categories c ON p.category_id = c.id
-        ORDER BY p.created_at DESC
-        LIMIT $1 OFFSET $2
-        `,
-        [limit, offset]
-      )
-    } else {
-      result = await pool.query(
-        `
-        SELECT p.*, c.name AS category_name 
-        FROM products p
-        LEFT JOIN categories c ON p.category_id = c.id
-        ORDER BY p.created_at DESC
-        `
-      )
-    }
+    const result = await pool.query(`
+      SELECT p.*, c.name AS category_name 
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      ORDER BY p.created_at DESC
+    `)
 
     const products = result.rows.map((row) => ({
       id: row.id,
@@ -64,7 +40,7 @@ export async function GET(req: NextRequest) {
       },
     }))
 
-    return NextResponse.json({ products, page, limit: limit ?? 'all' })
+    return NextResponse.json({ products })
   } catch (error) {
     console.error('GET /admin/products error:', error)
     return NextResponse.json(
@@ -108,7 +84,10 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('POST /admin/products error:', error)
     return NextResponse.json(
-      { error: 'Invalid product data', details: error instanceof Error ? error.message : String(error) },
+      {
+        error: 'Invalid product data',
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 400 }
     )
   }
@@ -172,8 +151,11 @@ export async function PATCH(req: NextRequest) {
   } catch (error) {
     console.error('PATCH /admin/products error:', error)
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     )
   }
-       }
+      }
