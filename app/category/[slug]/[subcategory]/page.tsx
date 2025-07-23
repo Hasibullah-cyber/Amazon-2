@@ -10,7 +10,7 @@ interface Product {
   id: number
   name: string
   description: string
-  price: number
+  price: number | string
   image: string
   rating?: number
   reviews: number
@@ -130,7 +130,9 @@ export default async function SubcategoryPage({ params }: { params: { slug: stri
                     <span className="text-xs text-gray-500 ml-1">({product.reviews})</span>
                   </div>
 
-                  <p className="text-lg font-bold text-[#C7511F]">৳{product.price.toFixed(2)}</p>
+                  <p className="text-lg font-bold text-[#C7511F]">
+                    ৳{Number(product.price).toFixed(2)}
+                  </p>
                 </div>
               </div>
             ))}
@@ -139,4 +141,4 @@ export default async function SubcategoryPage({ params }: { params: { slug: stri
       </div>
     </div>
   )
-        }
+}
