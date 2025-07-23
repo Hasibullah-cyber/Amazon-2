@@ -11,13 +11,19 @@ function validateProduct(data: any) {
   }
 }
 
-// ✅ GET — Fetch full product list (no limit)
+// ✅ GET — Fetch all products with subcategory and category
 export async function GET() {
   try {
     const result = await pool.query(`
-      SELECT p.*, c.name AS category_name 
+      SELECT 
+        p.*, 
+        s.name AS subcategory_name,
+        s.id AS subcategory_id,
+        c.name AS category_name,
+        c.id AS category_id
       FROM products p
-      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN subcategories s ON p.subcategory_id = s.id
+      LEFT JOIN categories c ON s.category_id = c.id
       ORDER BY p.created_at DESC
     `)
 
@@ -37,6 +43,10 @@ export async function GET() {
       category: {
         id: row.category_id ?? 'uncategorized',
         name: row.category_name ?? 'Uncategorized',
+      },
+      subcategory: {
+        id: row.subcategory_id ?? 'uncategorized',
+        name: row.subcategory_name ?? 'Uncategorized',
       },
     }))
 
@@ -65,7 +75,7 @@ export async function POST(req: NextRequest) {
       price,
       stock = 0,
       image = '/placeholder.svg',
-      category,
+      category, // this is subcategory ID
       rating = 4.0,
       reviews = 0,
     } = data
@@ -73,7 +83,7 @@ export async function POST(req: NextRequest) {
     const result = await pool.query(
       `
       INSERT INTO products
-        (name, description, price, stock, image, category_id, rating, reviews)
+        (name, description, price, stock, image, subcategory_id, rating, reviews)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
       `,
@@ -130,7 +140,7 @@ export async function PATCH(req: NextRequest) {
       values.push(updates.image)
     }
     if ('category' in updates && updates.category?.id) {
-      fields.push(`category_id = $${i++}`)
+      fields.push(`subcategory_id = $${i++}`)
       values.push(updates.category.id)
     }
 
@@ -158,4 +168,4 @@ export async function PATCH(req: NextRequest) {
       { status: 500 }
     )
   }
-      }
+}
