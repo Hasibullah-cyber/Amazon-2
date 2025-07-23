@@ -16,23 +16,34 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const page = parseInt(searchParams.get('page') || '1', 10)
   const limitParam = searchParams.get('limit')
-
-  // If limit param is 'all' or not provided, fetch all products (no limit)
-  const limit = limitParam === 'all' || !limitParam ? null : parseInt(limitParam, 10)
+  const isAll = limitParam === 'all'
+  const limit = isAll ? null : parseInt(limitParam || '20', 10)
   const offset = (page - 1) * (limit ?? 0)
 
   try {
-    const query = `
-      SELECT p.*, c.name AS category_name 
-      FROM products p
-      LEFT JOIN categories c ON p.category_id = c.id
-      ORDER BY p.created_at DESC
-      ${limit ? 'LIMIT $1 OFFSET $2' : ''}
-    `
+    let result
 
-    const result = limit
-      ? await pool.query(query, [limit, offset])
-      : await pool.query(query)
+    if (limit) {
+      result = await pool.query(
+        `
+        SELECT p.*, c.name AS category_name 
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        ORDER BY p.created_at DESC
+        LIMIT $1 OFFSET $2
+        `,
+        [limit, offset]
+      )
+    } else {
+      result = await pool.query(
+        `
+        SELECT p.*, c.name AS category_name 
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        ORDER BY p.created_at DESC
+        `
+      )
+    }
 
     const products = result.rows.map((row) => ({
       id: row.id,
@@ -57,8 +68,11 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('GET /admin/products error:', error)
     return NextResponse.json(
-      { products: [], page: 1, limit: limit ?? 'all' },
-      { status: 200 }
+      {
+        error: 'Failed to fetch products',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
     )
   }
 }
@@ -81,10 +95,12 @@ export async function POST(req: NextRequest) {
     } = data
 
     const result = await pool.query(
-      `INSERT INTO products
-       (name, description, price, stock, image, category_id, rating, reviews)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING *`,
+      `
+      INSERT INTO products
+        (name, description, price, stock, image, category_id, rating, reviews)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+      `,
       [name, description, price, stock, image, category, rating, reviews]
     )
 
@@ -92,7 +108,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('POST /admin/products error:', error)
     return NextResponse.json(
-      { error: 'Invalid product data' },
+      { error: 'Invalid product data', details: error instanceof Error ? error.message : String(error) },
       { status: 400 }
     )
   }
@@ -156,8 +172,8 @@ export async function PATCH(req: NextRequest) {
   } catch (error) {
     console.error('PATCH /admin/products error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
-        }
+       }
