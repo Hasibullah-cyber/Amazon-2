@@ -17,7 +17,7 @@ interface Product {
   name: string
   price: number
   image: string
-  category: string
+  category: string | { id: number; name: string }
   description: string
   reviews: number
   stock: number
@@ -73,19 +73,25 @@ export default function ProductPage() {
       const allProducts = await storeManager.getProducts()
       console.log("📦 All products loaded:", allProducts.length)
 
-      const currentCategory = product?.category
-      if (!currentCategory) {
+      const currentCategoryName =
+        typeof product?.category === "string" ? product.category : product?.category?.name
+
+      if (!currentCategoryName) {
         console.warn("⚠️ Product category is undefined")
         return
       }
 
       let related = allProducts.filter(
-        p => p.id !== product.id && p.category === currentCategory
+        p =>
+          p.id !== product?.id &&
+          (typeof p.category === "string"
+            ? p.category === currentCategoryName
+            : p.category?.name === currentCategoryName)
       )
 
       if (related.length < 4) {
         const others = allProducts
-          .filter(p => p.id !== product.id && p.category !== currentCategory)
+          .filter(p => p.id !== product?.id && p.category !== currentCategoryName)
           .sort((a, b) => b.reviews - a.reviews)
         related = [...related, ...others].slice(0, 4)
       } else {
@@ -124,7 +130,8 @@ export default function ProductPage() {
       name: product.name,
       price: product.price,
       image: product.image,
-      category: product.category,
+      category:
+        typeof product.category === "string" ? product.category : product.category.name,
     })
 
     toast({
@@ -160,6 +167,8 @@ export default function ProductPage() {
     )
   }
 
+  const categoryName = typeof product.category === "string" ? product.category : product.category.name
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
@@ -177,26 +186,20 @@ export default function ProductPage() {
         <div className="space-y-6">
           <div>
             <Badge variant="secondary" className="mb-2 capitalize">
-              {product.category}
+              {categoryName}
             </Badge>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {product.name}
-            </h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
 
             {/* Reviews */}
             <div className="flex items-center gap-2 mb-4">
-              <span className="text-sm text-gray-600">
-                {product.reviews} reviews
-              </span>
+              <span className="text-sm text-gray-600">{product.reviews} reviews</span>
             </div>
 
             <div className="text-3xl font-bold text-orange-600 mb-4">
               ৳{product.price.toLocaleString()}
             </div>
 
-            <p className="text-gray-700 mb-6">
-              {product.description}
-            </p>
+            <p className="text-gray-700 mb-6">{product.description}</p>
 
             {/* Stock Status */}
             <div className="mb-6">
@@ -240,11 +243,7 @@ export default function ProductPage() {
                 Add to Cart
               </Button>
 
-              <Button
-                variant="outline"
-                onClick={handleAddToWishlist}
-                className="px-3"
-              >
+              <Button variant="outline" onClick={handleAddToWishlist} className="px-3">
                 <Heart className="w-4 h-4" />
               </Button>
 
@@ -276,43 +275,60 @@ export default function ProductPage() {
       {relatedProducts.length > 0 && (
         <div>
           <h2 className="text-2xl font-bold mb-6">
-            {relatedProducts.some(p => p.category === product?.category) 
-              ? "More in " + product?.category 
+            {relatedProducts.some(p => {
+              const pCat = typeof p.category === "string" ? p.category : p.category?.name
+              return pCat === categoryName
+            })
+              ? "More in " + categoryName
               : "You might also like"}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {relatedProducts.map((relatedProduct) => (
-              <Card key={relatedProduct.id} className="p-4 hover:shadow-lg transition-shadow">
-                <div className="aspect-square relative mb-3">
-                  <Image
-                    src={relatedProduct.image || "/placeholder.svg"}
-                    alt={relatedProduct.name}
-                    fill
-                    className="object-contain"
-                  />
-                </div>
-                <h3 className="font-medium text-sm mb-2 line-clamp-2">
-                  {relatedProduct.name}
-                </h3>
-                <p className="text-orange-600 font-semibold mb-2">
-                  ৳{relatedProduct.price.toLocaleString()}
-                </p>
-                <div className="flex items-center justify-between mb-3">
-                  <Badge variant="secondary" className="text-xs">
-                    {relatedProduct.category}
-                  </Badge>
-                  <span className="text-xs text-gray-500">{relatedProduct.reviews} reviews</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => window.location.href = `/product/${relatedProduct.id}`}
+            {relatedProducts.map((relatedProduct) => {
+              const relatedCategory =
+                typeof relatedProduct.category === "string"
+                  ? relatedProduct.category
+                  : relatedProduct.category?.name
+
+              return (
+                <Card
+                  key={relatedProduct.id}
+                  className="p-4 hover:shadow-lg transition-shadow"
                 >
-                  View Details
-                </Button>
-              </Card>
-            ))}
+                  <div className="aspect-square relative mb-3">
+                    <Image
+                      src={relatedProduct.image || "/placeholder.svg"}
+                      alt={relatedProduct.name}
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                  <h3 className="font-medium text-sm mb-2 line-clamp-2">
+                    {relatedProduct.name}
+                  </h3>
+                  <p className="text-orange-600 font-semibold mb-2">
+                    ৳{relatedProduct.price.toLocaleString()}
+                  </p>
+                  <div className="flex items-center justify-between mb-3">
+                    <Badge variant="secondary" className="text-xs">
+                      {relatedCategory}
+                    </Badge>
+                    <span className="text-xs text-gray-500">
+                      {relatedProduct.reviews} reviews
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() =>
+                      (window.location.href = `/product/${relatedProduct.id}`)
+                    }
+                  >
+                    View Details
+                  </Button>
+                </Card>
+              )
+            })}
           </div>
         </div>
       )}
