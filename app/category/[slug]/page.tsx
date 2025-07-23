@@ -63,7 +63,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
 
     const category: Category = {
       ...result.rows[0],
-      subcategories: JSON.parse(result.rows[0].subcategories)
+      subcategories: result.rows[0].subcategories // ✅ FIXED: don't JSON.parse
     }
 
     return (
