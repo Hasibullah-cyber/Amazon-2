@@ -70,10 +70,10 @@ class StoreManager {
 
   async getProducts(): Promise<Product[]> {
     try {
-      const response = await fetch(this.getApiUrl('/api/admin/products'), { cache: 'no-store' });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json();
-      this.products = data.products;
+      const res = await fetch(this.getApiUrl('/api/admin/products'), { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const data = await res.json();
+      this.products = data.products ?? [];
       this.notifySubscribers();
       return this.products;
     } catch (err) {
@@ -104,7 +104,7 @@ class StoreManager {
         id: productId,
         updates: {
           ...updates,
-          category: { id: updates.category }, // send category id as object
+          category: { id: updates.category }, // send subcategory id
         },
       }),
     });
@@ -133,14 +133,13 @@ class StoreManager {
 
   async getCategories(): Promise<Category[]> {
     try {
-      const response = await fetch(this.getApiUrl('/api/categories'), {
+      const res = await fetch(this.getApiUrl('/api/categories'), {
         cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
       });
 
-      if (!response.ok) throw new Error(`Failed to fetch categories: ${response.statusText}`);
-
-      const data = await response.json();
+      if (!res.ok) throw new Error(`Failed to fetch categories: ${res.statusText}`);
+      const data = await res.json();
       this.categories = data ?? [];
       this.notifySubscribers();
       return this.categories;
@@ -167,14 +166,13 @@ class StoreManager {
 
   async getOrders(): Promise<Order[]> {
     try {
-      const response = await fetch(this.getApiUrl('/api/admin/orders'), {
+      const res = await fetch(this.getApiUrl('/api/admin/orders'), {
         cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
       });
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-      const orders = await response.json();
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const orders = await res.json();
       this.orders = Array.isArray(orders) ? orders : [];
       this.notifySubscribers();
       return this.orders;
@@ -199,12 +197,12 @@ class StoreManager {
 
   async getUserOrders(email: string): Promise<Order[]> {
     try {
-      const response = await fetch(this.getApiUrl(`/api/user-orders?email=${encodeURIComponent(email)}`), {
+      const res = await fetch(this.getApiUrl(`/api/user-orders?email=${encodeURIComponent(email)}`), {
         cache: 'no-store',
       });
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return await response.json();
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      return await res.json();
     } catch (error) {
       console.error('Error fetching user orders:', error);
       return [];
@@ -213,17 +211,17 @@ class StoreManager {
 
   async updateOrderStatus(orderId: string, status: Order['status']): Promise<boolean> {
     try {
-      const response = await fetch(this.getApiUrl(`/api/admin/orders/${orderId}/status`), {
+      const res = await fetch(this.getApiUrl(`/api/admin/orders/${orderId}/status`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
 
-      if (!response.ok) return false;
+      if (!res.ok) return false;
 
-      const orderIndex = this.orders.findIndex((order) => order.id === orderId);
-      if (orderIndex !== -1) {
-        this.orders[orderIndex].status = status;
+      const index = this.orders.findIndex((o) => o.id === orderId);
+      if (index !== -1) {
+        this.orders[index].status = status;
         this.notifySubscribers();
       }
       return true;
@@ -241,15 +239,15 @@ class StoreManager {
         createdAt: new Date().toISOString(),
       };
 
-      const response = await fetch(this.getApiUrl('/api/orders'), {
+      const res = await fetch(this.getApiUrl('/api/orders'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newOrder),
       });
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
-      const savedOrder = await response.json();
+      const savedOrder = await res.json();
       this.orders.push(savedOrder);
       this.notifySubscribers();
 
@@ -281,7 +279,11 @@ class StoreManager {
 
   async refresh(): Promise<void> {
     try {
-      await Promise.all([this.getOrders(), this.getProducts(), this.getCategories()]);
+      await Promise.all([
+        this.getOrders(),
+        this.getProducts(),
+        this.getCategories(),
+      ]);
     } catch (error) {
       console.error('Error refreshing store data:', error);
     }
