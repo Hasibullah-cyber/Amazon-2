@@ -60,8 +60,16 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const res = await fetch('/api/admin/stats')
+
+        const baseUrl =
+          typeof window === 'undefined'
+            ? process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+            : window.location.origin
+
+        const res = await fetch(`${baseUrl}/api/admin/stats`, { cache: 'no-store' })
+
         if (!res.ok) throw new Error(`Failed to fetch stats: ${res.status}`)
+
         const data = await res.json()
         setStats(data)
       } catch (err) {
@@ -179,4 +187,4 @@ export default function DashboardPage() {
       </div>
     </ErrorBoundary>
   )
-}
+                  }
