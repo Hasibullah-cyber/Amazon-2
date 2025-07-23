@@ -133,7 +133,7 @@ class StoreManager {
 
   async getCategories(): Promise<Category[]> {
     try {
-      const response = await fetch(this.getApiUrl('/api/admin/categories'), {
+      const response = await fetch(this.getApiUrl('/api/categories'), {
         cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -141,7 +141,7 @@ class StoreManager {
       if (!response.ok) throw new Error(`Failed to fetch categories: ${response.statusText}`);
 
       const data = await response.json();
-      this.categories = data.categories ?? [];
+      this.categories = data ?? [];
       this.notifySubscribers();
       return this.categories;
     } catch (err) {
