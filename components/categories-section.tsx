@@ -86,7 +86,7 @@ export default function CategoriesSection() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {categories.map((category) => (
             <Link
-              href={`/category/${category.slug}`}
+              href={`/category/${encodeURIComponent(category.slug)}`}
               key={category.id}
               className="amazon-card text-center hover:shadow-md transition-shadow"
             >
