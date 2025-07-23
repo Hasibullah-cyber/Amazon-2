@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
-// GET — fetch all products from PostgreSQL
+// ✅ GET — fetch all products from PostgreSQL
 export async function GET() {
   try {
     const result = await pool.query<{
@@ -26,10 +26,10 @@ export async function GET() {
         rating, 
         category_id
       FROM products
-      ORDER BY id  // Ensures consistent ordering
-    `)
+      ORDER BY id
+    `) // ✅ fixed: removed inline SQL comment
 
-    return NextResponse.json(result.rows)  // Return raw rows without transformation
+    return NextResponse.json(result.rows)
   } catch (error) {
     console.error('Error fetching products:', error)
     return NextResponse.json(
@@ -42,7 +42,7 @@ export async function GET() {
   }
 }
 
-// POST — add a new product
+// ✅ POST — add a new product
 export async function POST(request: Request) {
   try {
     const data = await request.json()
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       reviews = 0, 
       stock = 0, 
       rating = 0, 
-      category_id  // Changed from 'category' to match DB column
+      category_id
     } = data
 
     // Validation
