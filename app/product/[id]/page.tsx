@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
+import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -47,16 +48,17 @@ export default function ProductPage() {
 
   const loadProduct = async () => {
     try {
-      console.log("🧪 Fetching product with ID:", params.id)
       const productData = await storeManager.getProduct(String(params.id))
       if (productData) {
-        console.log("✅ Product loaded:", productData)
         setProduct(productData as Product)
       } else {
-        console.warn("⚠️ No product found for ID:", params.id)
+        toast({
+          title: "Product Not Found",
+          description: "The product you're looking for doesn't exist.",
+          variant: "destructive",
+        })
       }
     } catch (error) {
-      console.error("❌ Error loading product:", error)
       toast({
         title: "Error",
         description: "Failed to load product details",
@@ -69,17 +71,12 @@ export default function ProductPage() {
 
   const loadRelatedProducts = async () => {
     try {
-      console.log("📦 Loading related products...")
       const allProducts = await storeManager.getProducts()
-      console.log("📦 All products loaded:", allProducts.length)
 
       const currentCategoryName =
         typeof product?.category === "string" ? product.category : product?.category?.name
 
-      if (!currentCategoryName) {
-        console.warn("⚠️ Product category is undefined")
-        return
-      }
+      if (!currentCategoryName) return
 
       let related = allProducts.filter(
         p =>
@@ -98,10 +95,9 @@ export default function ProductPage() {
         related = related.slice(0, 4)
       }
 
-      console.log("✅ Related products:", related.length)
       setRelatedProducts(related)
     } catch (error) {
-      console.error("❌ Error loading related products:", error)
+      console.error("Error loading related products:", error)
     }
   }
 
@@ -316,16 +312,11 @@ export default function ProductPage() {
                       {relatedProduct.reviews} reviews
                     </span>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() =>
-                      (window.location.href = `/product/${relatedProduct.id}`)
-                    }
-                  >
-                    View Details
-                  </Button>
+                  <Link href={`/product/${relatedProduct.id}`} passHref legacyBehavior>
+                    <Button variant="outline" size="sm" className="w-full">
+                      View Details
+                    </Button>
+                  </Link>
                 </Card>
               )
             })}
