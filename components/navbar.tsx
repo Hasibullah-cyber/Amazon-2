@@ -315,7 +315,7 @@ export default function Navbar() {
               <Link href="/category/fashion" className="text-white hover:text-gray-300">
                 Fashion
               </Link>
-              <Link href="/category/home-living" className="text-white hover:text-gray-300 hidden sm:block">
+              <Link href="/category/home-and-living" className="text-white hover:text-gray-300 hidden sm:block">
                 Home & Living
               </Link>
               <Link href="/category/beauty" className="text-white hover:text-gray-300 hidden sm:block">
