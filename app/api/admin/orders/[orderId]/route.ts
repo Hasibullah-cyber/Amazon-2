@@ -9,7 +9,10 @@ export async function GET(
   { params }: { params: { orderId: string } }
 ) {
   const { orderId } = params
+  console.log("📥 [GET] Request received for orderId:", orderId)
+
   if (!orderId) {
+    console.error("❌ Missing orderId in params")
     return NextResponse.json({ error: 'Missing orderId' }, { status: 400 })
   }
 
@@ -30,7 +33,10 @@ export async function GET(
       [orderId]
     )
 
+    console.log("📊 [GET] Order rowCount:", orderRes.rowCount)
+
     if (orderRes.rowCount === 0) {
+      console.warn("⚠️ [GET] No order found with orderId:", orderId)
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
@@ -44,6 +50,8 @@ export async function GET(
       [orderId]
     )
 
+    console.log("📜 [GET] Status history entries:", historyRes.rowCount)
+
     const order = {
       ...orderRes.rows[0],
       items:
@@ -53,12 +61,14 @@ export async function GET(
       statusHistory: historyRes.rows,
     }
 
+    console.log("✅ [GET] Order and history fetched successfully")
     return NextResponse.json(order)
-  } catch (error) {
-    console.error('[GET] Error fetching order:', error)
-    return NextResponse.json({ error: 'Failed to fetch order' }, { status: 500 })
+  } catch (error: any) {
+    console.error("💥 [GET] Error:", error)
+    return NextResponse.json({ error: 'Failed to fetch order', details: error.message }, { status: 500 })
   } finally {
     client.release()
+    console.log("🔁 [GET] DB connection released")
   }
 }
 
@@ -68,50 +78,63 @@ export async function PUT(
   { params }: { params: { orderId: string } }
 ) {
   const { orderId } = params
+  console.log("📥 [PUT] Request to update orderId:", orderId)
+
   if (!orderId || orderId.length < 8) {
+    console.error("❌ [PUT] Invalid or missing orderId")
     return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 })
   }
 
+  let status: string, notes: string, createdBy: string
+
   try {
-    const { status, notes, createdBy } = await request.json()
+    const body = await request.json()
+    status = body.status
+    notes = body.notes || null
+    createdBy = body.createdBy || 'system'
+  } catch (err) {
+    console.error("💥 [PUT] Failed to parse request JSON:", err)
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
 
-    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
-    if (!status || !validStatuses.includes(status)) {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
-    }
+  const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
+  if (!status || !validStatuses.includes(status)) {
+    console.error("❌ [PUT] Invalid status:", status)
+    return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+  }
 
-    const client = await pool.connect()
-    try {
-      await client.query('BEGIN')
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    console.log("🔄 [PUT] Started transaction")
 
-      const updateRes = await client.query(
-        `UPDATE orders SET status = $1, updated_at = NOW() WHERE order_id = $2 RETURNING order_id`,
-        [status, orderId]
-      )
+    const updateRes = await client.query(
+      `UPDATE orders SET status = $1, updated_at = NOW() WHERE order_id = $2 RETURNING order_id`,
+      [status, orderId]
+    )
 
-      if (updateRes.rowCount === 0) {
-        await client.query('ROLLBACK')
-        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
-      }
-
-      await client.query(
-        `INSERT INTO order_status_history (order_id, status, notes, created_by, created_at)
-         VALUES ($1, $2, $3, $4, NOW())`,
-        [orderId, status, notes || null, createdBy || 'system']
-      )
-
-      await client.query('COMMIT')
-      return NextResponse.json({ success: true, message: 'Order status updated' })
-    } catch (error) {
+    if (updateRes.rowCount === 0) {
       await client.query('ROLLBACK')
-      console.error('[PUT] Order status update error:', error)
-      return NextResponse.json({ error: 'Failed to update order status' }, { status: 500 })
-    } finally {
-      client.release()
+      console.warn("⚠️ [PUT] No order found to update")
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
-  } catch (error) {
-    console.error('[PUT] Request body parse error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+
+    await client.query(
+      `INSERT INTO order_status_history (order_id, status, notes, created_by, created_at)
+       VALUES ($1, $2, $3, $4, NOW())`,
+      [orderId, status, notes, createdBy]
+    )
+
+    await client.query('COMMIT')
+    console.log("✅ [PUT] Order status updated and history logged")
+    return NextResponse.json({ success: true, message: 'Order status updated' })
+  } catch (error: any) {
+    await client.query('ROLLBACK')
+    console.error("💥 [PUT] Error during transaction:", error)
+    return NextResponse.json({ error: 'Failed to update order status', details: error.message }, { status: 500 })
+  } finally {
+    client.release()
+    console.log("🔁 [PUT] DB connection released")
   }
 }
 
@@ -121,29 +144,36 @@ export async function DELETE(
   { params }: { params: { orderId: string } }
 ) {
   const { orderId } = params
+  console.log("📥 [DELETE] Request to delete orderId:", orderId)
+
   if (!orderId) {
+    console.error("❌ [DELETE] Missing orderId")
     return NextResponse.json({ error: 'Missing orderId' }, { status: 400 })
   }
 
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
+    console.log("🔄 [DELETE] Started transaction")
 
     await client.query(`DELETE FROM order_status_history WHERE order_id = $1`, [orderId])
     const deleteRes = await client.query(`DELETE FROM orders WHERE order_id = $1`, [orderId])
 
-    await client.query('COMMIT')
-
     if (deleteRes.rowCount === 0) {
+      await client.query('ROLLBACK')
+      console.warn("⚠️ [DELETE] No order found to delete")
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
+    await client.query('COMMIT')
+    console.log("✅ [DELETE] Order and status history deleted")
     return NextResponse.json({ success: true, message: 'Order deleted' })
-  } catch (error) {
+  } catch (error: any) {
     await client.query('ROLLBACK')
-    console.error('[DELETE] Error deleting order:', error)
-    return NextResponse.json({ error: 'Failed to delete order' }, { status: 500 })
+    console.error("💥 [DELETE] Error during deletion:", error)
+    return NextResponse.json({ error: 'Failed to delete order', details: error.message }, { status: 500 })
   } finally {
     client.release()
+    console.log("🔁 [DELETE] DB connection released")
   }
 }
