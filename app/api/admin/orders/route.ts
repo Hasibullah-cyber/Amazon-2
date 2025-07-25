@@ -6,13 +6,13 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const client = await pool.connect()
-    
+
     const result = await client.query(`
-  SELECT *
-  FROM orders
-  ORDER BY created_at DESC
-`)
-    
+      SELECT *
+      FROM orders
+      ORDER BY created_at DESC
+    `)
+
     client.release()
 
     const formattedOrders = result.rows.map(order => ({
@@ -24,14 +24,14 @@ export async function GET() {
       customerPhone: order.customer_phone,
       address: order.address,
       city: order.city,
-      items: order.items || [],
-      subtotal: parseFloat(order.subtotal),
-      shipping: parseFloat(order.shipping),
-      vat: parseFloat(order.vat),
-      totalAmount: parseFloat(order.total_amount),
-      status: order.status || 'pending',
+      items: typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []),
+      subtotal: order.subtotal !== null ? parseFloat(order.subtotal) : 0,
+      shipping: order.shipping !== null ? parseFloat(order.shipping) : 0,
+      vat: order.vat !== null ? parseFloat(order.vat) : 0,
+      totalAmount: order.total_amount !== null ? parseFloat(order.total_amount) : 0,
+      status: order.status,
       paymentMethod: order.payment_method || 'N/A',
-      paymentStatus: order.payment_status || 'pending',
+      paymentStatus: order.payment_status,
       estimatedDelivery: order.estimated_delivery || '',
       trackingNumber: order.tracking_number || '',
       notes: order.notes,
