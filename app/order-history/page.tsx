@@ -75,7 +75,7 @@ export default function OrderHistoryPage() {
     if (!confirm("Are you sure you want to cancel this order?")) return
     try {
       const res = await fetch(`/api/admin/orders/${orderId}/cancel`, {
-        method: "PUT",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "cancelled", createdBy: user?.email })
       })
