@@ -6,14 +6,17 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/components/auth-provider"
-import { Package, Truck, CheckCircle, X, Search, Calendar, RefreshCw } from "lucide-react"
+import {
+  Package, Truck, CheckCircle, X,
+  Search, Calendar, RefreshCw
+} from "lucide-react"
 import Link from "next/link"
 
 export const dynamic = 'force-dynamic'
 
 export default function OrderHistoryPage() {
-  const [orders, setOrders] = useState([])
-  const [filteredOrders, setFilteredOrders] = useState([])
+  const [orders, setOrders] = useState<any[]>([])
+  const [filteredOrders, setFilteredOrders] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
   const [loading, setLoading] = useState(true)
@@ -30,9 +33,7 @@ export default function OrderHistoryPage() {
     try {
       setLoading(true)
       const res = await fetch(`/api/user-orders?email=${encodeURIComponent(user.email)}`)
-      if (!res.ok) {
-        throw new Error('Failed to fetch orders')
-      }
+      if (!res.ok) throw new Error('Failed to fetch orders')
       const data = await res.json()
       setOrders(Array.isArray(data) ? data : [])
     } catch (error) {
@@ -44,7 +45,11 @@ export default function OrderHistoryPage() {
   }, [user?.email])
 
   useEffect(() => {
-    let filtered = orders
+    fetchOrders()
+  }, [fetchOrders])
+
+  useEffect(() => {
+    let filtered = [...orders]
 
     if (searchTerm) {
       filtered = filtered.filter(order =>
@@ -59,16 +64,34 @@ export default function OrderHistoryPage() {
       filtered = filtered.filter(order => order.status === filterStatus)
     }
 
-    filtered.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    filtered.sort((a, b) =>
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    )
 
     setFilteredOrders(filtered)
   }, [orders, searchTerm, filterStatus])
 
-  useEffect(() => {
-    fetchOrders()
-  }, [fetchOrders])
+  const cancelOrder = async (orderId: string) => {
+    if (!confirm("Are you sure you want to cancel this order?")) return
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/cancel`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled", createdBy: user?.email })
+      })
 
-  const getStatusIcon = (status) => {
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || "Failed to cancel order")
+
+      alert("Order cancelled successfully.")
+      fetchOrders() // Refresh order list
+    } catch (err: any) {
+      console.error(err)
+      alert("Failed to cancel order. Please try again.")
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending': return <Package className="h-4 w-4" />
       case 'processing': return <Package className="h-4 w-4" />
@@ -79,7 +102,7 @@ export default function OrderHistoryPage() {
     }
   }
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-gray-100 text-gray-800'
       case 'processing': return 'bg-yellow-100 text-yellow-800'
@@ -95,9 +118,7 @@ export default function OrderHistoryPage() {
       <div className="min-h-screen bg-gray-50 py-8 flex flex-col items-center justify-center">
         <h1 className="text-3xl font-bold mb-4">Order History</h1>
         <p className="text-gray-600 mb-6">Please sign in to view your order history.</p>
-        <Button asChild>
-          <Link href="/login">Sign In</Link>
-        </Button>
+        <Button asChild><Link href="/login">Sign In</Link></Button>
       </div>
     )
   }
@@ -154,9 +175,7 @@ export default function OrderHistoryPage() {
                 ? "You haven't placed any orders yet."
                 : "No orders match your search criteria."}
             </p>
-            <Button asChild>
-              <Link href="/">Start Shopping</Link>
-            </Button>
+            <Button asChild><Link href="/">Start Shopping</Link></Button>
           </Card>
         ) : (
           <div className="space-y-4">
@@ -215,15 +234,13 @@ export default function OrderHistoryPage() {
                       <Link href={`/track-order?id=${order.orderId}`}>Track Order</Link>
                     </Button>
                     {order.status === 'delivered' && (
-                      <Button variant="outline" size="sm">
-                        Buy Again
-                      </Button>
+                      <Button variant="outline" size="sm">Buy Again</Button>
                     )}
                     {["pending", "processing"].includes(order.status) && (
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => alert(`Cancel order ${order.orderId} - implement cancel API call here`)}
+                        onClick={() => cancelOrder(order.orderId)}
                       >
                         Cancel Order
                       </Button>
