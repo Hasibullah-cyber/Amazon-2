@@ -28,8 +28,8 @@ export async function POST() {
           estimated_delivery VARCHAR(100),
           tracking_number VARCHAR(100),
           notes TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         );
       `)
 
@@ -67,9 +67,16 @@ export async function POST() {
           order_id VARCHAR(255) NOT NULL,
           status VARCHAR(50) NOT NULL,
           notes TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          created_by VARCHAR(100),
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
         );
+      `)
+
+      // Index for faster lookups
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_order_status_history_order_id
+        ON order_status_history(order_id);
       `)
 
       console.log('✅ Orders tables created successfully')
