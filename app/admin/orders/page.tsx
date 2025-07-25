@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -66,8 +65,7 @@ export default function OrdersPage() {
     try {
       setUpdating(orderId)
       
-      // Update via API
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
+      const response = await fetch(`/api/update-order-status/${orderId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +74,6 @@ export default function OrdersPage() {
       })
 
       if (response.ok) {
-        // Refresh the orders to show updated status
         await storeManager.refresh()
         console.log('Order status updated successfully')
       } else {
@@ -335,4 +332,4 @@ export default function OrdersPage() {
       )}
     </div>
   )
-}
+                                             }
