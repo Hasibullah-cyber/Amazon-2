@@ -34,15 +34,15 @@ export async function PUT(
 
       // 1️⃣ Update order status
       const updateResult = await client.query(
-        `UPDATE orders SET status = $1, updated_at = NOW() WHERE order_id = $2`,
-        [status, orderId]
+        `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2`,
+        [status, orderId] // ✅ FIXED: use internal id instead of order_id
       )
 
       console.log('📝 Order update result:', updateResult.rowCount)
 
       if (updateResult.rowCount === 0) {
         await client.query('ROLLBACK')
-        console.warn(`❌ Order not found for order_id=${orderId}`)
+        console.warn(`❌ Order not found for id=${orderId}`)
         return NextResponse.json({ error: 'Order not found' }, { status: 404 })
       }
 
