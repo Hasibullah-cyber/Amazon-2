@@ -24,7 +24,10 @@ export async function POST(
 
       // Allow cancellation only if status is pending or processing
       if (!['pending', 'processing'].includes(currentStatus)) {
-        return NextResponse.json({ error: 'Order cannot be cancelled at this stage' }, { status: 400 })
+        return NextResponse.json(
+          { error: 'Order cannot be cancelled at this stage' },
+          { status: 400 }
+        )
       }
 
       // Update status to cancelled
@@ -39,6 +42,16 @@ export async function POST(
     }
   } catch (error) {
     console.error('Error cancelling order:', error)
-    return NextResponse.json({ error: 'Failed to cancel order' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to cancel order' },
+      { status: 500 }
+    )
   }
+}
+
+export async function GET() {
+  return NextResponse.json(
+    { error: 'Method Not Allowed. Use POST to cancel an order.' },
+    { status: 405 }
+  )
 }
