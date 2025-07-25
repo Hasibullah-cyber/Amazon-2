@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -16,42 +18,45 @@ export async function GET(request: NextRequest) {
     const client = await pool.connect()
 
     try {
-      const result = await client.query(`
+      const result = await client.query(
+        `
         SELECT 
-          order_id as "orderId",
-          tracking_number as "trackingNumber",
-          customer_name as "customerName",
-          customer_email as "customerEmail",
-          total_amount as "totalAmount",
-          payment_method as "paymentMethod",
-          estimated_delivery as "estimatedDelivery",
+          order_id AS "orderId",
+          tracking_number AS "trackingNumber",
+          customer_name AS "customerName",
+          customer_email AS "customerEmail",
+          customer_phone AS "customerPhone",
+          total_amount AS "totalAmount",
+          payment_method AS "paymentMethod",
+          estimated_delivery AS "estimatedDelivery",
           status,
           items,
           address,
           city,
-          phone,
           subtotal,
           shipping,
           vat,
-          created_at as "createdAt",
-          updated_at as "updatedAt"
+          created_at AS "createdAt",
+          updated_at AS "updatedAt"
         FROM orders 
         WHERE tracking_number = $1
         ORDER BY created_at DESC
         LIMIT 1
-      `, [trackingNumber.trim()])
+        `,
+        [trackingNumber.trim()]
+      )
 
       if (result.rows.length === 0) {
         return NextResponse.json({
           success: false,
           error: 'Order not found',
-          trackingNumber: trackingNumber
+          trackingNumber
         }, { status: 404 })
       }
 
       const order = result.rows[0]
 
-      // Parse items if stored as JSON string
+      // Parse items if stored as a string
       if (typeof order.items === 'string') {
         try {
           order.items = JSON.parse(order.items)
@@ -61,22 +66,21 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      return NextResponse.json({ 
-        success: true, 
-        order: order
+      return NextResponse.json({
+        success: true,
+        order
       })
     } finally {
       client.release()
     }
   } catch (error: any) {
     console.error('Tracking error:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: false,
       error: 'Failed to track order',
-      details: process.env.NODE_ENV === 'development' ? {
-        message: error.message,
-        stack: error.stack
-      } : undefined
+      details: process.env.NODE_ENV === 'development'
+        ? { message: error.message, stack: error.stack }
+        : undefined
     }, { status: 500 })
   }
 }
