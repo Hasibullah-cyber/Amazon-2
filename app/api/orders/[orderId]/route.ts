@@ -25,7 +25,7 @@ export async function GET(
                COALESCE(json_agg(json_build_object(
                  'product_id', i.product_id,
                  'quantity', i.quantity,
-                 'price', i.price
+                 'unit_price', i.unit_price
                )) FILTER (WHERE i.product_id IS NOT NULL), '[]'::json) AS items
         FROM orders o
         LEFT JOIN order_items i ON o.id = i.order_id
