@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -31,7 +31,6 @@ interface OrderData {
   shipping?: number
   vat?: number
   createdAt?: string
-  updatedAt?: string
 }
 
 function TrackOrderContent() {
@@ -45,7 +44,7 @@ function TrackOrderContent() {
       const trackingNumber = searchParams.get('trackingNumber')
 
       if (!trackingNumber) {
-        setError('No tracking number provided')
+        setError('No tracking number provided.')
         setLoading(false)
         return
       }
@@ -53,32 +52,24 @@ function TrackOrderContent() {
       try {
         setLoading(true)
         const response = await fetch(`/api/orders/track?trackingNumber=${encodeURIComponent(trackingNumber)}`)
-        
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to fetch order details')
-        }
-
         const data = await response.json()
-        
-        if (!data.success || !data.order) {
-          throw new Error('Invalid order data received from server')
+
+        if (!response.ok || !data.success || !data.order) {
+          throw new Error(data.error || 'Failed to retrieve order.')
         }
 
         setOrder(data.order)
         setError(null)
       } catch (err: any) {
-        console.error('Tracking error:', err)
-        setError(err.message || 'Failed to track order. Please try again.')
+        setError(err.message || 'An unexpected error occurred.')
         setOrder(null)
       } finally {
         setLoading(false)
       }
     }
 
-    // Add slight delay to allow animations to render
-    const timer = setTimeout(trackOrder, 100)
-    return () => clearTimeout(timer)
+    const delay = setTimeout(trackOrder, 100)
+    return () => clearTimeout(delay)
   }, [searchParams])
 
   if (loading) {
@@ -98,7 +89,6 @@ function TrackOrderContent() {
           <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">Order Tracking Failed</h1>
           <p className="text-gray-600 mb-6">{error}</p>
-          
           <div className="space-y-3">
             <Button asChild className="w-full">
               <Link href="/">Continue Shopping</Link>
@@ -129,173 +119,141 @@ function TrackOrderContent() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Order Details */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Shipping Information */}
-            <Card className="border border-gray-200 rounded-lg shadow-sm">
-              <CardHeader className="border-b border-gray-200">
-                <CardTitle className="flex items-center gap-2 text-lg">
+            {/* Shipping Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
                   <Truck className="h-5 w-5 text-blue-500" />
                   Shipping Information
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-1">Delivery Status</h3>
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        order.status === 'delivered' 
-                          ? 'bg-green-100 text-green-800'
-                          : order.status === 'shipped'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                      </span>
-                      {order.status === 'shipped' && (
-                        <span className="text-sm text-gray-500">In transit</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-1">Estimated Delivery</h3>
-                    <p className="text-gray-600">{order.estimatedDelivery || 'Not specified'}</p>
-                  </div>
-
-                  {order.address && (
-                    <div>
-                      <h3 className="font-medium text-gray-900 mb-1">Shipping Address</h3>
-                      <div className="text-gray-600 space-y-1">
-                        <p>{order.customerName}</p>
-                        <p>{order.address}</p>
-                        {order.city && <p>{order.city}</p>}
-                        {order.phone && <p>Phone: {order.phone}</p>}
-                      </div>
-                    </div>
-                  )}
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-1">Delivery Status</h3>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    order.status === 'delivered' 
+                      ? 'bg-green-100 text-green-800'
+                      : order.status === 'shipped'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {order.status}
+                  </span>
                 </div>
+
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-1">Estimated Delivery</h3>
+                  <p className="text-gray-600">{order.estimatedDelivery || 'Not specified'}</p>
+                </div>
+
+                {order.address && (
+                  <div>
+                    <h3 className="font-medium text-gray-900 mb-1">Shipping Address</h3>
+                    <div className="text-gray-600 space-y-1">
+                      <p>{order.customerName}</p>
+                      <p>{order.address}</p>
+                      {order.city && <p>{order.city}</p>}
+                      {order.phone && <p>Phone: {order.phone}</p>}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Order Items */}
-            <Card className="border border-gray-200 rounded-lg shadow-sm">
-              <CardHeader className="border-b border-gray-200">
-                <CardTitle className="flex items-center gap-2 text-lg">
+            {/* Items */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
                   <Package className="h-5 w-5 text-blue-500" />
                   Order Items
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="divide-y divide-gray-200">
-                  {order.items.map((item, index) => (
-                    <div key={index} className="flex items-start py-4 first:pt-0 last:pb-0">
-                      <div className="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-md overflow-hidden">
-                        {item.image ? (
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="h-full w-full object-cover object-center"
-                          />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center text-gray-400">
-                            <Package className="h-8 w-8" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="ml-4 flex-1">
-                        <h3 className="text-base font-medium text-gray-900">{item.name}</h3>
-                        <p className="text-sm text-gray-500 mt-1">Qty: {item.quantity}</p>
-                      </div>
-
-                      <div className="ml-4">
-                        <p className="text-base font-medium text-gray-900">
-                          ${(item.price * item.quantity).toFixed(2)}
-                        </p>
-                        {item.quantity > 1 && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            ${item.price.toFixed(2)} each
-                          </p>
-                        )}
-                      </div>
+              <CardContent className="divide-y divide-gray-200">
+                {order.items.map((item, idx) => (
+                  <div key={idx} className="flex items-start py-4">
+                    <div className="h-16 w-16 bg-gray-100 rounded-md overflow-hidden">
+                      {item.image ? (
+                        <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-gray-400">
+                          <Package className="h-6 w-6" />
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
+                    <div className="ml-4 flex-1">
+                      <h3 className="font-medium text-gray-900">{item.name}</h3>
+                      <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                    </div>
+                    <div className="ml-4 text-right">
+                      <p className="text-base font-medium text-gray-900">
+                        ${(item.price * item.quantity).toFixed(2)}
+                      </p>
+                      {item.quantity > 1 && (
+                        <p className="text-xs text-gray-500">${item.price.toFixed(2)} each</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </div>
 
-          {/* Order Summary */}
+          {/* Summary */}
           <div className="space-y-6">
-            <Card className="border border-gray-200 rounded-lg shadow-sm">
-              <CardHeader className="border-b border-gray-200">
+            <Card>
+              <CardHeader>
                 <CardTitle className="text-lg">Order Summary</CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
+              <CardContent className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span className="font-medium">${order.subtotal?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Shipping</span>
+                  <span className="font-medium">${order.shipping?.toFixed(2) || '0.00'}</span>
+                </div>
+                {order.vat !== undefined && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal ({order.items.length} items)</span>
-                    <span className="font-medium">${order.subtotal?.toFixed(2) || '0.00'}</span>
+                    <span className="text-gray-600">VAT</span>
+                    <span className="font-medium">${order.vat.toFixed(2)}</span>
                   </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Shipping</span>
-                    <span className="font-medium">${order.shipping?.toFixed(2) || '0.00'}</span>
-                  </div>
-
-                  {order.vat && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Tax (VAT)</span>
-                      <span className="font-medium">${order.vat.toFixed(2)}</span>
-                    </div>
-                  )}
-
-                  <div className="border-t border-gray-200 pt-4 mt-2 flex justify-between">
-                    <span className="text-base font-medium text-gray-900">Total</span>
-                    <span className="text-base font-bold text-gray-900">
-                      ${order.totalAmount.toFixed(2)}
-                    </span>
-                  </div>
+                )}
+                <div className="border-t pt-4 mt-2 flex justify-between">
+                  <span className="font-semibold text-gray-900">Total</span>
+                  <span className="font-bold text-gray-900">${order.totalAmount.toFixed(2)}</span>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border border-gray-200 rounded-lg shadow-sm">
-              <CardHeader className="border-b border-gray-200">
+            {/* Payment Info */}
+            <Card>
+              <CardHeader>
                 <CardTitle className="text-lg">Payment Information</CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Payment Method</h3>
-                    <p className="mt-1 text-sm text-gray-900 capitalize">
-                      {order.paymentMethod.replace(/_/g, ' ')}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Order Date</h3>
-                    <p className="mt-1 text-sm text-gray-900">
-                      {new Date(order.createdAt || '').toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  </div>
-
-                  {order.paymentMethod.toLowerCase().includes('card') && (
-                    <div className="pt-2">
-                      <p className="text-xs text-gray-500">
-                        Your payment has been processed. A receipt was sent to {order.customerEmail}.
-                      </p>
-                    </div>
-                  )}
+              <CardContent className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Payment Method</h3>
+                  <p className="mt-1 text-sm text-gray-900 capitalize">
+                    {order.paymentMethod.replace(/_/g, ' ')}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Order Date</h3>
+                  <p className="mt-1 text-sm text-gray-900">
+                    {new Date(order.createdAt || '').toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
                 </div>
               </CardContent>
             </Card>
 
+            {/* Actions */}
             <div className="space-y-3">
               <Button asChild className="w-full">
                 <Link href="/">Continue Shopping</Link>
@@ -321,4 +279,4 @@ export default function TrackOrderPage() {
       <TrackOrderContent />
     </Suspense>
   )
-      }
+}
