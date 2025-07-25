@@ -3,7 +3,7 @@ import { pool } from '@/lib/database'
 
 export const dynamic = 'force-dynamic'
 
-// ✅ GET — Fetch full order details (including items)
+// ✅ GET — Get full order details (with items)
 export async function GET(
   _request: NextRequest,
   { params }: { params: { orderId: string } }
@@ -42,6 +42,7 @@ export async function GET(
 
     return NextResponse.json(result.rows[0])
   } catch (err: any) {
+    console.error('GET /admin/orders/[orderId] failed:', err)
     return NextResponse.json(
       { error: 'Database query failed', details: err.message },
       { status: 500 }
@@ -51,7 +52,7 @@ export async function GET(
   }
 }
 
-// ✅ PUT — Update order status + add to order_status_history
+// ✅ PUT — Update order status + log to history
 export async function PUT(
   request: NextRequest,
   { params }: { params: { orderId: string } }
@@ -65,6 +66,7 @@ export async function PUT(
   try {
     body = await request.json()
   } catch (err: any) {
+    console.error('PUT /admin/orders/[orderId] JSON parse error:', err)
     return NextResponse.json(
       { error: 'Invalid JSON payload', details: err.message },
       { status: 400 }
@@ -74,12 +76,14 @@ export async function PUT(
   const { status, notes, updatedBy = 'admin' } = body
 
   if (!status) {
-    return NextResponse.json({ error: 'Missing status' }, { status: 400 })
+    return NextResponse.json({ error: 'Missing status field' }, { status: 400 })
   }
 
-  const allowed = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
-  if (!allowed.includes(status)) {
-    return NextResponse.json({ error: `Invalid status. Allowed: ${allowed.join(', ')}` }, { status: 400 })
+  const allowedStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
+  if (!allowedStatuses.includes(status)) {
+    return NextResponse.json({
+      error: `Invalid status. Allowed values: ${allowedStatuses.join(', ')}`
+    }, { status: 400 })
   }
 
   let client
@@ -87,12 +91,12 @@ export async function PUT(
     client = await pool.connect()
     await client.query('BEGIN')
 
-    const update = await client.query(
+    const updateResult = await client.query(
       `UPDATE orders SET status = $1, updated_at = NOW() WHERE order_id = $2 RETURNING *`,
       [status, orderId]
     )
 
-    if (update.rows.length === 0) {
+    if (updateResult.rows.length === 0) {
       await client.query('ROLLBACK')
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
@@ -100,15 +104,16 @@ export async function PUT(
     await client.query(
       `INSERT INTO order_status_history (order_id, status, notes, created_by, created_at)
        VALUES ($1, $2, $3, $4, NOW())`,
-      [orderId, status, notes || `Status changed to ${status}`, updatedBy]
+      [orderId, status, notes || `Status updated to ${status}`, updatedBy]
     )
 
     await client.query('COMMIT')
-    return NextResponse.json({ success: true, order: update.rows[0] })
+    return NextResponse.json({ success: true, order: updateResult.rows[0] })
   } catch (err: any) {
     await client?.query('ROLLBACK')
+    console.error('PUT /admin/orders/[orderId] failed:', err)
     return NextResponse.json(
-      { error: 'Database update failed', details: err.message },
+      { error: 'Order update failed', details: err.message },
       { status: 500 }
     )
   } finally {
@@ -116,10 +121,10 @@ export async function PUT(
   }
 }
 
-// ❌ DELETE — Disabled for safety
+// ❌ DELETE — Not allowed for admin orders
 export async function DELETE() {
   return NextResponse.json(
-    { error: 'Delete operation not allowed on orders' },
+    { error: 'Order deletion is not allowed via admin' },
     { status: 405 }
   )
 }
