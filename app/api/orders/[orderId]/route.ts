@@ -23,16 +23,19 @@ export async function GET(
 
     const result = await client.query(
       `
-      SELECT o.*, 
-             COALESCE(json_agg(json_build_object(
-               'product_id', i.product_id,
-               'quantity', i.quantity,
-               'unit_price', i.unit_price
-             )) FILTER (WHERE i.product_id IS NOT NULL), '[]'::json) AS items
+      SELECT
+        o.*,
+        (
+          SELECT COALESCE(json_agg(json_build_object(
+            'product_id', i.product_id,
+            'quantity', i.quantity,
+            'unit_price', i.unit_price
+          )), '[]'::json)
+          FROM order_items i
+          WHERE i.order_id = o.order_id
+        ) AS items
       FROM orders o
-      LEFT JOIN order_items i ON o.order_id = i.order_id
       WHERE o.order_id = $1
-      GROUP BY o.order_id
       `,
       [orderId]
     )
