@@ -28,9 +28,9 @@ export async function GET(
                  'unit_price', i.unit_price
                )) FILTER (WHERE i.product_id IS NOT NULL), '[]'::json) AS items
         FROM orders o
-        LEFT JOIN order_items i ON o.id = i.order_id
-        WHERE o.id = $1
-        GROUP BY o.id
+        LEFT JOIN order_items i ON o.order_id = i.order_id
+        WHERE o.order_id = $1
+        GROUP BY o.order_id
         `,
         [orderId]
       )
@@ -72,7 +72,6 @@ export async function PUT(
       return NextResponse.json({ error: 'Missing status' }, { status: 400 })
     }
 
-    // Validate status
     const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
     if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
@@ -83,9 +82,8 @@ export async function PUT(
     try {
       await client.query('BEGIN')
 
-      // Update order status
       const updateResult = await client.query(
-        `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+        `UPDATE orders SET status = $1, updated_at = NOW() WHERE order_id = $2 RETURNING *`,
         [status, orderId]
       )
 
@@ -94,7 +92,6 @@ export async function PUT(
         return NextResponse.json({ error: 'Order not found' }, { status: 404 })
       }
 
-      // Insert into order_status_history
       await client.query(
         `INSERT INTO order_status_history (order_id, status, notes, created_by, created_at)
          VALUES ($1, $2, $3, $4, NOW())`,
