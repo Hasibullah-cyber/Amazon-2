@@ -72,23 +72,26 @@ export default function OrderHistoryPage() {
   }, [orders, searchTerm, filterStatus])
 
   const cancelOrder = async (orderId: string) => {
-    if (!confirm("Are you sure you want to cancel this order?")) return
-    try {
-      const res = await fetch(`/api/admin/orders/${orderId}/cancel`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "cancelled", createdBy: user?.email })
-      })
+  if (!confirm("Are you sure you want to cancel this order?")) return
 
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.error || "Failed to cancel order")
+  try {
+    const res = await fetch(`/api/admin/orders/${orderId}/cancel`, {
+      method: "POST"
+    })
 
-      alert("Order cancelled successfully.")
-      fetchOrders() // Refresh order list
-    } catch (err: any) {
-      console.error(err)
-      alert("Failed to cancel order. Please try again.")
+    const result = await res.json()
+    if (!res.ok) {
+      console.error("Cancel error:", result.error)
+      alert(result.error || "Failed to cancel order")
+      return
     }
+
+    alert("Order cancelled successfully.")
+    fetchOrders() // Refresh order list
+  } catch (err) {
+    console.error("Network error while cancelling order:", err)
+    alert("Network error. Please try again.")
+  }
   }
 
   const getStatusIcon = (status: string) => {
