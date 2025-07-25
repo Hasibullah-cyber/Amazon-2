@@ -25,7 +25,7 @@ export async function GET(
         payment_method AS "paymentMethod", payment_status AS "paymentStatus",
         estimated_delivery AS "estimatedDelivery", tracking_number AS "trackingNumber",
         notes, created_at AS "createdAt", updated_at AS "updatedAt"
-      FROM orders WHERE id = $1
+      FROM orders WHERE order_id = $1
       `,
       [orderId]
     )
@@ -85,7 +85,7 @@ export async function PUT(
       await client.query('BEGIN')
 
       const updateRes = await client.query(
-        `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING id`,
+        `UPDATE orders SET status = $1, updated_at = NOW() WHERE order_id = $2 RETURNING order_id`,
         [status, orderId]
       )
 
@@ -130,7 +130,7 @@ export async function DELETE(
     await client.query('BEGIN')
 
     await client.query(`DELETE FROM order_status_history WHERE order_id = $1`, [orderId])
-    const deleteRes = await client.query(`DELETE FROM orders WHERE id = $1`, [orderId])
+    const deleteRes = await client.query(`DELETE FROM orders WHERE order_id = $1`, [orderId])
 
     await client.query('COMMIT')
 
