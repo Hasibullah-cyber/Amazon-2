@@ -32,7 +32,7 @@ export async function PUT(
       await client.query('BEGIN')
       console.log('🔁 Transaction started')
 
-      // 1️⃣ Update order status
+      // Update order status
       const updateResult = await client.query(
         `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2`,
         [status, orderId]
@@ -46,7 +46,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Order not found' }, { status: 404 })
       }
 
-      // 2️⃣ Insert into history table
+      // Insert status change into history
       const historyInsert = await client.query(
         `INSERT INTO order_status_history (order_id, status, notes, created_by, created_at)
          VALUES ($1, $2, $3, $4, NOW())`,
@@ -73,4 +73,4 @@ export async function PUT(
     console.error('💥 Unexpected error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-    }
+}
