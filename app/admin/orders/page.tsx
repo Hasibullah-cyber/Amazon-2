@@ -65,7 +65,7 @@ export default function OrdersPage() {
     try {
       setUpdating(orderId)
       
-      const response = await fetch(`/api/update-order-status/${orderId}`, {
+      const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
