@@ -3,12 +3,17 @@ import { pool } from '@/lib/database'
 
 export const dynamic = 'force-dynamic'
 
-// ✅ GET — Get order details by ID
+// ✅ GET — Get order details by ID including order items
 export async function GET(
   _request: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
   const { orderId } = params
+  console.log('GET orderId:', orderId)
+
+  if (!orderId) {
+    return NextResponse.json({ error: 'Missing orderId' }, { status: 400 })
+  }
 
   try {
     const client = await pool.connect()
@@ -17,11 +22,11 @@ export async function GET(
       const result = await client.query(
         `
         SELECT o.*, 
-               json_agg(json_build_object(
+               COALESCE(json_agg(json_build_object(
                  'product_id', i.product_id,
                  'quantity', i.quantity,
                  'price', i.price
-               )) AS items
+               )) FILTER (WHERE i.product_id IS NOT NULL), '[]'::json) AS items
         FROM orders o
         LEFT JOIN order_items i ON o.id = i.order_id
         WHERE o.id = $1
@@ -35,6 +40,9 @@ export async function GET(
       }
 
       return NextResponse.json(result.rows[0])
+    } catch (dbError) {
+      console.error('DB query error (GET order):', dbError)
+      return NextResponse.json({ error: 'Database query failed' }, { status: 500 })
     } finally {
       client.release()
     }
@@ -44,18 +52,30 @@ export async function GET(
   }
 }
 
-// ✅ PUT — Update order status or details
+// ✅ PUT — Update order status and add to status history
 export async function PUT(
   request: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
   const { orderId } = params
+  console.log('PUT orderId:', orderId)
+
+  if (!orderId) {
+    return NextResponse.json({ error: 'Missing orderId' }, { status: 400 })
+  }
 
   try {
     const { status, notes, updatedBy = 'admin' } = await request.json()
+    console.log('PUT payload:', { status, notes, updatedBy })
 
     if (!status) {
       return NextResponse.json({ error: 'Missing status' }, { status: 400 })
+    }
+
+    // Validate status
+    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
 
     const client = await pool.connect()
@@ -63,28 +83,31 @@ export async function PUT(
     try {
       await client.query('BEGIN')
 
-      const update = await client.query(
+      // Update order status
+      const updateResult = await client.query(
         `UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
         [status, orderId]
       )
 
-      if (update.rows.length === 0) {
+      if (updateResult.rows.length === 0) {
         await client.query('ROLLBACK')
         return NextResponse.json({ error: 'Order not found' }, { status: 404 })
       }
 
+      // Insert into order_status_history
       await client.query(
-        `INSERT INTO order_status_history (order_id, status, notes, created_by)
-         VALUES ($1, $2, $3, $4)`,
+        `INSERT INTO order_status_history (order_id, status, notes, created_by, created_at)
+         VALUES ($1, $2, $3, $4, NOW())`,
         [orderId, status, notes || `Status changed to ${status}`, updatedBy]
       )
 
       await client.query('COMMIT')
 
-      return NextResponse.json({ success: true, order: update.rows[0] })
-    } catch (error) {
+      return NextResponse.json({ success: true, order: updateResult.rows[0] })
+    } catch (dbError) {
       await client.query('ROLLBACK')
-      throw error
+      console.error('DB transaction error (PUT order):', dbError)
+      return NextResponse.json({ error: 'Database update failed' }, { status: 500 })
     } finally {
       client.release()
     }
@@ -94,7 +117,7 @@ export async function PUT(
   }
 }
 
-// ❌ DELETE — Not implemented (optional)
+// ❌ DELETE — Not implemented for safety
 export async function DELETE() {
   return NextResponse.json(
     { error: 'Delete not allowed on orders' },
