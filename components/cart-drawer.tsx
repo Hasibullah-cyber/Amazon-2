@@ -5,6 +5,8 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/components/auth-provider" // ✅ Add this
+import { useRouter } from "next/navigation" // ✅ Add this
 
 interface CartDrawerProps {
   open: boolean
@@ -14,10 +16,15 @@ interface CartDrawerProps {
 export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const { cartItems, removeFromCart, updateQuantity, clearCart, totalPrice } = useCart()
   const { toast } = useToast()
+  const { user } = useAuth() // ✅ Check if user is signed in
+  const router = useRouter()
 
   const handleCheckout = () => {
-    // Redirect to location selection page
-    window.location.href = "/checkout/payment"
+    if (!user) {
+      router.push("/login?callbackUrl=/checkout/payment") // ✅ redirect to login first
+    } else {
+      router.push("/checkout/payment") // ✅ proceed to payment
+    }
     onClose()
   }
 
