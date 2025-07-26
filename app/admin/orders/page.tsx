@@ -1,5 +1,5 @@
 "use client"
-import debugFetch from "@/lib/debugFetch"
+
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -63,25 +63,23 @@ const handleStatusChange = async (orderId: string, newStatus: string) => {
   try {
     setUpdating(orderId)
 
-    const responseData = await debugFetch(`/api/admin/orders/${orderId}`, {
+    const response = await fetch(`/api/admin/orders/${orderId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ status: newStatus, notes: `Status changed to ${newStatus}` }),
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: newStatus,
+        notes: `Status changed to ${newStatus}`
+      }),
     })
 
-    console.log('[DEBUG] PATCH response for', orderId, responseData)
-
-    // ✅ No need to call .json() here — responseData is already parsed JSON
-    if (!responseData || typeof responseData !== 'object') {
-      throw new Error('Invalid response from server.')
+    if (!response.ok) {
+      throw new Error(`Server responded with status ${response.status}`)
     }
 
-    if ('error' in responseData) {
-      throw new Error(responseData.error)
-    }
+    const data = await response.json()
 
-    if (!responseData.status || responseData.status !== newStatus) {
-      throw new Error(`Unexpected status returned. Expected "${newStatus}", got "${responseData.status}"`)
+    if (!data.status || data.status !== newStatus) {
+      throw new Error(`Unexpected status returned. Expected "${newStatus}", got "${data.status}"`)
     }
 
     await storeManager.refresh()
