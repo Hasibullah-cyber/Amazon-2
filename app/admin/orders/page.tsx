@@ -43,41 +43,41 @@ export default function OrdersPage() {
   }, [searchTerm, statusFilter])
 
   const filterOrders = (ordersList: Order[], search: string, status: string) => {
-    let filtered = ordersList
+  let filtered = ordersList
 
-    if (search) {
-      filtered = filtered.filter(order =>
-        order.orderId.toLowerCase().includes(search.toLowerCase()) ||
-        order.customerName.toLowerCase().includes(search.toLowerCase()) ||
-        order.customerPhone.includes(search)
-      )
-    }
-
-    if (status !== "all") {
-      filtered = filtered.filter(order => order.status === status)
-    }
-
-    setFilteredOrders(filtered)
+  if (search) {
+    filtered = filtered.filter(order =>
+      order.orderId.toLowerCase().includes(search.toLowerCase()) ||
+      order.customerName.toLowerCase().includes(search.toLowerCase()) ||
+      order.customerPhone.includes(search)
+    )
   }
+
+  if (status !== "all") {
+    filtered = filtered.filter(order => order.status === status)
+  }
+
+  setFilteredOrders(filtered)
+}
 
 const handleStatusChange = async (orderId: string, newStatus: string) => {
   try {
     setUpdating(orderId)
     
-const response = await debugFetch(`/api/admin/orders/${orderId}`, {
-  method: 'PATCH',
-  body: JSON.stringify({ status: newStatus, notes: `Status changed to ${newStatus}` }),
-  headers: { 'Content-Type': 'application/json' },
-})
+    const response = await debugFetch(`/api/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: newStatus, notes: `Status changed to ${newStatus}` }),
+      headers: { 'Content-Type': 'application/json' },
+    })
 
-// `debugFetch` returns a Response object — parse JSON here:
-const raw = await response.json()
+    // Parse JSON from the response
+    const raw = await response.json()
 
-console.log('[DEBUG] PATCH response for', orderId, raw)
+    console.log('[DEBUG] PATCH response for', orderId, raw)
 
-if (!raw || typeof raw !== 'object') {
-  throw new Error('Invalid response from server.')
-}
+    if (!raw || typeof raw !== 'object') {
+      throw new Error('Invalid response from server.')
+    }
 
     if ('error' in raw) {
       throw new Error(raw.error)
