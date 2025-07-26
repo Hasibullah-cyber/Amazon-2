@@ -66,7 +66,7 @@ export default function OrdersPage() {
       setUpdating(orderId)
       
       const response = await debugFetch(`/api/admin/orders/${orderId}/status`, {
-  method: "POST",
+  method: 'PATCH', // NOT 'PUT' or 'POST'
   body: JSON.stringify({ status: "delivered", notes: "Delivered successfully" }),
   headers: { "Content-Type": "application/json" }
 })
