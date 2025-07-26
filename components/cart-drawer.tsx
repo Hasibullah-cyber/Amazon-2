@@ -5,8 +5,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
 import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/components/auth-provider" // ✅ Add this
-import { useRouter } from "next/navigation" // ✅ Add this
+import { useAuth } from "@/components/auth-provider"
 
 interface CartDrawerProps {
   open: boolean
@@ -16,26 +15,33 @@ interface CartDrawerProps {
 export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const { cartItems, removeFromCart, updateQuantity, clearCart, totalPrice } = useCart()
   const { toast } = useToast()
-  const { user } = useAuth() // ✅ Check if user is signed in
-  const router = useRouter()
+  const { user, openSignIn } = useAuth()
 
+  // Function triggered when "Proceed to Checkout" button is clicked
   const handleCheckout = () => {
     if (!user) {
-      router.push("/login?callbackUrl=/checkout/payment") // ✅ redirect to login first
-    } else {
-      router.push("/checkout/payment") // ✅ proceed to payment
+      // If user is not logged in, open the login modal window
+      openSignIn()
+      return
     }
-    onClose()
+
+    // If user is logged in, redirect to the checkout payment page
+    window.location.href = "/checkout/payment"
+    onClose() // Close the cart drawer
   }
 
+  // Don't render anything if the cart drawer is not open
   if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
+      {/* Background overlay */}
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
+      {/* Right sliding cart drawer */}
       <div className="absolute inset-y-0 right-0 w-full max-w-md flex">
         <div className="relative w-full bg-white flex flex-col overflow-y-auto">
+          {/* Header */}
           <div className="flex items-center justify-between p-4 bg-[#232f3e] text-white">
             <h2 className="text-xl font-bold">Shopping Cart</h2>
             <Button variant="ghost" size="icon" onClick={onClose} className="text-white">
@@ -44,8 +50,10 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
             </Button>
           </div>
 
+          {/* Cart content */}
           <div className="flex-1 overflow-y-auto p-4">
             {cartItems.length === 0 ? (
+              // Message for empty cart
               <div className="text-center py-8">
                 <p className="text-gray-500">Your Amazon Cart is empty</p>
                 <Button className="amazon-button mt-4" onClick={onClose}>
@@ -60,6 +68,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                 <ul className="divide-y">
                   {cartItems.map((item) => (
                     <li key={item.id} className="py-4 flex">
+                      {/* Product image */}
                       <div className="h-24 w-24 flex-shrink-0 overflow-hidden border border-gray-200">
                         <Image
                           src={item.image || "/placeholder.svg"}
@@ -70,16 +79,20 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                         />
                       </div>
 
+                      {/* Product details */}
                       <div className="ml-4 flex flex-1 flex-col">
                         <div>
                           <div className="flex justify-between">
                             <h3 className="text-sm font-medium text-gray-900">{item.name}</h3>
-                            <p className="ml-4 amazon-price">৳{(item.price * item.quantity).toFixed(2)}</p>
+                            <p className="ml-4 amazon-price">
+                              ৳{(item.price * item.quantity).toFixed(2)}
+                            </p>
                           </div>
                           <p className="mt-1 text-xs text-gray-500">৳{item.price.toFixed(2)} each</p>
                           <p className="mt-1 text-xs text-[#007600]">In Stock</p>
                         </div>
 
+                        {/* Quantity and delete controls */}
                         <div className="flex flex-1 items-end justify-between text-sm">
                           <div className="flex items-center border rounded-md border-gray-300">
                             <Button
@@ -121,10 +134,13 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
             )}
           </div>
 
+          {/* Checkout summary */}
           {cartItems.length > 0 && (
             <div className="border-t border-gray-200 p-4 space-y-4 bg-gray-50">
               <div className="flex justify-between text-base font-medium text-gray-900">
-                <p>Subtotal ({cartItems.reduce((total, item) => total + item.quantity, 0)} items)</p>
+                <p>
+                  Subtotal ({cartItems.reduce((total, item) => total + item.quantity, 0)} items)
+                </p>
                 <p className="amazon-price">৳{totalPrice.toFixed(2)}</p>
               </div>
               <div className="flex justify-between text-sm text-gray-500">
@@ -136,6 +152,8 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                 <p className="amazon-price">৳{(totalPrice * 1.1).toFixed(2)}</p>
               </div>
               <p className="text-sm text-gray-500">Shipping calculated at checkout.</p>
+
+              {/* Checkout button */}
               <div className="grid gap-3">
                 <Button className="amazon-button w-full py-2" onClick={handleCheckout}>
                   Proceed to Checkout
