@@ -87,12 +87,12 @@ const handleStatusChange = async (orderId: string, newStatus: string) => {
       throw new Error(`Server returned HTTP ${response.status}`)
     }
 
-    if (!data.status) {
-      throw new Error('No "status" field found in response JSON')
+    if (!data.order || !data.order.status) {
+      throw new Error('No "order.status" field found in response JSON')
     }
 
-    if (data.status !== newStatus) {
-      throw new Error(`Unexpected order status in response. Expected "${newStatus}", got "${data.status}"`)
+    if (data.order.status !== newStatus) {
+      throw new Error(`Unexpected order status in response. Expected "${newStatus}", got "${data.order.status}"`)
     }
 
     console.log('✅ Order status updated successfully')
