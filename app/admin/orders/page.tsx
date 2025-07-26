@@ -1,5 +1,5 @@
 "use client"
-
+import { debugFetch } from "@/lib/debugFetch"
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -65,13 +65,11 @@ export default function OrdersPage() {
     try {
       setUpdating(orderId)
       
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      })
+      const response = await debugFetch(`/api/admin/orders/${orderId}/status`, {
+  method: "POST",
+  body: JSON.stringify({ status: "delivered", notes: "Delivered successfully" }),
+  headers: { "Content-Type": "application/json" }
+})
 
       if (response.ok) {
         await storeManager.refresh()
