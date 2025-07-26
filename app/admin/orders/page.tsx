@@ -71,11 +71,12 @@ export default function OrdersPage() {
         headers: { "Content-Type": "application/json" }
       })
 
-      if (response.ok) {
+      const data = await response.json()
+      if (response.ok && data.success) {
         await storeManager.refresh()
         console.log('Order status updated successfully')
       } else {
-        throw new Error('Failed to update order status')
+        throw new Error(data.error || 'Failed to update order status')
       }
     } catch (error) {
       console.error('Failed to update order status:', error)
@@ -204,7 +205,7 @@ export default function OrdersPage() {
                 <div className="flex items-center space-x-2">
                   <select
                     value={order.status}
-                    onChange={(e) => handleStatusChange(order.orderId, e.target.value)}  // <-- Use order.orderId here
+                    onChange={(e) => handleStatusChange(order.orderId, e.target.value)}
                     disabled={updating === order.orderId}
                     className="border rounded-md px-2 py-1 text-sm"
                   >
@@ -227,7 +228,7 @@ export default function OrdersPage() {
                     onClick={async () => {
                       if (confirm('Are you sure you want to delete this order?')) {
                         try {
-                          const response = await fetch(`/api/admin/orders/${order.orderId}`, {  // <-- Use order.orderId here
+                          const response = await fetch(`/api/admin/orders/${order.orderId}`, {
                             method: 'DELETE'
                           })
                           if (response.ok) {
@@ -330,4 +331,4 @@ export default function OrdersPage() {
       )}
     </div>
   )
-          }
+                    }
