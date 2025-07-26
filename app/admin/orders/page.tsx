@@ -32,14 +32,12 @@ export default function OrdersPage() {
       }
     }
 
-    // Subscribe to real-time updates
     const unsubscribe = storeManager.subscribe((state) => {
       setOrders(state.orders)
       filterOrders(state.orders, searchTerm, statusFilter)
     })
 
     loadOrders()
-
     return unsubscribe
   }, [searchTerm, statusFilter])
 
@@ -47,7 +45,7 @@ export default function OrdersPage() {
     let filtered = ordersList
 
     if (search) {
-      filtered = filtered.filter(order => 
+      filtered = filtered.filter(order =>
         order.orderId.toLowerCase().includes(search.toLowerCase()) ||
         order.customerName.toLowerCase().includes(search.toLowerCase()) ||
         order.customerPhone.includes(search)
@@ -64,15 +62,14 @@ export default function OrdersPage() {
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
       setUpdating(orderId)
-      
-      const response = await debugFetch(`/api/admin/orders/${orderId}`, {
+
+      const data = await debugFetch(`/api/admin/orders/${orderId}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: newStatus, notes: `Status changed to ${newStatus}` }),
         headers: { "Content-Type": "application/json" }
       })
 
-      const data = await response.json()
-      if (response.ok && data.success) {
+      if (data.success) {
         await storeManager.refresh()
         console.log('Order status updated successfully')
       } else {
@@ -114,6 +111,7 @@ export default function OrdersPage() {
 
   return (
     <div className="p-6">
+      {/* HEADER */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Orders Management</h1>
         <Button onClick={handleRefresh} variant="outline" size="sm">
@@ -122,7 +120,7 @@ export default function OrdersPage() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
+      {/* STATS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card className="p-4">
           <h3 className="text-sm font-medium text-gray-600">Total Orders</h3>
@@ -148,7 +146,7 @@ export default function OrdersPage() {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* FILTERS */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -176,6 +174,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
+      {/* ORDER LIST */}
       {loading ? (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -215,31 +214,23 @@ export default function OrdersPage() {
                     <option value="delivered">Delivered</option>
                     <option value="cancelled">Cancelled</option>
                   </select>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedOrder(order)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
                     <Eye className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={async () => {
-                      if (confirm('Are you sure you want to delete this order?')) {
-                        try {
-                          const response = await fetch(`/api/admin/orders/${order.orderId}`, {
-                            method: 'DELETE'
-                          })
-                          if (response.ok) {
-                            await storeManager.refresh()
-                          }
-                        } catch (error) {
-                          console.error('Error deleting order:', error)
+                  <Button variant="destructive" size="sm" onClick={async () => {
+                    if (confirm('Are you sure you want to delete this order?')) {
+                      try {
+                        const response = await fetch(`/api/admin/orders/${order.orderId}`, {
+                          method: 'DELETE'
+                        })
+                        if (response.ok) {
+                          await storeManager.refresh()
                         }
+                      } catch (error) {
+                        console.error('Error deleting order:', error)
                       }
-                    }}
-                  >
+                    }
+                  }}>
                     Delete
                   </Button>
                 </div>
@@ -254,7 +245,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Order Details Modal */}
+      {/* MODAL */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <Card className="max-w-2xl w-full max-h-[80vh] overflow-y-auto">
@@ -265,7 +256,7 @@ export default function OrdersPage() {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -331,4 +322,4 @@ export default function OrdersPage() {
       )}
     </div>
   )
-                    }
+}
