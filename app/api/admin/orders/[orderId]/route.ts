@@ -1,134 +1,166 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { pool } from '@/lib/database'
+import { NextRequest, NextResponse } from "next/server"
+import { pool } from "@/lib/database"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-
-// ✅ GET — Admin fetch order by ID
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: { orderId: string } }
-) {
-  const { orderId } = params
-  console.log('[GET] Fetching order by ID:', orderId)
-
-  if (!orderId) {
-    console.log('[GET] Missing orderId in params')
-    return NextResponse.json({ error: 'Missing orderId' }, { status: 400 })
-  }
-
-  let client
+// Helper to parse JSON safely
+async function parseJsonBody(req: NextRequest) {
   try {
-    client = await pool.connect()
-    console.log('[GET] DB client acquired')
-
-    const result = await client.query(
-      `
-      SELECT
-        o.*,
-        (
-          SELECT json_agg(json_build_object(
-            'product_id', i.product_id,
-            'quantity', i.quantity,
-            'unit_price', i.unit_price
-          )) FROM order_items i
-          WHERE i.order_id = o.order_id
-        ) AS items
-      FROM orders o
-      WHERE o.order_id = $1
-      `,
-      [orderId]
-    )
-
-    if (result.rows.length === 0) {
-      console.log('[GET] No order found with ID:', orderId)
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
-    }
-
-    console.log('[GET] Order retrieved successfully:', result.rows[0])
-    return NextResponse.json(result.rows[0])
-  } catch (err: any) {
-    console.error('[GET] Error fetching order:', err.message)
-    return NextResponse.json({ error: 'Database error', details: err.message }, { status: 500 })
-  } finally {
-    client?.release()
-    console.log('[GET] DB client released')
+    return await req.json()
+  } catch (error) {
+    return null
   }
 }
 
-// ✅ PUT — Admin updates order status
-export async function PUT(
-  request: NextRequest,
+export async function GET(
+  req: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
   const { orderId } = params
-  console.log('[PUT] Attempting to update order:', orderId)
+  console.log("🔍 [GET] Admin fetch order:", orderId)
 
   if (!orderId) {
-    console.log('[PUT] Missing orderId in params')
-    return NextResponse.json({ error: 'Missing orderId' }, { status: 400 })
-  }
-
-  let payload: { status?: string; notes?: string; updatedBy?: string }
-  try {
-    payload = await request.json()
-    console.log('[PUT] Received payload:', payload)
-  } catch (err) {
-    console.error('[PUT] Invalid JSON payload')
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
-
-  const { status, notes, updatedBy = 'admin' } = payload
-
-  const allowedStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
-  if (!status || !allowedStatuses.includes(status)) {
-    console.log('[PUT] Invalid or missing status:', status)
-    return NextResponse.json({ error: `Invalid status. Must be one of: ${allowedStatuses.join(', ')}` }, { status: 400 })
+    console.error("❌ [GET] Missing orderId in params")
+    return NextResponse.json({ error: "Missing orderId" }, { status: 400 })
   }
 
   let client
   try {
     client = await pool.connect()
-    console.log('[PUT] DB client acquired')
-    await client.query('BEGIN')
-    console.log('[PUT] Transaction started')
+    console.log("✅ [GET] DB client connected")
 
-    const updated = await client.query(
+    const result = await client.query(`SELECT * FROM orders WHERE order_id = $1`, [orderId])
+    console.log("📦 [GET] Query result rowCount:", result.rowCount)
+
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({ order: result.rows[0] })
+  } catch (error) {
+    console.error("🔥 [GET] DB error:", error)
+    return NextResponse.json({ error: "Failed to fetch order", details: error.message }, { status: 500 })
+  } finally {
+    client?.release()
+    console.log("🔓 [GET] DB client released")
+  }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { orderId: string } }
+) {
+  const { orderId } = params
+  console.log("✏️ [PATCH] Admin update order:", orderId)
+
+  if (!orderId) {
+    console.error("❌ [PATCH] Missing orderId in params")
+    return NextResponse.json({ error: "Missing orderId" }, { status: 400 })
+  }
+
+  const data = await parseJsonBody(req)
+  if (!data) {
+    console.error("❌ [PATCH] Invalid JSON body")
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+  }
+
+  // Example: only allow updating status for now
+  const { status, notes } = data
+  if (!status) {
+    console.error("❌ [PATCH] Missing 'status' field in body")
+    return NextResponse.json({ error: "Missing 'status' field" }, { status: 400 })
+  }
+
+  let client
+  try {
+    client = await pool.connect()
+    console.log("✅ [PATCH] DB client connected")
+
+    // Fetch order to check existence
+    const orderRes = await client.query(`SELECT * FROM orders WHERE order_id = $1`, [orderId])
+    if (orderRes.rowCount === 0) {
+      console.warn(`⚠️ [PATCH] Order not found: ${orderId}`)
+      return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    }
+    const oldStatus = orderRes.rows[0].status
+
+    await client.query("BEGIN")
+    console.log("🔄 [PATCH] Transaction started")
+
+    // Update order status and updated_at timestamp
+    const updateRes = await client.query(
       `UPDATE orders SET status = $1, updated_at = NOW() WHERE order_id = $2 RETURNING *`,
       [status, orderId]
     )
+    console.log(`📊 [PATCH] Order update affected rows: ${updateRes.rowCount}`)
 
-    if (updated.rowCount === 0) {
-      console.log('[PUT] No order found with ID:', orderId)
-      await client.query('ROLLBACK')
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
-    }
-
-    console.log('[PUT] Order status updated:', updated.rows[0])
-
+    // Insert into order_status_history
     await client.query(
       `INSERT INTO order_status_history (order_id, status, notes, created_by, created_at)
        VALUES ($1, $2, $3, $4, NOW())`,
-      [orderId, status, notes || `Status changed to ${status}`, updatedBy]
+      [orderId, status, notes || `Status changed from ${oldStatus} to ${status}`, "admin"]
     )
-    console.log('[PUT] Status history inserted')
+    console.log("✅ [PATCH] Inserted status history record")
 
-    await client.query('COMMIT')
-    console.log('[PUT] Transaction committed')
+    await client.query("COMMIT")
+    console.log("✅ [PATCH] Transaction committed")
 
-    return NextResponse.json({ success: true, order: updated.rows[0] })
-  } catch (err: any) {
-    console.error('[PUT] Error during update:', err.message)
-    await client?.query('ROLLBACK')
-    return NextResponse.json({ error: 'Update failed', details: err.message }, { status: 500 })
+    return NextResponse.json({ success: true, order: updateRes.rows[0] })
+  } catch (error) {
+    await client?.query("ROLLBACK")
+    console.error("🔥 [PATCH] DB transaction error, rolled back:", error)
+    return NextResponse.json({ error: "Failed to update order", details: error.message }, { status: 500 })
   } finally {
     client?.release()
-    console.log('[PUT] DB client released')
+    console.log("🔓 [PATCH] DB client released")
   }
 }
 
-// ❌ DELETE — Block deleting orders
-export async function DELETE() {
-  console.log('[DELETE] Attempt to delete order — Not allowed')
-  return NextResponse.json({ error: 'Deleting orders is not allowed' }, { status: 405 })
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { orderId: string } }
+) {
+  const { orderId } = params
+  console.log("🗑️ [DELETE] Admin delete order:", orderId)
+
+  if (!orderId) {
+    console.error("❌ [DELETE] Missing orderId in params")
+    return NextResponse.json({ error: "Missing orderId" }, { status: 400 })
+  }
+
+  let client
+  try {
+    client = await pool.connect()
+    console.log("✅ [DELETE] DB client connected")
+
+    // Check if order exists
+    const orderRes = await client.query(`SELECT * FROM orders WHERE order_id = $1`, [orderId])
+    if (orderRes.rowCount === 0) {
+      console.warn(`⚠️ [DELETE] Order not found: ${orderId}`)
+      return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    }
+
+    await client.query("BEGIN")
+    console.log("🔄 [DELETE] Transaction started")
+
+    // Delete related order_status_history records first (if FK constraints require)
+    await client.query(`DELETE FROM order_status_history WHERE order_id = $1`, [orderId])
+    console.log("🗑️ [DELETE] Deleted order status history records")
+
+    // Delete the order
+    const deleteRes = await client.query(`DELETE FROM orders WHERE order_id = $1`, [orderId])
+    console.log(`🗑️ [DELETE] Deleted order rows count: ${deleteRes.rowCount}`)
+
+    await client.query("COMMIT")
+    console.log("✅ [DELETE] Transaction committed")
+
+    return NextResponse.json({ success: true, message: "Order deleted successfully" })
+  } catch (error) {
+    await client?.query("ROLLBACK")
+    console.error("🔥 [DELETE] DB transaction error, rolled back:", error)
+    return NextResponse.json({ error: "Failed to delete order", details: error.message }, { status: 500 })
+  } finally {
+    client?.release()
+    console.log("🔓 [DELETE] DB client released")
+  }
 }
