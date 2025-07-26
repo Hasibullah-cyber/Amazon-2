@@ -59,29 +59,39 @@ export default function OrdersPage() {
     setFilteredOrders(filtered)
   }
 
-  const handleStatusChange = async (orderId: string, newStatus: string) => {
-    try {
-      setUpdating(orderId)
+const handleStatusChange = async (orderId: string, newStatus: string) => {
+  try {
+    setUpdating(orderId)
 
-      const data = await debugFetch(`/api/admin/orders/${orderId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: newStatus, notes: `Status changed to ${newStatus}` }),
-        headers: { "Content-Type": "application/json" }
-      })
+    const response = await debugFetch(`/api/admin/orders/${orderId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: newStatus, notes: `Status changed to ${newStatus}` }),
+      headers: { 'Content-Type': 'application/json' },
+    })
 
-      if (data.success) {
-        await storeManager.refresh()
-        console.log('Order status updated successfully')
-      } else {
-        throw new Error(data.error || 'Failed to update order status')
-      }
-    } catch (error) {
-      console.error('Failed to update order status:', error)
-      alert('Failed to update order status. Please try again.')
-    } finally {
-      setUpdating(null)
+    console.log('[DEBUG] PATCH response for', orderId, response)
+
+    if (!response || typeof response !== 'object') {
+      throw new Error('Invalid response from server.')
     }
+
+    if ('error' in response) {
+      throw new Error(response.error)
+    }
+
+    if (!response.status || response.status !== newStatus) {
+      throw new Error(`Unexpected status returned. Expected "${newStatus}", got "${response.status}"`)
+    }
+
+    await storeManager.refresh()
+    console.log('✅ Order status updated successfully')
+  } catch (error) {
+    console.error('❌ Failed to update order status:', error)
+    alert(`Failed to update order status: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  } finally {
+    setUpdating(null)
   }
+}
 
   const handleRefresh = async () => {
     await storeManager.refresh()
