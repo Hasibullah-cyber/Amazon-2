@@ -1,5 +1,5 @@
 "use client"
-
+import debugFetch from "@/lib/debugFetch"
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -59,31 +59,45 @@ export default function OrdersPage() {
   setFilteredOrders(filtered)
 }
 
+
 const handleStatusChange = async (orderId: string, newStatus: string) => {
   try {
     setUpdating(orderId)
 
+    console.log(`➡️ Sending PATCH to update order ${orderId} status to "${newStatus}"`)
+
     const response = await fetch(`/api/admin/orders/${orderId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        status: newStatus,
-        notes: `Status changed to ${newStatus}`
-      }),
+      body: JSON.stringify({ status: newStatus, notes: `Status changed to ${newStatus}` }),
     })
 
+    console.log(`⬅️ Received response with status: ${response.status}`)
+
+    let data
+    try {
+      data = await response.json()
+      console.log('⬅️ Response JSON:', JSON.stringify(data, null, 2))
+    } catch (jsonError) {
+      console.error('❌ Failed to parse JSON from response:', jsonError)
+      throw new Error('Invalid JSON response from server')
+    }
+
     if (!response.ok) {
-      throw new Error(`Server responded with status ${response.status}`)
+      throw new Error(`Server returned HTTP ${response.status}`)
     }
 
-    const data = await response.json()
-
-    if (!data.status || data.status !== newStatus) {
-      throw new Error(`Unexpected status returned. Expected "${newStatus}", got "${data.status}"`)
+    if (!data.status) {
+      throw new Error('No "status" field found in response JSON')
     }
+
+    if (data.status !== newStatus) {
+      throw new Error(`Unexpected order status in response. Expected "${newStatus}", got "${data.status}"`)
+    }
+
+    console.log('✅ Order status updated successfully')
 
     await storeManager.refresh()
-    console.log('✅ Order status updated successfully')
   } catch (error) {
     console.error('❌ Failed to update order status:', error)
     alert(`Failed to update order status: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -91,7 +105,7 @@ const handleStatusChange = async (orderId: string, newStatus: string) => {
     setUpdating(null)
   }
 }
-
+  
   const handleRefresh = async () => {
     await storeManager.refresh()
   }
