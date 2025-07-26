@@ -66,10 +66,10 @@ export default function OrdersPage() {
       setUpdating(orderId)
       
       const response = await debugFetch(`/api/admin/orders/${orderId}`, {
-  method: 'PATCH',
-  body: JSON.stringify({ status: "delivered", notes: "Delivered successfully" }),
-  headers: { "Content-Type": "application/json" }
-})
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus, notes: `Status changed to ${newStatus}` }),
+        headers: { "Content-Type": "application/json" }
+      })
 
       if (response.ok) {
         await storeManager.refresh()
@@ -204,8 +204,8 @@ export default function OrdersPage() {
                 <div className="flex items-center space-x-2">
                   <select
                     value={order.status}
-                    onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                    disabled={updating === order.id}
+                    onChange={(e) => handleStatusChange(order.orderId, e.target.value)}  // <-- Use order.orderId here
+                    disabled={updating === order.orderId}
                     className="border rounded-md px-2 py-1 text-sm"
                   >
                     <option value="pending">Pending</option>
@@ -227,7 +227,7 @@ export default function OrdersPage() {
                     onClick={async () => {
                       if (confirm('Are you sure you want to delete this order?')) {
                         try {
-                          const response = await fetch(`/api/admin/orders/${order.id}`, {
+                          const response = await fetch(`/api/admin/orders/${order.orderId}`, {  // <-- Use order.orderId here
                             method: 'DELETE'
                           })
                           if (response.ok) {
@@ -330,4 +330,4 @@ export default function OrdersPage() {
       )}
     </div>
   )
-                                             }
+          }
