@@ -63,24 +63,24 @@ const handleStatusChange = async (orderId: string, newStatus: string) => {
   try {
     setUpdating(orderId)
 
-    const response = await debugFetch(`/api/admin/orders/${orderId}`, {
+    const raw = await debugFetch(`/api/admin/orders/${orderId}`, {
       method: 'PATCH',
       body: JSON.stringify({ status: newStatus, notes: `Status changed to ${newStatus}` }),
       headers: { 'Content-Type': 'application/json' },
     })
 
-    console.log('[DEBUG] PATCH response for', orderId, response)
+    console.log('[DEBUG] PATCH response for', orderId, raw)
 
-    if (!response || typeof response !== 'object') {
+    if (!raw || typeof raw !== 'object') {
       throw new Error('Invalid response from server.')
     }
 
-    if ('error' in response) {
-      throw new Error(response.error)
+    if ('error' in raw) {
+      throw new Error(raw.error)
     }
 
-    if (!response.status || response.status !== newStatus) {
-      throw new Error(`Unexpected status returned. Expected "${newStatus}", got "${response.status}"`)
+    if (!raw.status || raw.status !== newStatus) {
+      throw new Error(`Unexpected order status returned. Expected "${newStatus}", got "${raw.status}"`)
     }
 
     await storeManager.refresh()
