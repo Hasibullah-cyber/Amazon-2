@@ -62,28 +62,26 @@ export default function OrdersPage() {
 const handleStatusChange = async (orderId: string, newStatus: string) => {
   try {
     setUpdating(orderId)
-    
-    const response = await debugFetch(`/api/admin/orders/${orderId}`, {
+
+    const responseData = await debugFetch(`/api/admin/orders/${orderId}`, {
       method: 'PATCH',
       body: JSON.stringify({ status: newStatus, notes: `Status changed to ${newStatus}` }),
       headers: { 'Content-Type': 'application/json' },
     })
 
-    // Parse JSON from the response
-    const raw = await response.json()
+    console.log('[DEBUG] PATCH response for', orderId, responseData)
 
-    console.log('[DEBUG] PATCH response for', orderId, raw)
-
-    if (!raw || typeof raw !== 'object') {
+    // ✅ No need to call .json() here — responseData is already parsed JSON
+    if (!responseData || typeof responseData !== 'object') {
       throw new Error('Invalid response from server.')
     }
 
-    if ('error' in raw) {
-      throw new Error(raw.error)
+    if ('error' in responseData) {
+      throw new Error(responseData.error)
     }
 
-    if (!raw.status || raw.status !== newStatus) {
-      throw new Error(`Unexpected order status returned. Expected "${newStatus}", got "${raw.status}"`)
+    if (!responseData.status || responseData.status !== newStatus) {
+      throw new Error(`Unexpected status returned. Expected "${newStatus}", got "${responseData.status}"`)
     }
 
     await storeManager.refresh()
