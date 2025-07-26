@@ -1,6 +1,8 @@
-import './globals.css'
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+"use client"
+
+import "./globals.css"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
 import { CartProvider } from "@/components/cart-provider"
 import { WishlistProvider } from "@/components/wishlist-provider"
 import { AuthProvider } from "@/components/auth-provider"
@@ -12,7 +14,9 @@ import Navbar from "@/components/navbar"
 import AIChatAssistant from "@/components/ai-chat-assistant"
 import { cn } from "@/lib/utils"
 import "@/lib/test-data"
-import Footer from "@/components/footer" // Assuming Footer component exists
+import Footer from "@/components/footer"
+import { useEffect } from "react"
+import { setupFrontendErrorLogger } from "@/lib/debugClient"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -26,6 +30,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  useEffect(() => {
+    setupFrontendErrorLogger()
+  }, [])
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={cn(inter.className, "antialiased min-h-screen flex flex-col")}>
