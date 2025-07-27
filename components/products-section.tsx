@@ -1,5 +1,4 @@
 "use client"
-
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -8,6 +7,10 @@ import Link from "next/link"
 import { useCart } from "@/components/cart-provider"
 import { useWishlist } from "./wishlist-provider"
 import { storeManager, type Product } from "@/lib/store"
+import Image from "next/image"
+
+// Placeholder image URL
+const FALLBACK_IMAGE = "/placeholder.svg?height=300&width=300"
 
 const sampleProducts: Product[] = [
   {
@@ -16,7 +19,7 @@ const sampleProducts: Product[] = [
     price: 199.99,
     stock: 50,
     category: "electronics",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/headphones.jpg",
     description: "Immersive sound quality with noise cancellation technology.",
     rating: 4.5,
     reviews: 128
@@ -27,7 +30,7 @@ const sampleProducts: Product[] = [
     price: 79.99,
     stock: 30,
     category: "fashion",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/sunglasses.jpg",
     description: "Protect your eyes with style and elegance.",
     rating: 4.0,
     reviews: 85
@@ -38,7 +41,7 @@ const sampleProducts: Product[] = [
     price: 34.99,
     stock: 100,
     category: "home-living",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/candles.jpg",
     description: "Set of 3 premium scented candles for a relaxing atmosphere.",
     rating: 4.7,
     reviews: 203
@@ -49,7 +52,7 @@ const sampleProducts: Product[] = [
     price: 129.99,
     stock: 25,
     category: "beauty",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/skincare.jpg",
     description: "Complete skincare routine with premium ingredients.",
     rating: 4.2,
     reviews: 156
@@ -58,7 +61,7 @@ const sampleProducts: Product[] = [
 
 export default function ProductsSection() {
   const [products, setProducts] = useState<Product[]>(sampleProducts)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { addToCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
@@ -67,21 +70,22 @@ export default function ProductsSection() {
     const loadProducts = async () => {
       try {
         setLoading(true)
-        console.log('ProductsSection: Loading products...')
         const allProducts = await storeManager.getProducts()
-        console.log('ProductsSection: Loaded', allProducts.length, 'products from store')
+        
         if (allProducts && allProducts.length > 0) {
           setProducts(allProducts)
+        } else {
+          setProducts(sampleProducts)
         }
       } catch (error) {
         console.error('Error loading products:', error)
-        setError('Failed to load products')
+        setError('Failed to load products. Showing sample products instead.')
+        setProducts(sampleProducts)
       } finally {
         setLoading(false)
       }
     }
 
-    // Subscribe to store changes to reflect admin updates
     const unsubscribe = storeManager.subscribe((state) => {
       if (state.products && state.products.length > 0) {
         setProducts(state.products)
@@ -90,15 +94,17 @@ export default function ProductsSection() {
 
     loadProducts()
 
-    return unsubscribe
+    return () => {
+      unsubscribe()
+    }
   }, [])
 
   const handleAddToCart = (product: Product) => {
     addToCart({
-      id: parseInt(product.id),
+      id: product.id,
       name: product.name,
       price: product.price,
-      image: product.image,
+      image: product.image || FALLBACK_IMAGE,
       quantity: 1
     })
   }
@@ -111,7 +117,7 @@ export default function ProductsSection() {
         id: product.id,
         name: product.name,
         price: product.price,
-        image: product.image,
+        image: product.image || FALLBACK_IMAGE,
         category: product.category
       })
     }
@@ -125,9 +131,18 @@ export default function ProductsSection() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-black mb-4">Featured Products</h2>
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">Loading products...</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+              {[...Array(4)].map((_, i) => (
+                <Card key={i} className="group hover:shadow-lg transition-shadow duration-300">
+                  <div className="aspect-square relative overflow-hidden rounded-t-lg bg-gray-200 animate-pulse" />
+                  <div className="p-4">
+                    <div className="h-6 bg-gray-200 rounded mb-3 w-3/4"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-3 w-full"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-3 w-1/2"></div>
+                    <div className="h-8 bg-gray-200 rounded mb-3 w-full"></div>
+                  </div>
+                </Card>
+              ))}
             </div>
           </div>
         </div>
@@ -154,16 +169,30 @@ export default function ProductsSection() {
           {productsToShow.map((product) => (
             <Card key={product.id} className="group hover:shadow-lg transition-shadow duration-300">
               <div className="aspect-square relative overflow-hidden rounded-t-lg">
-                <img
-                  src={product.image}
+                <Image
+                  src={product.image || FALLBACK_IMAGE}
                   alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = FALLBACK_IMAGE;
+                  }}
                 />
-                {product.stock && product.stock < 10 && (
+                {product.stock !== undefined && product.stock < 10 && product.stock > 0 && (
                   <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs">
                     Low Stock
                   </div>
                 )}
+                <button
+                  onClick={() => handleWishlistToggle(product)}
+                  className="absolute top-2 right-2 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-colors"
+                  aria-label={isInWishlist(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                >
+                  <Heart 
+                    className={`h-5 w-5 ${isInWishlist(product.id) ? "text-red-500 fill-current" : "text-gray-600"}`} 
+                  />
+                </button>
               </div>
               <div className="p-4">
                 <h3 className="font-semibold text-lg mb-2 line-clamp-2">{product.name}</h3>
@@ -183,7 +212,7 @@ export default function ProductsSection() {
                     ))}
                   </div>
                   <span className="text-sm text-gray-600 ml-2">
-                    ({product.reviews || 0})
+                    ({product.reviews?.toLocaleString() || 0})
                   </span>
                 </div>
 
@@ -191,10 +220,16 @@ export default function ProductsSection() {
                   <span className="text-2xl font-bold text-blue-600">
                     ৳{product.price.toFixed(2)}
                   </span>
-                  {product.stock && (
-                    <span className="text-sm text-gray-500 flex items-center">
+                  {product.stock !== undefined && (
+                    <span className={`text-sm flex items-center ${
+                      product.stock === 0 
+                        ? "text-red-500" 
+                        : product.stock < 10 
+                          ? "text-orange-500" 
+                          : "text-gray-500"
+                    }`}>
                       <Package className="h-4 w-4 mr-1" />
-                      {product.stock} left
+                      {product.stock === 0 ? 'Out of stock' : `${product.stock} left`}
                     </span>
                   )}
                 </div>
