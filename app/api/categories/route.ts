@@ -23,46 +23,35 @@ export async function GET() {
       return NextResponse.json(cachedData);
     }
 
-    const { rows } = await pool.query<{
-      id: number;
-      name: string;
-      slug: string;
-      description: string | null;
-      subcategories: Array<{
-        id: number;
-        name: string;
-        slug: string;
-        description: string | null;
-        productCount: number;
-      }>;
-    }>(`
-      SELECT 
-        c.id,
-        c.name,
-        c.slug,
-        c.description,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', s.id,
-              'name', s.name,
-              'slug', s.slug,
-              'description', s.description,
-              'productCount', COALESCE(pc.count, 0)
-            ) FILTER (WHERE s.id IS NOT NULL),
-          '[]'
-        ) AS subcategories
-      FROM categories c
-      LEFT JOIN subcategories s ON s.category_id = c.id
-      LEFT JOIN (
-        SELECT subcategory_id, COUNT(*) AS count
-        FROM products
-        WHERE is_active = true
-        GROUP BY subcategory_id
-      ) pc ON pc.subcategory_id = s.id
-      GROUP BY c.id
-      ORDER BY c.name
-    `);
+    const { rows } = await pool.query(`
+  SELECT 
+    c.id,
+    c.name,
+    c.slug,
+    c.description,
+    COALESCE(
+      json_agg(
+        json_build_object(
+          'id', s.id,
+          'name', s.name,
+          'slug', s.slug,
+          'description', s.description,
+          'productCount', COALESCE(pc.count, 0)
+        )
+      ) FILTER (WHERE s.id IS NOT NULL), 
+      '[]'
+    ) AS subcategories
+  FROM categories c
+  LEFT JOIN subcategories s ON s.category_id = c.id
+  LEFT JOIN (
+    SELECT subcategory_id, COUNT(*) AS count
+    FROM products
+    WHERE is_active = true
+    GROUP BY subcategory_id
+  ) pc ON pc.subcategory_id = s.id
+  GROUP BY c.id
+  ORDER BY c.name;
+`)
 
     try {
       await kv.set(CATEGORIES_CACHE_KEY, rows);
