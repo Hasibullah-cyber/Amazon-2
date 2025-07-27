@@ -1,23 +1,18 @@
 // app/api/subcategories/[slug]/route.ts
-
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
 export const dynamic = 'force-dynamic'
 
-interface Subcategory {
-  id: number
-  name: string
-  slug: string
-  description: string | null
+interface QueryResult {
+  subcategory_id: number
+  subcategory_name: string
+  subcategory_slug: string
+  subcategory_description: string | null
   category_id: number
-}
-
-interface Category {
-  id: number
-  name: string
-  slug: string
-  description: string | null
+  category_name: string
+  category_slug: string
+  category_description: string | null
 }
 
 // GET /api/subcategories/[slug]
@@ -25,21 +20,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
-  try {
-    const { slug } = params
+  const { slug } = params
 
-    const result = await pool.query<{
-      subcategory_id: number
-      subcategory_name: string
-      subcategory_slug: string
-      subcategory_description: string | null
-      category_id: number
-      category_name: string
-      category_slug: string
-      category_description: string | null
-    }>(
-      `
-      SELECT 
+  try {
+    const { rows: [row] } = await pool.query<QueryResult>(
+      `SELECT 
         s.id AS subcategory_id,
         s.name AS subcategory_name,
         s.slug AS subcategory_slug,
@@ -49,21 +34,17 @@ export async function GET(
         c.slug AS category_slug,
         c.description AS category_description
       FROM subcategories s
-      LEFT JOIN categories c ON s.category_id = c.id
-      WHERE s.slug = $1
-      LIMIT 1
-      `,
+      INNER JOIN categories c ON s.category_id = c.id
+      WHERE s.slug = $1`,
       [slug]
     )
 
-    if (result.rows.length === 0) {
+    if (!row) {
       return NextResponse.json(
         { error: 'Subcategory not found' },
         { status: 404 }
       )
     }
-
-    const row = result.rows[0]
 
     return NextResponse.json({
       subcategory: {
@@ -84,9 +65,9 @@ export async function GET(
     return NextResponse.json(
       {
         error: 'Failed to fetch subcategory',
-        details: error instanceof Error ? error.message : String(error),
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )
   }
-  }
+}
