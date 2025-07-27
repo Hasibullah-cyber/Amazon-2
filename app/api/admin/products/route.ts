@@ -25,7 +25,7 @@ function validateProduct(data: any, isUpdate = false) {
   
   if (!isUpdate || data.price !== undefined) {
     if (data.price === undefined || data.price === null) errors.push('Price is required')
-    else if (isNaN(data.price) errors.push('Price must be a number')
+    else if (isNaN(data.price)) errors.push('Price must be a number')
     else if (data.price <= 0) errors.push('Price must be greater than 0')
   }
   
