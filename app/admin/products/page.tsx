@@ -70,13 +70,13 @@ export default function ProductsPage() {
       const term = searchTerm.toLowerCase()
       
       filtered = products.filter(p => {
-    return (
-        p.name.toLowerCase().includes(term) ||
-        p.id.toLowerCase().includes(term) ||
-        p.sku?.toLowerCase().includes(term)
-    );
-      }
-    
+  return (
+    p.name.toLowerCase().includes(term) ||
+    p.id.toLowerCase().includes(term) ||
+    p.sku?.toLowerCase().includes(term)
+  );
+});  // ✅ Added missing parenthesis
+      
     if (categoryFilter !== "all") {
       filtered = filtered.filter(p => p.categoryId === categoryFilter)
     }
