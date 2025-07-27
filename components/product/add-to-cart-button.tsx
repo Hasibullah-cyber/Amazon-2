@@ -1,4 +1,3 @@
-// components/product/add-to-cart-button.tsx
 "use client"
 import { Button } from "@/components/ui/button"
 import { ShoppingCart } from "lucide-react"
