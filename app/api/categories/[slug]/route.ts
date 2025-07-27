@@ -1,13 +1,11 @@
 // app/api/categories/[slug]/route.ts
-
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
-import { createClient } from '@vercel/kv'
 import { kv } from '@/lib/kv'
 
 export const dynamic = 'force-dynamic'
-export const revalidate = 3600 // Revalidate data every hour
 
+// Interfaces
 interface Category {
   id: number
   name: string
@@ -25,9 +23,7 @@ interface Subcategory {
 }
 
 // Cache key generator
-function getCacheKey(slug: string) {
-  return `category:${slug}`
-}
+const getCacheKey = (slug: string) => `category:${slug}`
 
 // GET /api/categories/[slug]
 export async function GET(
@@ -39,14 +35,21 @@ export async function GET(
   
   try {
     // Check cache first
-    const cachedData = await kv.get(cacheKey)
+    const cachedData = kv.get(cacheKey)
     if (cachedData) {
-      return NextResponse.json(cachedData)
+      return NextResponse.json(cachedData, {
+        headers: {
+          'X-Cache': 'HIT',
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+        }
+      })
     }
 
     // Get category by slug
     const categoryResult = await pool.query<Category>(
-      `SELECT id, name, slug, description FROM categories WHERE slug = $1 LIMIT 1`,
+      `SELECT id, name, slug, description 
+       FROM categories 
+       WHERE slug = $1`,
       [slug]
     )
 
@@ -69,8 +72,8 @@ export async function GET(
         s.category_id,
         COUNT(p.id) AS product_count
       FROM subcategories s
-      LEFT JOIN products p ON p.subcategory_id = s.id AND p.is_active = true
-      WHERE s.category_id = $1
+      LEFT JOIN products p ON p.subcategory_id = s.id
+      WHERE s.category_id = $1 AND p.is_active = true
       GROUP BY s.id
       ORDER BY s.name`,
       [category.id]
@@ -82,26 +85,32 @@ export async function GET(
     }
 
     // Cache the response
-    await kv.set(cacheKey, responseData, { ex: 3600 }) // Cache for 1 hour
+    kv.set(cacheKey, responseData)
 
-    return NextResponse.json(responseData)
+    return NextResponse.json(responseData, {
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+      }
+    })
   } catch (error) {
     console.error('Error fetching category by slug:', error)
     
-    // Try to return cached data if available
-    try {
-      const cachedData = await kv.get(cacheKey)
-      if (cachedData) {
-        return NextResponse.json(cachedData)
-      }
-    } catch (cacheError) {
-      console.error('Cache fallback failed:', cacheError)
+    // Fallback to cached data if available
+    const cachedData = kv.get(cacheKey)
+    if (cachedData) {
+      return NextResponse.json(cachedData, {
+        headers: {
+          'X-Cache': 'STALE',
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+        }
+      })
     }
 
     return NextResponse.json(
       {
         error: 'Failed to fetch category',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: 'Internal server error',
       },
       { status: 500 }
     )
@@ -117,16 +126,17 @@ export async function POST(
     const { slug } = params
     const { name, description } = await request.json()
 
-    if (!name) {
+    // Validate input
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
       return NextResponse.json(
-        { error: 'Name is required' },
+        { error: 'Valid name is required (min 2 characters)' },
         { status: 400 }
       )
     }
 
     // Get category ID
     const categoryResult = await pool.query(
-      `SELECT id FROM categories WHERE slug = $1 LIMIT 1`,
+      `SELECT id FROM categories WHERE slug = $1`,
       [slug]
     )
 
@@ -139,30 +149,40 @@ export async function POST(
 
     const categoryId = categoryResult.rows[0].id
 
-    // Create slug from name
+    // Generate slug from name
     const subcategorySlug = name
       .toLowerCase()
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, '')
+      .substring(0, 50) // Limit slug length
 
     // Insert new subcategory
     const insertResult = await pool.query(
       `INSERT INTO subcategories (name, slug, description, category_id)
        VALUES ($1, $2, $3, $4)
        RETURNING id, name, slug, description, category_id`,
-      [name, subcategorySlug, description, categoryId]
+      [name.trim(), subcategorySlug, description?.trim(), categoryId]
     )
 
     // Invalidate cache
-    await kv.del(getCacheKey(slug))
+    kv.delete(getCacheKey(slug))
 
     return NextResponse.json(insertResult.rows[0], { status: 201 })
   } catch (error) {
     console.error('Error creating subcategory:', error)
+    
+    // Handle unique constraint violation
+    if (error instanceof Error && error.message.includes('unique constraint')) {
+      return NextResponse.json(
+        { error: 'Subcategory with this name already exists' },
+        { status: 409 }
+      )
+    }
+
     return NextResponse.json(
       {
         error: 'Failed to create subcategory',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: 'Internal server error',
       },
       { status: 500 }
     )
@@ -178,18 +198,20 @@ export async function PATCH(
     const { slug } = params
     const { name, description } = await request.json()
 
-    if (!name) {
+    // Validate input
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
       return NextResponse.json(
-        { error: 'Name is required' },
+        { error: 'Valid name is required (min 2 characters)' },
         { status: 400 }
       )
     }
 
-    // Create new slug from name
+    // Generate new slug from name
     const newSlug = name
       .toLowerCase()
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, '')
+      .substring(0, 50) // Limit slug length
 
     // Update category
     const updateResult = await pool.query(
@@ -197,7 +219,7 @@ export async function PATCH(
        SET name = $1, slug = $2, description = $3
        WHERE slug = $4
        RETURNING id, name, slug, description`,
-      [name, newSlug, description, slug]
+      [name.trim(), newSlug, description?.trim(), slug]
     )
 
     if (updateResult.rowCount === 0) {
@@ -208,16 +230,25 @@ export async function PATCH(
     }
 
     // Invalidate cache for both old and new slugs
-    await kv.del(getCacheKey(slug))
-    await kv.del(getCacheKey(newSlug))
+    kv.delete(getCacheKey(slug))
+    kv.delete(getCacheKey(newSlug))
 
     return NextResponse.json(updateResult.rows[0])
   } catch (error) {
     console.error('Error updating category:', error)
+    
+    // Handle unique constraint violation
+    if (error instanceof Error && error.message.includes('unique constraint')) {
+      return NextResponse.json(
+        { error: 'Category with this name already exists' },
+        { status: 409 }
+      )
+    }
+
     return NextResponse.json(
       {
         error: 'Failed to update category',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: 'Internal server error',
       },
       { status: 500 }
     )
@@ -232,7 +263,7 @@ export async function DELETE(
   try {
     const { slug } = params
 
-    // First, get category ID
+    // Get category ID
     const categoryResult = await pool.query(
       `SELECT id FROM categories WHERE slug = $1`,
       [slug]
@@ -247,45 +278,38 @@ export async function DELETE(
 
     const categoryId = categoryResult.rows[0].id
 
-    // Check if category has subcategories
+    // Check for subcategories
     const subcategoriesResult = await pool.query(
-      `SELECT COUNT(*) FROM subcategories WHERE category_id = $1`,
+      `SELECT COUNT(*)::int AS count FROM subcategories WHERE category_id = $1`,
       [categoryId]
     )
 
     if (subcategoriesResult.rows[0].count > 0) {
       return NextResponse.json(
-        { error: 'Cannot delete category with subcategories' },
+        { 
+          error: 'Cannot delete category with subcategories',
+          subcategory_count: subcategoriesResult.rows[0].count
+        },
         { status: 400 }
       )
     }
 
     // Delete category
-    const deleteResult = await pool.query(
-      `DELETE FROM categories WHERE slug = $1 RETURNING id`,
-      [slug]
+    await pool.query(
+      `DELETE FROM categories WHERE id = $1`,
+      [categoryId]
     )
-
-    if (deleteResult.rowCount === 0) {
-      return NextResponse.json(
-        { error: 'Category not found' },
-        { status: 404 }
-      )
-    }
 
     // Invalidate cache
-    await kv.del(getCacheKey(slug))
+    kv.delete(getCacheKey(slug))
 
-    return NextResponse.json(
-      { message: 'Category deleted successfully' },
-      { status: 200 }
-    )
+    return new NextResponse(null, { status: 204 })
   } catch (error) {
     console.error('Error deleting category:', error)
     return NextResponse.json(
       {
         error: 'Failed to delete category',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        details: 'Internal server error',
       },
       { status: 500 }
     )
