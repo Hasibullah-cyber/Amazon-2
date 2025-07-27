@@ -205,23 +205,23 @@ export default function ProductsPage() {
   }
 
   const handleStockUpdate = async (id: string, newStock: number) => {
-    if (isNaN(newStock) return
-    
-    try {
-      setActiveProductId(id)
-      setIsStockUpdating(true)
-      await storeManager.updateProduct(id, { stock: newStock })
-      fetchData()
-      toast.success("Stock updated successfully")
-    } catch (err) {
-      toast.error("Stock update failed", {
-        description: "Please try again later"
-      })
-      console.error("Stock update failed:", err)
-    } finally {
-      setIsStockUpdating(false)
-      setActiveProductId(null)
-    }
+  if (isNaN(newStock)) return  // Added missing parenthesis here
+  
+  try {
+    setActiveProductId(id)
+    setIsStockUpdating(true)
+    await storeManager.updateProduct(id, { stock: newStock })
+    fetchData()
+    toast.success("Stock updated successfully")
+  } catch (err) {
+    toast.error("Stock update failed", {
+      description: "Please try again later"
+    })
+    console.error("Stock update failed:", err)
+  } finally {
+    setIsStockUpdating(false)
+    setActiveProductId(null)
+  }
   }
 
   const currentCategory = useMemo(() => 
