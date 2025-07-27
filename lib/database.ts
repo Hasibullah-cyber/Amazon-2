@@ -412,3 +412,6 @@ export async function checkDatabaseHealth() {
     return false
   }
 }
+
+// FIX: Add alias for initializeTables
+export const initializeTables = initializeDatabase;
