@@ -11,23 +11,30 @@ const CATEGORIES_CACHE_KEY = 'all_categories'
 export async function GET() {
   try {
     // Try to get cached data
-    const cachedData = await kv.get(CATEGORIES_CACHE_KEY)
+    let cachedData: any = null;
+    try {
+      cachedData = await kv.get(CATEGORIES_CACHE_KEY);
+    } catch (cacheErr) {
+      console.warn("[KV] Failed to get cached categories:", cacheErr);
+    }
+
     if (cachedData) {
-      return NextResponse.json(cachedData)
+      console.log("[KV] Returning cached categories");
+      return NextResponse.json(cachedData);
     }
 
     const { rows } = await pool.query<{
-      id: number
-      name: string
-      slug: string
-      description: string | null
+      id: number;
+      name: string;
+      slug: string;
+      description: string | null;
       subcategories: Array<{
-        id: number
-        name: string
-        slug: string
-        description: string | null
-        productCount: number
-      }>
+        id: number;
+        name: string;
+        slug: string;
+        description: string | null;
+        productCount: number;
+      }>;
     }>(`
       SELECT 
         c.id,
@@ -55,32 +62,37 @@ export async function GET() {
       ) pc ON pc.subcategory_id = s.id
       GROUP BY c.id
       ORDER BY c.name
-    `)
+    `);
 
-    // Cache the response for 1 hour
-    await kv.set(CATEGORIES_CACHE_KEY, rows, { ex: 3600 })
-
-    return NextResponse.json(rows)
-  } catch (error) {
-    console.error('Error fetching categories:', error)
-    
-    // Try to return cached data if available
     try {
-      const cachedData = await kv.get(CATEGORIES_CACHE_KEY)
-      if (cachedData) {
-        return NextResponse.json(cachedData)
+      await kv.set(CATEGORIES_CACHE_KEY, rows);
+      console.log("[KV] Cached categories to store");
+    } catch (cacheErr) {
+      console.warn("[KV] Failed to cache categories:", cacheErr);
+    }
+
+    return NextResponse.json(rows);
+  } catch (error) {
+    console.error("Error fetching categories from DB:", error);
+
+    // Fallback to cache if DB query fails
+    try {
+      const fallbackCache = await kv.get(CATEGORIES_CACHE_KEY);
+      if (fallbackCache) {
+        console.warn("[Fallback] Returning stale cached categories");
+        return NextResponse.json(fallbackCache);
       }
-    } catch (cacheError) {
-      console.error('Cache fallback failed:', cacheError)
+    } catch (fallbackError) {
+      console.error("Error accessing fallback cache:", fallbackError);
     }
 
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch categories',
-        details: error instanceof Error ? error.message : 'Unknown error'
+      {
+        error: "Failed to fetch categories",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
-    )
+    );
   }
 }
 
