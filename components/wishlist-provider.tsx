@@ -1,4 +1,3 @@
-
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
@@ -9,6 +8,10 @@ export interface WishlistItem {
   price: number
   image: string
   category: string
+  // Added optional properties for better product identification
+  variant?: string
+  color?: string
+  size?: string
 }
 
 interface WishlistContextType {
@@ -17,6 +20,7 @@ interface WishlistContextType {
   removeFromWishlist: (id: string) => void
   isInWishlist: (id: string) => boolean
   clearWishlist: () => void
+  toggleWishlistItem: (item: WishlistItem) => void
 }
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined)
@@ -27,21 +31,34 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   // Load wishlist from localStorage on initial render
   useEffect(() => {
+    if (typeof window === "undefined") return
+    
     setMounted(true)
     const savedWishlist = localStorage.getItem("wishlist")
     if (savedWishlist) {
       try {
-        setWishlistItems(JSON.parse(savedWishlist))
+        const parsed = JSON.parse(savedWishlist)
+        if (Array.isArray(parsed)) {
+          setWishlistItems(parsed)
+        } else {
+          console.warn("Invalid wishlist data in localStorage, resetting")
+          localStorage.removeItem("wishlist")
+        }
       } catch (error) {
         console.error("Failed to parse wishlist from localStorage:", error)
+        localStorage.removeItem("wishlist")
       }
     }
   }, [])
 
   // Save wishlist to localStorage whenever it changes
   useEffect(() => {
-    if (mounted) {
-      localStorage.setItem("wishlist", JSON.stringify(wishlistItems))
+    if (mounted && typeof window !== "undefined") {
+      try {
+        localStorage.setItem("wishlist", JSON.stringify(wishlistItems))
+      } catch (error) {
+        console.error("Failed to save wishlist to localStorage:", error)
+      }
     }
   }, [wishlistItems, mounted])
 
@@ -63,9 +80,17 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     return wishlistItems.some((item) => item.id === id)
   }
 
+  const toggleWishlistItem = (item: WishlistItem) => {
+    if (isInWishlist(item.id)) {
+      removeFromWishlist(item.id)
+    } else {
+      addToWishlist(item)
+    }
+  }
+
   const clearWishlist = () => {
     setWishlistItems([])
-    if (mounted) {
+    if (mounted && typeof window !== "undefined") {
       localStorage.removeItem("wishlist")
     }
   }
@@ -78,6 +103,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         removeFromWishlist,
         isInWishlist,
         clearWishlist,
+        toggleWishlistItem,
       }}
     >
       {children}
