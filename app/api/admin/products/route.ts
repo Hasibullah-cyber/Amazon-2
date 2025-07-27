@@ -102,9 +102,20 @@ export async function GET(req: NextRequest) {
       ? `WHERE ${conditions.join(' AND ')}` 
       : ''
 
+    // Get total count
+    const countQuery = `
+      SELECT COUNT(*) AS total_count
+      FROM products p
+      ${whereClause}
+    `
+    const countResult = await pool.query(countQuery, params)
+    const totalCount = countResult.rows[0]?.total_count || 0
+
+    // Add pagination parameters
     params.push(limit, offset)
 
-    const query = `
+    // Get paginated results
+    const dataQuery = `
       SELECT 
         p.id,
         p.name,
@@ -125,8 +136,7 @@ export async function GET(req: NextRequest) {
         c.id AS "categoryId",
         c.name AS "categoryName",
         s.id AS "subcategoryId",
-        s.name AS "subcategoryName",
-        (SELECT COUNT(*) FROM products p ${whereClause}) AS total_count
+        s.name AS "subcategoryName"
       FROM products p
       LEFT JOIN subcategories s ON p.subcategory_id = s.id
       LEFT JOIN categories c ON s.category_id = c.id
@@ -136,8 +146,7 @@ export async function GET(req: NextRequest) {
       OFFSET $${paramIndex}
     `
 
-    const result = await pool.query(query, params)
-    const totalCount = result.rows[0]?.total_count || 0
+    const result = await pool.query(dataQuery, params)
 
     return NextResponse.json({
       products: result.rows.map(row => ({
