@@ -1,78 +1,46 @@
+// app/admin/products/page.tsx
 "use client"
-
-import { useEffect, useState, useCallback } from "react"
-import { Card } from "@/components/ui/card"
+import { useEffect, useState, useCallback, useMemo } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { storeManager } from "@/lib/store"
-import { Search, Plus, Edit, AlertTriangle, Package, X } from "lucide-react"
+import { Search, Plus, Edit, AlertTriangle, Package, X, Trash2, ChevronDown, ChevronUp, Loader2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "sonner"
+import { Product, Category } from "@/types" // Define your types
 
-export const dynamic = 'force-dynamic'
-
-// Show console logs on screen (for mobile debugging)
-if (typeof window !== "undefined") {
-  const debugBox = document.createElement("div")
-  Object.assign(debugBox.style, {
-    position: "fixed",
-    bottom: "0",
-    left: "0",
-    maxHeight: "40vh",
-    overflowY: "auto",
-    zIndex: "9999",
-    background: "#000",
-    color: "#0f0",
-    fontSize: "12px",
-    padding: "4px",
-    borderTopRightRadius: "6px",
-    width: "100%"
-  })
-  document.body.appendChild(debugBox)
-
-  const appendLog = (type: string, args: any[], color = "#0f0") => {
-    const msg = document.createElement("div")
-    msg.style.color = color
-    msg.textContent = `[${type}] ` + args.join(" ")
-    debugBox.appendChild(msg)
-  }
-
-  const originalLog = console.log
-  const originalError = console.error
-
-  console.log = (...args) => {
-    originalLog(...args)
-    appendLog("LOG", args)
-  }
-
-  console.error = (...args) => {
-    originalError(...args)
-    appendLog("ERROR", args, "#f55")
-  }
-
-  window.onerror = (message, source, lineno, colno) => {
-    appendLog("ERROR", [`${message} at ${source}:${lineno}:${colno}`], "#f55")
-  }
+interface ProductFormData {
+  name: string
+  description: string
+  price: string
+  salePrice: string
+  stock: string
+  categoryId: string
+  subcategoryId: string
+  sku: string
+  weight: string
 }
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<any[]>([])
-  const [categories, setCategories] = useState<any[]>([])
-  const [filteredProducts, setFilteredProducts] = useState<any[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [showForm, setShowForm] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<any>(null)
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    price: "",
-    stock: "",
-    category: "electronics",
-    subcategory: ""
-  })
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [formErrors, setFormErrors] = useState<Partial<ProductFormData>>({})
+  const [activeProductId, setActiveProductId] = useState<string | null>(null)
+  const [isStockUpdating, setIsStockUpdating] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
+      setLoading(true)
       const [allProducts, allCategories] = await Promise.all([
         storeManager.getProducts(),
         storeManager.getCategories()
@@ -80,7 +48,12 @@ export default function ProductsPage() {
       setProducts(allProducts)
       setCategories(allCategories)
     } catch (err) {
+      toast.error("Failed to load products", {
+        description: "Please try again later"
+      })
       console.error("Failed to load data:", err)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
@@ -90,267 +63,577 @@ export default function ProductsPage() {
     return unsubscribe
   }, [fetchData])
 
-  useEffect(() => {
+  const filteredProducts = useMemo(() => {
     let filtered = [...products]
+    
     if (searchTerm) {
+      const term = searchTerm.toLowerCase()
       filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.id.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+        p.name.toLowerCase().includes(term) ||
+        p.id.toLowerCase().includes(term) ||
+        p.sku?.toLowerCase().includes(term)
     }
+    
     if (categoryFilter !== "all") {
-      filtered = filtered.filter(p => p.category === categoryFilter)
+      filtered = filtered.filter(p => p.categoryId === categoryFilter)
     }
-    setFilteredProducts(filtered)
+    
+    return filtered
   }, [products, searchTerm, categoryFilter])
+
+  const stats = useMemo(() => {
+    const totalProducts = products.length
+    const lowStock = products.filter(p => p.stock < 10 && p.stock > 0).length
+    const outOfStock = products.filter(p => p.stock === 0).length
+    const inventoryValue = products.reduce((sum, p) => sum + (p.salePrice || p.price) * p.stock, 0)
+    
+    return { totalProducts, lowStock, outOfStock, inventoryValue }
+  }, [products])
 
   const resetForm = () => {
     setEditingProduct(null)
     setShowForm(false)
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      stock: "",
-      category: "electronics",
-      subcategory: ""
-    })
+    setFormErrors({})
+    setActiveProductId(null)
+    setIsStockUpdating(false)
+  }
+
+  const validateForm = (formData: ProductFormData) => {
+    const errors: Partial<ProductFormData> = {}
+    
+    if (!formData.name.trim()) errors.name = "Name is required"
+    else if (formData.name.length < 2) errors.name = "Name too short"
+    
+    if (!formData.description.trim()) errors.description = "Description is required"
+    else if (formData.description.length < 10) errors.description = "Description too short"
+    
+    if (!formData.price) errors.price = "Price is required"
+    else if (parseFloat(formData.price) <= 0) errors.price = "Invalid price"
+    
+    if (!formData.stock) errors.stock = "Stock is required"
+    else if (parseInt(formData.stock) < 0) errors.stock = "Invalid stock"
+    
+    if (!formData.categoryId) errors.categoryId = "Category is required"
+    
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    const formData: ProductFormData = {
+      name: (e.target as any).name.value,
+      description: (e.target as any).description.value,
+      price: (e.target as any).price.value,
+      salePrice: (e.target as any).salePrice.value,
+      stock: (e.target as any).stock.value,
+      categoryId: (e.target as any).categoryId.value,
+      subcategoryId: (e.target as any).subcategoryId.value,
+      sku: (e.target as any).sku.value,
+      weight: (e.target as any).weight.value
+    }
+    
+    if (!validateForm(formData)) return
+    
     const payload = {
       ...formData,
       price: parseFloat(formData.price),
+      salePrice: formData.salePrice ? parseFloat(formData.salePrice) : undefined,
       stock: parseInt(formData.stock),
-      image: "/placeholder.svg?height=400&width=400",
-      rating: 4.0,
-      reviews: 0
+      weight: formData.weight ? parseFloat(formData.weight) : undefined,
     }
+    
     try {
+      setActiveProductId(editingProduct?.id || null)
+      setIsStockUpdating(true)
+      
       if (editingProduct) {
         await storeManager.updateProduct(editingProduct.id, payload)
+        toast.success("Product updated successfully")
       } else {
         await storeManager.addProduct(payload)
+        toast.success("Product added successfully")
       }
+      
       fetchData()
       resetForm()
     } catch (err) {
+      toast.error("Operation failed", {
+        description: "Could not save product. Please try again."
+      })
       console.error("Failed to submit:", err)
+    } finally {
+      setIsStockUpdating(false)
+      setActiveProductId(null)
     }
   }
 
-  const handleEdit = (product: any) => {
+  const handleEdit = (product: Product) => {
     setEditingProduct(product)
     setFormData({
       name: product.name,
       description: product.description,
       price: product.price.toString(),
+      salePrice: product.salePrice?.toString() || "",
       stock: product.stock.toString(),
-      category: product.category,
-      subcategory: product.subcategory || ""
+      categoryId: product.categoryId,
+      subcategoryId: product.subcategoryId || "",
+      sku: product.sku || "",
+      weight: product.weight?.toString() || ""
     })
     setShowForm(true)
   }
 
-  const handleStockUpdate = async (id: string, newStock: number) => {
+  const handleDelete = async (id: string) => {
     try {
-      await storeManager.updateProduct(id, { stock: newStock })
+      setActiveProductId(id)
+      await storeManager.deleteProduct(id)
+      toast.success("Product deleted successfully")
       fetchData()
     } catch (err) {
-      console.error("Stock update failed:", err)
+      toast.error("Deletion failed", {
+        description: "Could not delete product. Please try again."
+      })
+      console.error("Delete failed:", err)
+    } finally {
+      setActiveProductId(null)
     }
+  }
+
+  const handleStockUpdate = async (id: string, newStock: number) => {
+    if (isNaN(newStock) return
+    
+    try {
+      setActiveProductId(id)
+      setIsStockUpdating(true)
+      await storeManager.updateProduct(id, { stock: newStock })
+      fetchData()
+      toast.success("Stock updated successfully")
+    } catch (err) {
+      toast.error("Stock update failed", {
+        description: "Please try again later"
+      })
+      console.error("Stock update failed:", err)
+    } finally {
+      setIsStockUpdating(false)
+      setActiveProductId(null)
+    }
+  }
+
+  const currentCategory = useMemo(() => 
+    categories.find(c => c.id === categoryFilter), 
+    [categoryFilter, categories]
+  )
+
+  const subcategories = useMemo(() => 
+    currentCategory?.subcategories || [], 
+    [currentCategory]
+  )
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-36" />
+        </div>
+        
+        {/* Search & Filter Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+        
+        {/* Stats Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="p-4">
+              <Skeleton className="h-6 w-16 mx-auto mb-2" />
+              <Skeleton className="h-4 w-24 mx-auto" />
+            </Card>
+          ))}
+        </div>
+        
+        {/* Product Grid Skeleton */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="p-4">
+              <div className="flex justify-between items-start mb-2">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-8 w-8 rounded-full" />
+              </div>
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-3/4 mb-2" />
+              <Skeleton className="h-4 w-24 mb-4" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Products Management</h1>
-        <Button onClick={() => setShowForm(true)}>
+        <div>
+          <h1 className="text-2xl font-bold">Products Management</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your product inventory and details
+          </p>
+        </div>
+        <Button onClick={() => { setShowForm(true); setEditingProduct(null) }}>
           <Plus className="h-4 w-4 mr-2" /> Add Product
         </Button>
       </div>
 
       {/* Search & Filter */}
       <Card className="p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
-              placeholder="Search by Product Name or ID..."
+              placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="border rounded-md px-3 py-2"
-          >
-            <option value="all">All Categories</option>
-            {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Button variant="outline" onClick={() => { 
+            setSearchTerm(""); setCategoryFilter("all") 
+          }}>
+            Clear Filters
+          </Button>
         </div>
       </Card>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card className="p-4 text-center">
-          <div className="text-2xl font-bold">{products.length}</div>
-          <div className="text-sm text-gray-600">Total Products</div>
+          <div className="text-2xl font-bold">{stats.totalProducts}</div>
+          <div className="text-sm text-muted-foreground">Total Products</div>
         </Card>
         <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-red-600">
-            {products.filter(p => p.stock < 10).length}
-          </div>
-          <div className="text-sm text-gray-600">Low Stock</div>
+          <div className="text-2xl font-bold text-yellow-600">{stats.lowStock}</div>
+          <div className="text-sm text-muted-foreground">Low Stock</div>
         </Card>
         <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-yellow-600">
-            {products.filter(p => p.stock === 0).length}
-          </div>
-          <div className="text-sm text-gray-600">Out of Stock</div>
+          <div className="text-2xl font-bold text-red-600">{stats.outOfStock}</div>
+          <div className="text-sm text-muted-foreground">Out of Stock</div>
         </Card>
         <Card className="p-4 text-center">
           <div className="text-2xl font-bold text-green-600">
-            ৳{products.reduce((sum, p) => sum + p.price * p.stock, 0).toFixed(2)}
+            ৳{stats.inventoryValue.toFixed(2)}
           </div>
-          <div className="text-sm text-gray-600">Inventory Value</div>
+          <div className="text-sm text-muted-foreground">Inventory Value</div>
         </Card>
       </div>
 
       {/* Product Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredProducts.map(p => (
-          <Card key={p.id} className="p-4">
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="font-medium text-lg">{p.name}</h3>
-              <Button size="sm" variant="outline" onClick={() => handleEdit(p)}>
-                <Edit className="h-3 w-3" />
-              </Button>
-            </div>
-            <p className="text-sm text-gray-600 mb-2">{p.description}</p>
-            <div className="text-sm text-gray-500 mb-2">ID: {p.id}</div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between"><span>Price:</span><span>৳{p.price}</span></div>
-              <div className="flex justify-between items-center">
-                <span>Stock:</span>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    defaultValue={p.stock}
-                    min="0"
-                    className="w-20 h-8 text-center"
-                    onBlur={(e) => {
-                      const newStock = parseInt(e.target.value)
-                      if (!isNaN(newStock) && newStock !== p.stock) {
-                        handleStockUpdate(p.id, newStock)
-                      }
-                    }}
-                  />
-                  {p.stock < 10 && <AlertTriangle className="h-4 w-4 text-red-500" />}
-                </div>
-              </div>
-              <div className="flex justify-between">
-                <span>Category:</span>
-                <span>{categories.find(c => c.id === p.category)?.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Value:</span>
-                <span className="font-bold">৳{(p.price * p.stock).toFixed(2)}</span>
-              </div>
-            </div>
-
-            <div className={`mt-3 text-center py-1 rounded text-sm ${
-              p.stock === 0 ? "bg-red-100 text-red-800" :
-              p.stock < 10 ? "bg-yellow-100 text-yellow-800" :
-              "bg-green-100 text-green-800"
-            }`}>
-              {p.stock === 0 ? "Out of Stock" : p.stock < 10 ? "Low Stock" : "In Stock"}
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {/* No Products */}
-      {filteredProducts.length === 0 && (
-        <Card className="p-8 text-center mt-6">
-          <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-          <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+      {filteredProducts.length === 0 ? (
+        <Card className="p-8 text-center">
+          <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2">No products found</h3>
+          <p className="text-muted-foreground mb-4">
+            Try adjusting your search or add a new product
+          </p>
+          <Button onClick={() => { setShowForm(true); setEditingProduct(null) }}>
+            <Plus className="h-4 w-4 mr-2" /> Add Product
+          </Button>
         </Card>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredProducts.map(p => (
+            <Card key={p.id} className="overflow-hidden">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <CardTitle className="text-lg line-clamp-1">{p.name}</CardTitle>
+                  <div className="flex gap-1">
+                    <Button 
+                      size="icon" 
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={() => handleEdit(p)}
+                      disabled={activeProductId === p.id}
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button 
+                      size="icon" 
+                      variant="ghost"
+                      className="h-7 w-7 text-red-500 hover:text-red-700"
+                      onClick={() => handleDelete(p.id)}
+                      disabled={activeProductId === p.id}
+                    >
+                      {activeProductId === p.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <CardDescription className="line-clamp-2">{p.description}</CardDescription>
+              </CardHeader>
+              
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <div className="text-muted-foreground">ID</div>
+                    <div className="font-mono truncate">{p.id}</div>
+                  </div>
+                  {p.sku && (
+                    <div>
+                      <div className="text-muted-foreground">SKU</div>
+                      <div className="truncate">{p.sku}</div>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-muted-foreground">Price</div>
+                    <div className="flex items-center gap-1">
+                      {p.salePrice ? (
+                        <>
+                          <span className="line-through text-muted-foreground">৳{p.price.toFixed(2)}</span>
+                          <span className="font-bold text-green-600">৳{p.salePrice.toFixed(2)}</span>
+                        </>
+                      ) : (
+                        <span>৳{p.price.toFixed(2)}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Category</div>
+                    <div className="truncate">
+                      {categories.find(c => c.id === p.categoryId)?.name || "N/A"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Stock</div>
+                    <div className="flex items-center gap-2">
+                      {isStockUpdating && activeProductId === p.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Input
+                          type="number"
+                          defaultValue={p.stock}
+                          min="0"
+                          className="w-24 h-8 text-center"
+                          onBlur={(e) => {
+                            const newStock = parseInt(e.target.value)
+                            if (!isNaN(newStock) && newStock !== p.stock) {
+                              handleStockUpdate(p.id, newStock)
+                            }
+                          }}
+                          disabled={isStockUpdating && activeProductId !== p.id}
+                        />
+                      )}
+                      {p.stock < 10 && p.stock > 0 && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
+                      {p.stock === 0 && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Value</div>
+                    <div className="font-medium">
+                      ৳{((p.salePrice || p.price) * p.stock).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+              
+              <CardFooter className="justify-center">
+                <Badge 
+                  variant={p.stock === 0 ? "destructive" : p.stock < 10 ? "warning" : "success"}
+                  className="w-full text-center"
+                >
+                  {p.stock === 0 ? "Out of Stock" : p.stock < 10 ? "Low Stock" : "In Stock"}
+                </Badge>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
       )}
 
       {/* Add/Edit Product Form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">{editingProduct ? "Edit" : "Add"} Product</h2>
-              <Button variant="outline" size="icon" onClick={resetForm}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-2xl">
+            <CardHeader className="flex flex-row justify-between items-center">
+              <CardTitle>{editingProduct ? "Edit Product" : "Add New Product"}</CardTitle>
+              <Button variant="ghost" size="icon" onClick={resetForm}>
                 <X className="h-4 w-4" />
               </Button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                placeholder="Product Name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-              />
-              <Textarea
-                placeholder="Description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                required
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  type="number"
-                  placeholder="Price"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  required
-                />
-                <Input
-                  type="number"
-                  placeholder="Stock"
-                  value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                  required
-                />
-              </div>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value, subcategory: "" })}
-                className="w-full border rounded-md px-3 py-2"
-                required
-              >
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              <select
-                value={formData.subcategory}
-                onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
-                className="w-full border rounded-md px-3 py-2"
-              >
-                <option value="">Select subcategory (optional)</option>
-                {categories.find(c => c.id === formData.category)?.subcategories?.map((sub: any) => (
-                  <option key={sub.id} value={sub.id}>{sub.name}</option>
-                ))}
-              </select>
-              <div className="flex gap-2 pt-4">
-                <Button type="submit" className="flex-1">
-                  {editingProduct ? "Update" : "Add"} Product
+            </CardHeader>
+            
+            <form onSubmit={handleSubmit}>
+              <CardContent className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <Label htmlFor="name">Product Name *</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    defaultValue={editingProduct?.name || ""}
+                    placeholder="Enter product name"
+                    className={formErrors.name ? "border-red-500" : ""}
+                  />
+                  {formErrors.name && (
+                    <p className="text-sm text-red-500 mt-1">{formErrors.name}</p>
+                  )}
+                </div>
+                
+                <div className="md:col-span-2">
+                  <Label htmlFor="description">Description *</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    defaultValue={editingProduct?.description || ""}
+                    placeholder="Enter product description"
+                    rows={3}
+                    className={formErrors.description ? "border-red-500" : ""}
+                  />
+                  {formErrors.description && (
+                    <p className="text-sm text-red-500 mt-1">{formErrors.description}</p>
+                  )}
+                </div>
+                
+                <div>
+                   <Label htmlFor="price">Price (৳) *</Label>
+                  <Input
+                    id="price"
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    defaultValue={editingProduct?.price.toString() || ""}
+                    placeholder="0.00"
+                    className={formErrors.price ? "border-red-500" : ""}
+                  />
+                  {formErrors.price && (
+                    <p className="text-sm text-red-500 mt-1">{formErrors.price}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <Label htmlFor="salePrice">Sale Price (৳)</Label>
+                  <Input
+                    id="salePrice"
+                    name="salePrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    defaultValue={editingProduct?.salePrice?.toString() || ""}
+                    placeholder="Optional"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="stock">Stock *</Label>
+                  <Input
+                    id="stock"
+                    name="stock"
+                    type="number"
+                    min="0"
+                    defaultValue={editingProduct?.stock.toString() || ""}
+                    placeholder="0"
+                    className={formErrors.stock ? "border-red-500" : ""}
+                  />
+                  {formErrors.stock && (
+                    <p className="text-sm text-red-500 mt-1">{formErrors.stock}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <Label htmlFor="sku">SKU</Label>
+                  <Input
+                    id="sku"
+                    name="sku"
+                    defaultValue={editingProduct?.sku || ""}
+                    placeholder="Product SKU"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="weight">Weight (kg)</Label>
+                  <Input
+                    id="weight"
+                    name="weight"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    defaultValue={editingProduct?.weight?.toString() || ""}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="categoryId">Category *</Label>
+                  <Select 
+                    name="categoryId" 
+                    defaultValue={editingProduct?.categoryId || ""}
+                  >
+                    <SelectTrigger className={formErrors.categoryId ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.categoryId && (
+                    <p className="text-sm text-red-500 mt-1">{formErrors.categoryId}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <Label htmlFor="subcategoryId">Subcategory</Label>
+                  <Select 
+                    name="subcategoryId" 
+                    defaultValue={editingProduct?.subcategoryId || ""}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select subcategory" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {subcategories.map(sub => (
+                        <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+              
+              <CardFooter className="flex justify-end gap-2">
+                <Button variant="outline" onClick={resetForm}>Cancel</Button>
+                <Button type="submit" disabled={isStockUpdating}>
+                  {isStockUpdating ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : editingProduct ? (
+                    "Update Product"
+                  ) : (
+                    "Add Product"
+                  )}
                 </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
-              </div>
+              </CardFooter>
             </form>
           </Card>
         </div>
