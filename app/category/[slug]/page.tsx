@@ -3,8 +3,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, Folder } from 'lucide-react'
 import { pool } from '@/lib/database'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Suspense } from 'react'
 
 interface Subcategory {
   id: number
@@ -22,22 +22,9 @@ interface Category {
   subcategories: Subcategory[]
 }
 
-function CategoryBreadcrumb({ category }: { category: Category }) {
-  return (
-    <div className="flex items-center text-sm mb-6">
-      <Link href="/" className="text-[#565959] hover:text-[#C7511F] hover:underline">
-        Home
-      </Link>
-      <ChevronRight className="h-4 w-4 mx-2 text-gray-400" />
-      <span className="font-medium text-black">{category.name}</span>
-    </div>
-  )
-}
-
 function SubcategoryCard({ category, sub }: { category: Category; sub: Subcategory }) {
   return (
     <Link
-      key={sub.id}
       href={`/category/${category.slug}/${sub.slug}`}
       className="block p-6 border border-gray-200 rounded-lg hover:shadow-lg transition-all group bg-white"
     >
@@ -121,7 +108,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
               'slug', s.slug,
               'description', s.description,
               'productcount', COALESCE(pc.count, 0)
-            ORDER BY s.name
+            ) ORDER BY s.name
           ) FILTER (WHERE s.id IS NOT NULL),
           '[]'
         ) AS subcategories
@@ -149,7 +136,14 @@ export default async function CategoryPage({ params }: { params: { slug: string 
     return (
       <div className="bg-gray-100 min-h-screen">
         <div className="container mx-auto px-4 py-8">
-          <CategoryBreadcrumb category={category} />
+          {/* Fixed breadcrumb without component */}
+          <div className="flex items-center text-sm mb-6">
+            <Link href="/" className="text-[#565959] hover:text-[#C7511F] hover:underline">
+              Home
+            </Link>
+            <ChevronRight className="h-4 w-4 mx-2 text-gray-400" />
+            <span className="font-medium text-black">{category.name}</span>
+          </div>
 
           {/* Category Info */}
           <div className="bg-white p-6 mb-8 rounded-lg shadow-sm">
