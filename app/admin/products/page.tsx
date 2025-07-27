@@ -65,25 +65,24 @@ export default function ProductsPage() {
   }, [fetchData])
 
   const filteredProducts = useMemo(() => {
-    let filtered = [...products]
+  let filtered = [...products]
+  
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase()
     
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase()
-      
-      filtered = products.filter(p => {
-  return (
-    p.name.toLowerCase().includes(term) ||
-    p.id.toLowerCase().includes(term) ||
-    p.sku?.toLowerCase().includes(term)
-  );
-});  // ✅ Added missing parenthesis
-      
-    if (categoryFilter !== "all") {
-      filtered = filtered.filter(p => p.categoryId === categoryFilter)
-    }
+    filtered = products.filter(p => 
+      p.name.toLowerCase().includes(term) ||
+      p.id.toLowerCase().includes(term) ||
+      p.sku?.toLowerCase().includes(term)
+    );
+  }
     
-    return filtered
-  }, [products, searchTerm, categoryFilter])
+  if (categoryFilter !== "all") {
+    filtered = filtered.filter(p => p.categoryId === categoryFilter)
+  }
+  
+  return filtered
+}, [products, searchTerm, categoryFilter])
 
   const stats = useMemo(() => {
     const totalProducts = products.length
