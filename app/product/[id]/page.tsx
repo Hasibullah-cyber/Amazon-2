@@ -1,7 +1,6 @@
 "use client"
-
 import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -12,6 +11,7 @@ import { useCart } from "@/components/cart-provider"
 import { useWishlist } from "@/components/wishlist-provider"
 import { useToast } from "@/hooks/use-toast"
 import { storeManager } from "@/lib/store"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Product {
   id: string
@@ -20,20 +20,23 @@ interface Product {
   image: string
   category: string | { id: number; name: string }
   description: string
+  rating?: number
   reviews: number
   stock: number
 }
 
 export default function ProductPage() {
+  const router = useRouter()
   const params = useParams()
   const { addToCart } = useCart()
-  const { addToWishlist } = useWishlist()
+  const { addToWishlist, removeFromWishlist, isInWishlist, toggleWishlistItem } = useWishlist()
   const { toast } = useToast()
 
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
+  const [imageError, setImageError] = useState(false)
 
   useEffect(() => {
     if (!params.id) return
@@ -48,6 +51,7 @@ export default function ProductPage() {
 
   const loadProduct = async () => {
     try {
+      setLoading(true)
       const productData = await storeManager.getProduct(String(params.id))
       if (productData) {
         setProduct(productData as Product)
@@ -71,25 +75,27 @@ export default function ProductPage() {
 
   const loadRelatedProducts = async () => {
     try {
+      if (!product) return
+      
       const allProducts = await storeManager.getProducts()
 
-      const currentCategoryName =
-        typeof product?.category === "string" ? product.category : product?.category?.name
+      const currentCategoryName = 
+        typeof product.category === "string" ? product.category : product.category?.name
 
       if (!currentCategoryName) return
 
       let related = allProducts.filter(
-        p =>
-          p.id !== product?.id &&
-          (typeof p.category === "string"
-            ? p.category === currentCategoryName
+        p => p.id !== product.id &&
+          (typeof p.category === "string" 
+            ? p.category === currentCategoryName 
             : p.category?.name === currentCategoryName)
       )
 
+      // Fill with popular products if not enough in same category
       if (related.length < 4) {
         const others = allProducts
-          .filter(p => p.id !== product?.id && p.category !== currentCategoryName)
-          .sort((a, b) => b.reviews - a.reviews)
+          .filter(p => p.id !== product.id)
+          .sort((a, b) => (b.reviews || 0) - (a.reviews || 0))
         related = [...related, ...others].slice(0, 4)
       } else {
         related = related.slice(0, 4)
@@ -105,48 +111,74 @@ export default function ProductPage() {
     if (!product) return
 
     addToCart({
-      id: parseInt(product.id),
+      id: product.id, // Use string ID consistently
       name: product.name,
       price: product.price,
       image: product.image,
-      quantity,
+      quantity: quantity,
     })
 
     toast({
       title: "Added to Cart",
-      description: `${product.name} has been added to your cart.`,
+      description: `${quantity} × ${product.name} has been added to your cart.`,
     })
   }
 
-  const handleAddToWishlist = () => {
+  const handleWishlistToggle = () => {
     if (!product) return
 
-    addToWishlist({
+    toggleWishlistItem({
       id: product.id,
       name: product.name,
       price: product.price,
       image: product.image,
-      category:
-        typeof product.category === "string" ? product.category : product.category.name,
+      category: typeof product.category === "string" 
+        ? product.category 
+        : product.category?.name || "Uncategorized"
     })
 
+    const isInWishlistNow = isInWishlist(product.id)
     toast({
-      title: "Added to Wishlist",
-      description: `${product.name} has been added to your wishlist.`,
+      title: isInWishlistNow ? "Added to Wishlist" : "Removed from Wishlist",
+      description: `${product.name} has been ${isInWishlistNow ? "added to" : "removed from"} your wishlist.`,
     })
   }
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-gray-200 aspect-square rounded-lg"></div>
-            <div className="space-y-4">
-              <div className="bg-gray-200 h-8 rounded"></div>
-              <div className="bg-gray-200 h-6 rounded w-1/3"></div>
-              <div className="bg-gray-200 h-4 rounded"></div>
-              <div className="bg-gray-200 h-20 rounded"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Image Skeleton */}
+          <div className="aspect-square relative bg-gray-100 rounded-lg overflow-hidden">
+            <Skeleton className="w-full h-full" />
+          </div>
+          
+          {/* Details Skeleton */}
+          <div className="space-y-6">
+            <Skeleton className="h-8 w-24 mb-2" />
+            <Skeleton className="h-10 w-3/4 mb-4" />
+            <Skeleton className="h-6 w-1/3 mb-4" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-4/5" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+            <Skeleton className="h-6 w-24 mb-6" />
+            
+            <div className="flex items-center gap-4 mb-6">
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-10" />
+              <Skeleton className="h-10 w-10" />
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Skeleton className="h-6 w-6" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -158,12 +190,19 @@ export default function ProductPage() {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h1>
-        <p className="text-gray-600">The product you're looking for doesn't exist.</p>
+        <p className="text-gray-600 mb-6">The product you're looking for doesn't exist.</p>
+        <Button onClick={() => router.push("/")}>
+          Continue Shopping
+        </Button>
       </div>
     )
   }
 
-  const categoryName = typeof product.category === "string" ? product.category : product.category.name
+  const categoryName = typeof product.category === "string" 
+    ? product.category 
+    : product.category?.name || "Uncategorized"
+
+  const FALLBACK_IMAGE = "/placeholder.svg"
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -171,10 +210,11 @@ export default function ProductPage() {
         {/* Product Image */}
         <div className="aspect-square relative bg-gray-50 rounded-lg overflow-hidden">
           <Image
-            src={product.image || "/placeholder.svg"}
+            src={imageError ? FALLBACK_IMAGE : product.image || FALLBACK_IMAGE}
             alt={product.name}
             fill
             className="object-contain p-8"
+            onError={() => setImageError(true)}
           />
         </div>
 
@@ -186,9 +226,23 @@ export default function ProductPage() {
             </Badge>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
 
-            {/* Reviews */}
+            {/* Rating */}
             <div className="flex items-center gap-2 mb-4">
-              <span className="text-sm text-gray-600">{product.reviews} reviews</span>
+              <div className="flex items-center">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`h-4 w-4 ${
+                      i < Math.floor(product.rating || 0)
+                        ? "text-yellow-400 fill-current"
+                        : "text-gray-300"
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-sm text-gray-600">
+                {product.reviews.toLocaleString()} reviews
+              </span>
             </div>
 
             <div className="text-3xl font-bold text-orange-600 mb-4">
@@ -201,7 +255,9 @@ export default function ProductPage() {
             <div className="mb-6">
               {product.stock > 0 ? (
                 <Badge variant="outline" className="text-green-600 border-green-600">
-                  In Stock ({product.stock} available)
+                  {product.stock < 10 
+                    ? `Low Stock (${product.stock} available)` 
+                    : `In Stock (${product.stock} available)`}
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-red-600 border-red-600">
@@ -215,7 +271,7 @@ export default function ProductPage() {
               <div className="flex items-center border rounded-md">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-3 py-2 hover:bg-gray-50"
+                  className="px-3 py-2 hover:bg-gray-50 disabled:opacity-50"
                   disabled={quantity <= 1}
                 >
                   -
@@ -223,7 +279,7 @@ export default function ProductPage() {
                 <span className="px-4 py-2 border-x">{quantity}</span>
                 <button
                   onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                  className="px-3 py-2 hover:bg-gray-50"
+                  className="px-3 py-2 hover:bg-gray-50 disabled:opacity-50"
                   disabled={quantity >= product.stock}
                 >
                   +
@@ -239,8 +295,15 @@ export default function ProductPage() {
                 Add to Cart
               </Button>
 
-              <Button variant="outline" onClick={handleAddToWishlist} className="px-3">
-                <Heart className="w-4 h-4" />
+              <Button 
+                variant="outline" 
+                onClick={handleWishlistToggle}
+                className="px-3"
+                aria-label={isInWishlist(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+              >
+                <Heart 
+                  className={`w-4 h-4 ${isInWishlist(product.id) ? "text-red-500 fill-current" : "text-gray-600"}`} 
+                />
               </Button>
 
               <Button variant="outline" className="px-3">
@@ -260,7 +323,7 @@ export default function ProductPage() {
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <RotateCcw className="w-4 h-4" />
-                Easy Returns
+                30-Day Returns
               </div>
             </div>
           </div>
@@ -292,10 +355,14 @@ export default function ProductPage() {
                 >
                   <div className="aspect-square relative mb-3">
                     <Image
-                      src={relatedProduct.image || "/placeholder.svg"}
+                      src={relatedProduct.image || FALLBACK_IMAGE}
                       alt={relatedProduct.name}
                       fill
                       className="object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = FALLBACK_IMAGE;
+                      }}
                     />
                   </div>
                   <h3 className="font-medium text-sm mb-2 line-clamp-2">
@@ -306,13 +373,13 @@ export default function ProductPage() {
                   </p>
                   <div className="flex items-center justify-between mb-3">
                     <Badge variant="secondary" className="text-xs">
-                      {relatedCategory}
+                      {relatedCategory || "Uncategorized"}
                     </Badge>
                     <span className="text-xs text-gray-500">
-                      {relatedProduct.reviews} reviews
+                      {relatedProduct.reviews?.toLocaleString() || 0} reviews
                     </span>
                   </div>
-                  <Link href={`/product/${relatedProduct.id}`} passHref legacyBehavior>
+                  <Link href={`/product/${relatedProduct.id}`} className="block">
                     <Button variant="outline" size="sm" className="w-full">
                       View Details
                     </Button>
