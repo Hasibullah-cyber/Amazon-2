@@ -68,11 +68,14 @@ export default function ProductsPage() {
     
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
-      filtered = filtered.filter(p =>
+      
+      filtered = products.filter(p => {
+    return (
         p.name.toLowerCase().includes(term) ||
         p.id.toLowerCase().includes(term) ||
         p.sku?.toLowerCase().includes(term)
-    }
+    );
+      }
     
     if (categoryFilter !== "all") {
       filtered = filtered.filter(p => p.categoryId === categoryFilter)
