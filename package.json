@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -37,7 +38,6 @@
     "@radix-ui/react-toggle": "1.1.1",
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "latest",
-    
     "@types/bcryptjs": "^3.0.0",
     "@types/nodemailer": "^6.4.17",
     "@types/pg": "^8.15.4",
@@ -54,9 +54,9 @@
     "next-themes": "latest",
     "nodemailer": "^7.0.4",
     "pg": "^8.16.2",
-    "react": "^19",
+    "react": "^18.3.1",
     "react-day-picker": "8.10.1",
-    "react-dom": "^19",
+    "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.1",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.0",
@@ -68,11 +68,11 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/node": "^22",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/node": "^20.14.2",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "typescript": "^5.4.5"
   }
 }
