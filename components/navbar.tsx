@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ShoppingCart, Menu, X, User, MapPin, LogOut, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
@@ -11,12 +12,11 @@ import { useAdminAuth } from "@/components/admin-auth-provider"
 import { AuthModal } from "@/components/auth-modal"
 import { AdminLoginModal } from "@/components/admin-login-modal"
 import CartDrawer from "@/components/cart-drawer"
-import AIEnhancedSearch from "@/components/ai-enhanced-search"
 import { useToast } from "@/hooks/use-toast"
 import { Heart } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 
 export default function Navbar() {
+  const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isAuthOpen, setIsAuthOpen] = useState(false)
@@ -34,6 +34,33 @@ export default function Navbar() {
 
   const totalItems = cartItems.reduce((total, item) => total + item.quantity, 0)
 
+  // Handle checkout redirection
+  const handleCheckout = () => {
+    if (cartItems.length === 0) {
+      toast({
+        title: "Your cart is empty",
+        description: "Add items to your cart before checkout",
+        duration: 3000,
+      })
+      return
+    }
+
+    if (!isAuthenticated) {
+      // Save current URL for redirect after login
+      sessionStorage.setItem("preAuthUrl", "/checkout")
+      setIsAuthOpen(true)
+      setAuthMode('signin')
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to proceed to checkout",
+        duration: 3000,
+      })
+    } else {
+      router.push("/checkout")
+    }
+  }
+
+  // Open auth modal with specific mode
   const openAuthModal = (mode: 'signin' | 'signup') => {
     setAuthMode(mode)
     setIsAuthOpen(true)
@@ -52,9 +79,21 @@ export default function Navbar() {
   const handleSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (searchQuery.trim()) {
-      window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
     }
   }
+
+  // Handle redirect after login
+  useEffect(() => {
+    if (isAuthenticated && isAuthOpen) {
+      const redirectUrl = sessionStorage.getItem("preAuthUrl")
+      if (redirectUrl) {
+        sessionStorage.removeItem("preAuthUrl")
+        router.push(redirectUrl)
+      }
+      setIsAuthOpen(false)
+    }
+  }, [isAuthenticated, isAuthOpen, router])
 
   return (
     <header className="sticky top-0 z-50 w-full">
@@ -68,25 +107,25 @@ export default function Navbar() {
             </Link>
 
             {/* Search bar - takes most space */}
-          <form onSubmit={handleSearch} className="relative flex-1 max-w-xl">
-            <div className="relative flex items-center bg-white rounded-md shadow-sm border border-gray-300 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 pl-10 pr-12 h-10 text-sm border-0 rounded-l-md focus:ring-0 focus:outline-none bg-transparent"
-              />
-              <Button
-                type="submit"
-                size="sm"
-                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 px-3 bg-[#febd69] hover:bg-[#f3a847] text-black rounded-md border-0"
-              >
-                <Search className="w-4 h-4" />
-              </Button>
-            </div>
-          </form>
+            <form onSubmit={handleSearch} className="relative flex-1 max-w-xl">
+              <div className="relative flex items-center bg-white rounded-md shadow-sm border border-gray-300 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 pl-10 pr-12 h-10 text-sm border-0 rounded-l-md focus:ring-0 focus:outline-none bg-transparent"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 px-3 bg-[#febd69] hover:bg-[#f3a847] text-black rounded-md border-0"
+                >
+                  <Search className="w-4 h-4" />
+                </Button>
+              </div>
+            </form>
 
             {/* Right side icons */}
             <div className="flex items-center gap-2">
@@ -106,8 +145,6 @@ export default function Navbar() {
                   <User className="h-6 w-6" />
                 </button>
               )}
-
-
 
               {/* Wishlist */}
               <Link
@@ -389,11 +426,23 @@ export default function Navbar() {
         </div>
       )}
 
-      <CartDrawer open={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <CartDrawer 
+        open={isCartOpen} 
+        onClose={() => setIsCartOpen(false)}
+        onCheckout={handleCheckout} // Pass checkout handler to CartDrawer
+      />
       <AuthModal 
         isOpen={isAuthOpen} 
         onClose={() => setIsAuthOpen(false)} 
         initialMode={authMode}
+        onLoginSuccess={() => {
+                // Handle any post-login actions
+          const redirectUrl = sessionStorage.getItem("preAuthUrl")
+          if (redirectUrl) {
+            sessionStorage.removeItem("preAuthUrl")
+            router.push(redirectUrl)
+          }
+        }}
       />
       <AdminLoginModal 
         isOpen={isAdminLoginOpen} 
