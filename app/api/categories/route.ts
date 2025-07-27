@@ -22,8 +22,19 @@ export async function GET() {
       console.log("[KV] Returning cached categories");
       return NextResponse.json(cachedData);
     }
-
-    const { rows } = await pool.query(`
+const { rows } = await pool.query<{
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  subcategories: Array<{
+    id: number;
+    name: string;
+    slug: string;
+    description: string | null;
+    productCount: number;
+  }>;
+}>(`
   SELECT 
     c.id,
     c.name,
@@ -38,8 +49,8 @@ export async function GET() {
           'description', s.description,
           'productCount', COALESCE(pc.count, 0)
         )
-      ) FILTER (WHERE s.id IS NOT NULL), 
-      '[]'
+      ) FILTER (WHERE s.id IS NOT NULL),
+      '[]'::json
     ) AS subcategories
   FROM categories c
   LEFT JOIN subcategories s ON s.category_id = c.id
@@ -51,7 +62,7 @@ export async function GET() {
   ) pc ON pc.subcategory_id = s.id
   GROUP BY c.id
   ORDER BY c.name;
-`)
+`);
 
     try {
       await kv.set(CATEGORIES_CACHE_KEY, rows);
