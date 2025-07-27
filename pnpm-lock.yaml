@@ -16,7 +16,7 @@ importers:
         version: 1.2.11(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@radix-ui/react-alert-dialog':
         specifier: 1.1.4
-        version: 1.1.4(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 1.1.4(@types/react-dom@19.1.6(@types-react@19.1.8))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@radix-ui/react-aspect-ratio':
         specifier: 1.1.1
         version: 1.1.1(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -141,13 +141,13 @@ importers:
         specifier: ^8.16.2
         version: 8.16.3
       react:
-        specifier: ^19
+        specifier: ^18.3.1  # Updated
         version: 19.1.0
       react-day-picker:
         specifier: 8.10.1
         version: 8.10.1(date-fns@3.6.0)(react@19.1.0)
       react-dom:
-        specifier: ^19
+        specifier: ^18.3.1  # Updated
         version: 19.1.0(react@19.1.0)
       react-hook-form:
         specifier: ^7.54.1
@@ -178,13 +178,13 @@ importers:
         version: 3.25.67
     devDependencies:
       '@types/node':
-        specifier: ^22
+        specifier: ^20.14.2  # Updated
         version: 22.16.0
       '@types/react':
-        specifier: ^19
+        specifier: ^18.3.3  # Updated
         version: 19.1.8
       '@types/react-dom':
-        specifier: ^19
+        specifier: ^18.3.0  # Updated
         version: 19.1.6(@types/react@19.1.8)
       postcss:
         specifier: ^8.5
@@ -193,7 +193,7 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       typescript:
-        specifier: ^5
+        specifier: ^5.4.5  # Updated
         version: 5.8.3
 
 packages:
