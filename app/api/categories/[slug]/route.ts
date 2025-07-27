@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 import { createClient } from '@vercel/kv'
-import { kv } from '@vercel/kv'
+import { kv } from '@/lib/kv'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 3600 // Revalidate data every hour
