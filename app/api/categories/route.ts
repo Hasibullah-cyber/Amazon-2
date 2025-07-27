@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
+import { kv } from '@/lib/kv' // Assuming you have a KV client setup
 
 export const dynamic = 'force-dynamic'
 
-// ✅ GET: Return all categories with subcategories and product count
+// Cache key for categories
+const CATEGORIES_CACHE_KEY = 'all_categories'
+
+// GET: Return all categories with subcategories and product count
 export async function GET() {
   try {
+    // Try to get cached data
+    const cachedData = await kv.get(CATEGORIES_CACHE_KEY)
+    if (cachedData) {
+      return NextResponse.json(cachedData)
+    }
+
     const { rows } = await pool.query<{
       id: number
       name: string
@@ -32,9 +42,7 @@ export async function GET() {
               'slug', s.slug,
               'description', s.description,
               'productCount', COALESCE(pc.count, 0)
-            )
-            ORDER BY s.name
-          ) FILTER (WHERE s.id IS NOT NULL),
+            ) FILTER (WHERE s.id IS NOT NULL),
           '[]'
         ) AS subcategories
       FROM categories c
@@ -42,34 +50,59 @@ export async function GET() {
       LEFT JOIN (
         SELECT subcategory_id, COUNT(*) AS count
         FROM products
-        WHERE subcategory_id IS NOT NULL
+        WHERE is_active = true
         GROUP BY subcategory_id
       ) pc ON pc.subcategory_id = s.id
-      GROUP BY c.id, c.name, c.slug, c.description
+      GROUP BY c.id
       ORDER BY c.name
     `)
+
+    // Cache the response for 1 hour
+    await kv.set(CATEGORIES_CACHE_KEY, rows, { ex: 3600 })
 
     return NextResponse.json(rows)
   } catch (error) {
     console.error('Error fetching categories:', error)
+    
+    // Try to return cached data if available
+    try {
+      const cachedData = await kv.get(CATEGORIES_CACHE_KEY)
+      if (cachedData) {
+        return NextResponse.json(cachedData)
+      }
+    } catch (cacheError) {
+      console.error('Cache fallback failed:', cacheError)
+    }
+
     return NextResponse.json(
-      { error: 'Failed to fetch categories', details: error instanceof Error ? error.message : String(error) },
+      { 
+        error: 'Failed to fetch categories',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
 }
 
-// ✅ POST: Create a new category
+// POST: Create a new category
 export async function POST(request: Request) {
   try {
-    const { name, slug, description } = await request.json()
+    const { name, description } = await request.json()
 
-    if (!name?.trim() || !slug?.trim()) {
+    if (!name?.trim()) {
       return NextResponse.json(
-        { error: 'Name and slug are required and cannot be empty' },
+        { error: 'Name is required and cannot be empty' },
         { status: 400 }
       )
     }
+
+    // Generate slug from name
+    const slug = name
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
 
     const { rows } = await pool.query<{
       id: number
@@ -80,8 +113,11 @@ export async function POST(request: Request) {
       `INSERT INTO categories (name, slug, description) 
        VALUES ($1, $2, $3) 
        RETURNING id, name, slug, description`,
-      [name.trim(), slug.trim(), description?.trim() || null]
+      [name.trim(), slug, description?.trim() || null]
     )
+
+    // Invalidate cache
+    await kv.del(CATEGORIES_CACHE_KEY)
 
     return NextResponse.json(rows[0], { status: 201 })
   } catch (error) {
@@ -90,7 +126,7 @@ export async function POST(request: Request) {
     // Handle duplicate slug error
     if (error instanceof Error && error.message.includes('duplicate key')) {
       return NextResponse.json(
-        { error: 'Category with this slug already exists' },
+        { error: 'A category with similar name already exists' },
         { status: 409 }
       )
     }
@@ -98,7 +134,193 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { 
         error: 'Failed to add category',
-        details: error instanceof Error ? error.message : String(error)
+        details: error instanceof Error ? error.message : 'Database error'
+      },
+      { status: 500 }
+    )
+  }
+}
+
+// PATCH: Update multiple categories
+export async function PATCH(request: Request) {
+  try {
+    const updates = await request.json()
+    
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return NextResponse.json(
+        { error: 'Invalid request format. Expected array of category updates' },
+        { status: 400 }
+      )
+    }
+
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      
+      const updatedCategories = []
+      
+      for (const update of updates) {
+        const { id, name, description } = update
+        
+        if (!id) {
+          await client.query('ROLLBACK')
+          return NextResponse.json(
+            { error: 'Missing category ID in update' },
+            { status: 400 }
+          )
+        }
+        
+        // Generate new slug if name changes
+        let slug
+        if (name) {
+          slug = name
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, '')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+        }
+        
+        const query = `
+          UPDATE categories 
+          SET 
+            name = COALESCE($1, name),
+            slug = COALESCE($2, slug),
+            description = COALESCE($3, description)
+          WHERE id = $4
+          RETURNING id, name, slug, description
+        `
+        
+        const result = await client.query(query, [
+          name || null,
+          slug || null,
+          description || null,
+          id
+        ])
+        
+        if (result.rowCount === 0) {
+          await client.query('ROLLBACK')
+          return NextResponse.json(
+            { error: `Category with ID ${id} not found` },
+            { status: 404 }
+          )
+        }
+        
+        updatedCategories.push(result.rows[0])
+      }
+      
+      await client.query('COMMIT')
+      
+      // Invalidate cache
+      await kv.del(CATEGORIES_CACHE_KEY)
+      
+      return NextResponse.json(updatedCategories)
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    } finally {
+      client.release()
+    }
+  } catch (error) {
+    console.error('Error updating categories:', error)
+    
+    // Handle duplicate slug error
+    if (error instanceof Error && error.message.includes('duplicate key')) {
+      return NextResponse.json(
+        { error: 'Category with similar name already exists' },
+        { status: 409 }
+      )
+    }
+    
+    return NextResponse.json(
+      { 
+        error: 'Failed to update categories',
+        details: error instanceof Error ? error.message : 'Database error'
+      },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE: Delete multiple categories
+export async function DELETE(request: Request) {
+  try {
+    const { ids } = await request.json()
+    
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json(
+        { error: 'Invalid request format. Expected array of category IDs' },
+        { status: 400 }
+      )
+    }
+
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      
+      // Check if any category has subcategories
+      const subcategoryCheck = await client.query(
+        `SELECT c.id, COUNT(s.id) as subcategory_count
+         FROM categories c
+         LEFT JOIN subcategories s ON s.category_id = c.id
+         WHERE c.id = ANY($1)
+         GROUP BY c.id
+         HAVING COUNT(s.id) > 0`,
+        [ids]
+      )
+      
+      if (subcategoryCheck.rows.length > 0) {
+        await client.query('ROLLBACK')
+        const problematic = subcategoryCheck.rows.map(r => r.id)
+        return NextResponse.json(
+          { 
+            error: 'Cannot delete categories with subcategories',
+            categories: problematic
+          },
+          { status: 400 }
+        )
+      }
+      
+      // Delete categories
+      const deleteResult = await client.query(
+        `DELETE FROM categories WHERE id = ANY($1) RETURNING id`,
+        [ids]
+      )
+      
+      if (deleteResult.rowCount !== ids.length) {
+        await client.query('ROLLBACK')
+        const deletedIds = deleteResult.rows.map(r => r.id)
+        const missing = ids.filter(id => !deletedIds.includes(id))
+        return NextResponse.json(
+          { 
+            error: 'Some categories not found',
+            missing
+          },
+          { status: 404 }
+        )
+      }
+      
+      await client.query('COMMIT')
+      
+      // Invalidate cache
+      await kv.del(CATEGORIES_CACHE_KEY)
+      
+      return NextResponse.json(
+        { message: `${deleteResult.rowCount} categories deleted successfully` },
+        { status: 200 }
+      )
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    } finally {
+      client.release()
+    }
+  } catch (error) {
+    console.error('Error deleting categories:', error)
+    return NextResponse.json(
+      { 
+        error: 'Failed to delete categories',
+        details: error instanceof Error ? error.message : 'Database error'
       },
       { status: 500 }
     )
