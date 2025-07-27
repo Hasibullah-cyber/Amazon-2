@@ -31,66 +31,97 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Load cart from localStorage on initial render
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       setMounted(true)
       const savedCart = localStorage.getItem("cart")
       if (savedCart) {
         try {
           const parsedCart = JSON.parse(savedCart)
           if (Array.isArray(parsedCart)) {
-            console.log('CartProvider: Loaded cart from localStorage:', parsedCart)
+            console.log("CartProvider: Loaded cart from localStorage:", parsedCart)
             setCartItems(parsedCart)
           }
         } catch (error) {
           console.error("Failed to parse cart from localStorage:", error)
           localStorage.removeItem("cart")
         }
-      } else {
-        console.log('CartProvider: No saved cart found')
       }
     }
   }, [])
 
-  // Save cart to localStorage whenever it changes
+  // Save cart and recalculate total whenever it changes
   useEffect(() => {
-    if (mounted && cartItems.length > 0) {
-      localStorage.setItem("cart", JSON.stringify(cartItems))
+    if (mounted) {
+      if (cartItems.length > 0) {
+        localStorage.setItem("cart", JSON.stringify(cartItems))
+      } else {
+        localStorage.removeItem("cart")
+      }
     }
 
-    // Calculate subtotal only (without VAT)
     const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
     setTotalPrice(subtotal)
   }, [cartItems, mounted])
 
+  // ✅ Add item or increase quantity if exists
   const addToCart = (item: CartItem) => {
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((i) => i.id === item.id)
 
-      if (existingItem) {
-        // If item already exists, increase quantity
-        return prevItems.map((i) => (i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i))
-      } else {
-        // Otherwise add new item
-        return [...prevItems, item]
+      const updatedItems = existingItem
+        ? prevItems.map((i) =>
+            i.id === item.id
+              ? { ...i, quantity: i.quantity + (item.quantity || 1) }
+              : i
+          )
+        : [...prevItems, { ...item, quantity: item.quantity || 1 }]
+
+      if (mounted) {
+        localStorage.setItem("cart", JSON.stringify(updatedItems))
       }
+
+      return updatedItems
     })
   }
 
+  // ✅ Remove item and clear localStorage if cart is empty
   const removeFromCart = (id: number) => {
-    setCartItems((prevItems) => prevItems.filter((item) => item.id !== id))
+    setCartItems((prevItems) => {
+      const updatedItems = prevItems.filter((item) => item.id !== id)
 
-    // If cart becomes empty after removal, clear localStorage
-    if (mounted && cartItems.length === 1) {
-      localStorage.removeItem("cart")
-    }
+      if (mounted) {
+        if (updatedItems.length === 0) {
+          localStorage.removeItem("cart")
+        } else {
+          localStorage.setItem("cart", JSON.stringify(updatedItems))
+        }
+      }
+
+      return updatedItems
+    })
   }
 
+  // ✅ Update quantity (or remove if 0)
   const updateQuantity = (id: number, quantity: number) => {
-    if (quantity < 1) return
+    if (quantity < 1) {
+      removeFromCart(id)
+      return
+    }
 
-    setCartItems((prevItems) => prevItems.map((item) => (item.id === id ? { ...item, quantity } : item)))
+    setCartItems((prevItems) => {
+      const updatedItems = prevItems.map((item) =>
+        item.id === id ? { ...item, quantity } : item
+      )
+
+      if (mounted) {
+        localStorage.setItem("cart", JSON.stringify(updatedItems))
+      }
+
+      return updatedItems
+    })
   }
 
+  // ✅ Clear cart
   const clearCart = () => {
     setCartItems([])
     if (mounted) {
@@ -102,14 +133,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     <CartContext.Provider
       value={{
         cartItems,
-        cart: cartItems, // Alias for backward compatibility
-        items: cartItems, // Another alias
+        cart: cartItems,
+        items: cartItems,
         addToCart,
         removeFromCart,
         updateQuantity,
         clearCart,
         totalPrice,
-        total: totalPrice, // Alias for backward compatibility
+        total: totalPrice,
       }}
     >
       {children}
