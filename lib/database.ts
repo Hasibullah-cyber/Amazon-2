@@ -268,112 +268,147 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON product_reviews(product_id);
       CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON product_reviews(user_id);
       CREATE INDEX IF NOT EXISTS idx_reviews_approved ON product_reviews(is_approved);
-    `)
+    `) 
+    
+await client.query('COMMIT')
 
-    await client.query('COMMIT')
-
-    const { initializeDefaultAdmin } = await import('./admin-auth')
-    await initializeDefaultAdmin()
-
-    console.log('Database initialized')
+    console.log('Database initialized successfully')
     return true
   } catch (error) {
-    console.error('Error initializing database:', error)
     await client.query('ROLLBACK')
-    return false
+    console.error('Database initialization failed:', error)
+    throw error // Rethrow for better error handling
   } finally {
     client.release()
   }
 }
 
-export const initializeTables = initializeDatabase
-
-export async function executeQuery(text: string, params?: any[]) {
+// Optimized query execution with error handling
+export async function executeQuery(text: string, params: any[] = []) {
   const client = await pool.connect()
   try {
+    const start = Date.now()
     const result = await client.query(text, params)
+    const duration = Date.now() - start
+    console.log(`Query executed in ${duration}ms: ${text}`)
     return result
+  } catch (error) {
+    console.error('Query failed:', { text, params, error })
+    throw error
   } finally {
     client.release()
   }
 }
 
-export async function updateOrderStatus(orderId: string, newStatus: string, notes?: string, updatedBy?: string) {
+// Optimized order status update
+export async function updateOrderStatus(orderId: string, newStatus: string, notes = '', updatedBy = 'system') {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
 
-    const updateFields = ['status = $1', 'updated_at = CURRENT_TIMESTAMP']
-    const updateValues = [newStatus, orderId]
-
-    if (newStatus === 'shipped') {
-      updateFields.push('shipped_at = CURRENT_TIMESTAMP')
-    } else if (newStatus === 'delivered') {
-      updateFields.push('delivered_at = CURRENT_TIMESTAMP')
-    }
-
+    // Update order
     const updateResult = await client.query(
-      `UPDATE orders SET ${updateFields.join(', ')} WHERE order_id = $${updateValues.length}`,
-      updateValues
+      `UPDATE orders 
+       SET status = $1, updated_at = CURRENT_TIMESTAMP
+       ${newStatus === 'shipped' ? ', shipped_at = CURRENT_TIMESTAMP' : ''}
+       ${newStatus === 'delivered' ? ', delivered_at = CURRENT_TIMESTAMP' : ''}
+       WHERE order_id = $2
+       RETURNING id`,
+      [newStatus, orderId]
     )
 
     if (updateResult.rowCount === 0) {
-      // No order found with that orderId
-      await client.query('ROLLBACK')
-      console.error(`Order with order_id=${orderId} not found`)
-      return false
+      throw new Error(`Order ${orderId} not found`)
     }
 
+    // Add history record
     await client.query(
-      'INSERT INTO order_status_history (order_id, status, notes, created_by) VALUES ($1, $2, $3, $4)',
-      [orderId, newStatus, notes || `Status changed to ${newStatus}`, updatedBy || 'system']
+      `INSERT INTO order_status_history (order_id, status, notes, created_by)
+       VALUES ($1, $2, $3, $4)`,
+      [orderId, newStatus, notes, updatedBy]
     )
 
     await client.query('COMMIT')
     return true
   } catch (error) {
     await client.query('ROLLBACK')
-    console.error('Error updating order status:', error)
+    console.error('Order status update failed:', error)
     return false
   } finally {
     client.release()
   }
 }
 
-export async function updateProductStock(productId: string, newStock: number, reason: string, referenceId?: string, updatedBy?: string) {
+// Optimized stock update with inventory tracking
+export async function updateProductStock(
+  productId: string, 
+  stockChange: number, 
+  reason: string, 
+  referenceId?: string, 
+  updatedBy = 'system'
+) {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
 
-    const currentResult = await client.query('SELECT stock FROM products WHERE id = $1', [productId])
-    const currentStock = currentResult.rows[0]?.stock || 0
+    // Get current stock
+    const { rows: [product] } = await client.query<{ stock: number }>(
+      'SELECT stock FROM products WHERE id = $1 FOR UPDATE',
+      [productId]
+    )
 
+    if (!product) {
+      throw new Error(`Product ${productId} not found`)
+    }
+
+    const newStock = product.stock + stockChange
+    if (newStock < 0) {
+      throw new Error(`Insufficient stock for product ${productId}`)
+    }
+
+    // Update product
     await client.query(
       'UPDATE products SET stock = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [newStock, productId]
     )
 
-    await client.query(`
-      INSERT INTO inventory_logs (product_id, change_type, quantity_before, quantity_after, quantity_changed, reason, reference_id, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    `, [
-      productId,
-      newStock > currentStock ? 'increase' : 'decrease',
-      currentStock,
-      newStock,
-      newStock - currentStock,
-      reason,
-      referenceId,
-      updatedBy || 'system'
-    ])
+    // Log inventory change
+    await client.query(
+      `INSERT INTO inventory_logs (
+        product_id, change_type, quantity_before, 
+        quantity_after, quantity_changed, reason, 
+        reference_id, created_by
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        productId,
+        stockChange > 0 ? 'restock' : 'deduction',
+        product.stock,
+        newStock,
+        Math.abs(stockChange),
+        reason,
+        referenceId,
+        updatedBy
+      ]
+    )
 
     await client.query('COMMIT')
     return true
   } catch (error) {
     await client.query('ROLLBACK')
-    console.error('Error updating product stock:', error)
+    console.error('Stock update failed:', error)
     return false
   } finally {
     client.release()
+  }
+}
+
+// Health check endpoint
+export async function checkDatabaseHealth() {
+  try {
+    const { rows } = await pool.query('SELECT 1 AS status')
+    return rows[0]?.status === 1
+  } catch (error) {
+    console.error('Database health check failed:', error)
+    return false
   }
 }
