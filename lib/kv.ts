@@ -15,7 +15,7 @@ export const kv = {
    * @param key The key to retrieve
    * @returns The value or null if not found
    */
-  get: (key: string): Value => {
+  get: async (key: string): Promise<Value> => {
     if (cache[key] === TOMBSTONE) return null;
     if (cache[key] !== undefined) return cache[key] as Value;
     return persistent_store[key];
@@ -26,13 +26,13 @@ export const kv = {
    * @param key The key to set
    * @param value The value to store
    */
-  set: (key: string, value: Value): void => {
+  set: async (key: string, value: Value): Promise<void> => {
     const was_cached = cache[key] !== undefined;
     cache[key] = value;
 
     if (!was_cached) {
       cache_count++;
-      if (cache_count >= max_cache_size) kv.flush();
+      if (cache_count >= max_cache_size) await kv.flush();
     }
   },
 
@@ -40,20 +40,20 @@ export const kv = {
    * Delete a key from the store
    * @param key The key to delete
    */
-  delete: (key: string): void => {
+  delete: async (key: string): Promise<void> => {
     const was_cached = cache[key] !== undefined;
     cache[key] = TOMBSTONE;
 
     if (!was_cached) {
       cache_count++;
-      if (cache_count >= max_cache_size) kv.flush();
+      if (cache_count >= max_cache_size) await kv.flush();
     }
   },
 
   /**
    * Flush all pending writes to persistent storage
    */
-  flush: (): void => {
+  flush: async (): Promise<void> => {
     Object.entries(cache).forEach(([key, value]) => {
       if (value === TOMBSTONE) {
         delete persistent_store[key];
@@ -70,7 +70,7 @@ export const kv = {
   /**
    * Reset the entire store (for testing purposes)
    */
-  _reset: (): void => {
+  _reset: async (): Promise<void> => {
     persistent_store = {};
     cache = {};
     cache_count = 0;
