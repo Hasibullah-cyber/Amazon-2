@@ -85,16 +85,12 @@ function ProductGrid({ products }: { products: Product[] }) {
           <Link href={`/product/${product.id}`} className="flex-grow">
             <div className="aspect-square p-4 bg-white">
               <Image
-                src={product.image || "/placeholder.svg?height=300&width=300"}
-                alt={product.name}
-                width={300}
-                height={300}
-                className="object-contain w-full h-full transition-transform hover:scale-105"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = "/placeholder.svg?height=300&width=300";
-                }}
-              />
+  src={product.image || "/placeholder.svg?height=300&width=300"}
+  alt={product.name}
+  width={300}
+  height={300}
+  className="object-contain w-full h-full transition-transform hover:scale-105"
+/>
             </div>
 
             <div className="p-4 pt-2">
