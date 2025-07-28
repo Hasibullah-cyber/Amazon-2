@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
-// ✅ Define the interface for admin dashboard analytics
 interface AnalyticsData {
   totalProducts: number
   totalOrders: number
@@ -24,94 +23,76 @@ export async function GET() {
     topProducts: [],
     conversionRate: 0,
     avgOrderValue: 0,
-    customerSatisfaction: 91.2, // Static fallback value
+    customerSatisfaction: 91.2,
   }
 
+  let client;
+  
   try {
-    const client = await pool.connect()
+    client = await pool.connect()
 
-    // ✅ Get total products
-    try {
-      const result = await client.query('SELECT COUNT(*) FROM products')
-      data.totalProducts = parseInt(result.rows[0].count)
-    } catch (err) {
-      console.error('[ERROR] totalProducts:', err)
-    }
-
-    // ✅ Get total orders
-    try {
-      const result = await client.query('SELECT COUNT(*) FROM orders')
-      data.totalOrders = parseInt(result.rows[0].count)
-    } catch (err) {
-      console.error('[ERROR] totalOrders:', err)
-    }
-
-    // ✅ Get total users
-    try {
-      const result = await client.query('SELECT COUNT(*) FROM users')
-      data.totalUsers = parseInt(result.rows[0].count)
-    } catch (err) {
-      console.error('[ERROR] totalUsers:', err)
-    }
-
-    // ✅ Get monthly revenue
-    try {
-      const result = await client.query(`
+    // Run all queries in parallel
+    const [
+      productsResult,
+      ordersResult,
+      usersResult,
+      revenueResult,
+      topProductsResult,
+      avgOrderResult
+    ] = await Promise.all([
+      client.query('SELECT COUNT(*) FROM products'),
+      client.query('SELECT COUNT(*) FROM orders'),
+      client.query('SELECT COUNT(*) FROM users'),
+      client.query(`
         SELECT COALESCE(SUM(total_amount), 0) AS monthly_revenue
         FROM orders
         WHERE created_at >= date_trunc('month', CURRENT_DATE)
-      `)
-      data.monthlyRevenue = parseFloat(result.rows[0].monthly_revenue)
-    } catch (err) {
-      console.error('[ERROR] monthlyRevenue:', err)
-    }
-
-    // ✅ Get top 5 products by order count using `order_items`
-    try {
-      const result = await client.query(`
-        SELECT 
-          p.name AS product_name,
-          COUNT(oi.*) AS order_count
+      `),
+      client.query(`
+        SELECT p.name AS product_name, COUNT(oi.*) AS order_count
         FROM order_items oi
         JOIN products p ON oi.product_id = p.id
         GROUP BY p.name
         ORDER BY order_count DESC
         LIMIT 5
-      `)
-      data.topProducts = result.rows.map((row) => ({
-        product_name: row.product_name,
-        order_count: parseInt(row.order_count),
-      }))
-    } catch (err) {
-      console.error('[ERROR] topProducts:', err)
-    }
-
-    // ✅ Get average order value
-    try {
-      const result = await client.query(`
+      `),
+      client.query(`
         SELECT COALESCE(AVG(total_amount), 0) AS avg_order_value
         FROM orders
       `)
-      data.avgOrderValue = parseFloat(result.rows[0].avg_order_value)
-    } catch (err) {
-      console.error('[ERROR] avgOrderValue:', err)
-    }
+    ])
 
-    // ✅ Estimate conversion rate (orders / users * 100)
-    try {
-      if (data.totalUsers > 0) {
-        data.conversionRate = parseFloat(
-          ((data.totalOrders / data.totalUsers) * 100).toFixed(2)
-        )
-      }
-    } catch (err) {
-      console.error('[ERROR] conversionRate:', err)
-    }
+    // Process results
+    data.totalProducts = parseInt(productsResult.rows[0].count)
+    data.totalOrders = parseInt(ordersResult.rows[0].count)
+    data.totalUsers = parseInt(usersResult.rows[0].count)
+    data.monthlyRevenue = parseFloat(revenueResult.rows[0].monthly_revenue)
+    data.avgOrderValue = parseFloat(avgOrderResult.rows[0].avg_order_value)
+    
+    data.topProducts = topProductsResult.rows.map(row => ({
+      product_name: row.product_name,
+      order_count: parseInt(row.order_count),
+    }))
 
-    client.release()
+    // Calculate conversion rate
+    if (data.totalUsers > 0) {
+      data.conversionRate = parseFloat(
+        ((data.totalOrders / data.totalUsers) * 100).toFixed(2)
+      )
+    }
+    
     return NextResponse.json(data)
-  } catch (fatalError) {
-    console.error('[ADMIN_STATS_FATAL_ERROR]', fatalError)
-    return NextResponse.json(data, { status: 500 })
+  } catch (error) {
+    console.error('[ADMIN_STATS_ERROR]', error)
+    return NextResponse.json(
+      { 
+        message: 'Failed to fetch analytics data',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        partialData: data
+      }, 
+      { status: 500 }
+    )
+  } finally {
+    if (client) client.release()
   }
 }
