@@ -1,17 +1,17 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, Component, ErrorInfo, ReactNode } from "react"
 import { Card } from "@/components/ui/card"
 import { 
   ShoppingCart, 
   Package, 
   Users, 
   DollarSign, 
-  BarChart2, 
   RefreshCw,
   TrendingUp,
   Smile,
-  Star
+  Star,
+  AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -26,9 +26,55 @@ interface Stats {
   topProducts: { product_name: string; order_count: number }[]
 }
 
-export const dynamic = 'force-dynamic'
+// Define ErrorBoundary component
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
 
-// ErrorBoundary remains the same as in your original code
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-6">
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded">
+            <p className="font-bold flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" /> Dashboard Error
+            </p>
+            <p className="my-2">
+              {this.state.error?.message || 'Something went wrong.'}
+            </p>
+            <button
+              onClick={() => this.setState({ hasError: false })}
+              className="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null)
@@ -250,4 +296,4 @@ export default function DashboardPage() {
       </div>
     </ErrorBoundary>
   )
-}
+              }
