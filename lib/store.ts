@@ -71,7 +71,10 @@ class StoreManager {
   async getProducts(): Promise<Product[]> {
     try {
       const res = await fetch(this.getApiUrl('/api/admin/products'), { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP error! status: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to fetch products: ${res.statusText}`);
+      }
       const data = await res.json();
       this.products = data.products ?? [];
       this.notifySubscribers();
@@ -97,19 +100,38 @@ class StoreManager {
   }
 
   async updateProduct(productId: string, updates: Partial<Product>): Promise<void> {
-    await fetch(this.getApiUrl('/api/admin/products'), {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: productId,
-        updates: {
-          ...updates,
-          category: { id: updates.category }, // send subcategory id
-        },
-      }),
-    });
-    await this.getProducts();
-    this.notifySubscribers();
+    try {
+      // Handle category conversion
+      const updateData: any = { ...updates };
+      
+      if (updates.category !== undefined) {
+        if (typeof updates.category === 'string') {
+          updateData.category = { id: updates.category };
+        } else if (updates.category && typeof updates.category === 'object') {
+          updateData.category = { id: updates.category.id };
+        }
+      }
+
+      const res = await fetch(this.getApiUrl('/api/admin/products'), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: productId,
+          updates: updateData,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP error! status: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to update product: ${res.statusText}`);
+      }
+      
+      await this.getProducts();
+      this.notifySubscribers();
+    } catch (error) {
+      console.error('Error updating product:', error);
+      throw error;
+    }
   }
 
   async searchProducts(query: string): Promise<Product[]> {
@@ -138,7 +160,10 @@ class StoreManager {
         headers: { 'Content-Type': 'application/json' },
       });
 
-      if (!res.ok) throw new Error(`Failed to fetch categories: ${res.statusText}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP error! status: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to fetch categories: ${res.statusText}`);
+      }
       const data = await res.json();
       this.categories = data ?? [];
       this.notifySubscribers();
@@ -171,7 +196,10 @@ class StoreManager {
         headers: { 'Content-Type': 'application/json' },
       });
 
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP error! status: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to fetch orders: ${res.statusText}`);
+      }
       const orders = await res.json();
       this.orders = Array.isArray(orders) ? orders : [];
       this.notifySubscribers();
@@ -201,7 +229,10 @@ class StoreManager {
         cache: 'no-store',
       });
 
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP error! status: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to fetch user orders: ${res.statusText}`);
+      }
       return await res.json();
     } catch (error) {
       console.error('Error fetching user orders:', error);
@@ -217,7 +248,11 @@ class StoreManager {
         body: JSON.stringify({ status }),
       });
 
-      if (!res.ok) return false;
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP error! status: ${res.status}` }));
+        console.error('Order status update failed:', errorData);
+        return false;
+      }
 
       const index = this.orders.findIndex((o) => o.id === orderId);
       if (index !== -1) {
@@ -245,7 +280,10 @@ class StoreManager {
         body: JSON.stringify(newOrder),
       });
 
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: `HTTP error! status: ${res.status}` }));
+        throw new Error(errorData.error || `Failed to add order: ${res.statusText}`);
+      }
 
       const savedOrder = await res.json();
       this.orders.push(savedOrder);
@@ -262,6 +300,7 @@ class StoreManager {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email: order.customerEmail,
+              orderId: savedOrder.id,
               orderDetails: savedOrder,
             }),
           });
