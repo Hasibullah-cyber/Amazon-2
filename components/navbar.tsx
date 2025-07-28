@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ShoppingCart, Menu, X, User, MapPin, LogOut, Search } from "lucide-react"
+import { ShoppingCart, Menu, X, User, LogOut, Search, Heart } from "lucide-react" // Fixed: Combined imports
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
 import { useWishlist } from "@/components/wishlist-provider"
@@ -13,7 +13,6 @@ import { AuthModal } from "@/components/auth-modal"
 import { AdminLoginModal } from "@/components/admin-login-modal"
 import CartDrawer from "@/components/cart-drawer"
 import { useToast } from "@/hooks/use-toast"
-import { Heart } from "lucide-react"
 
 export default function Navbar() {
   const router = useRouter()
@@ -395,7 +394,7 @@ export default function Navbar() {
               Fashion
             </Link>
             <Link
-              href="/category/home-living"
+              href="/category/home-and-living"
               className="block text-white hover:text-gray-300 py-2"
               onClick={() => setIsMobileMenuOpen(false)}
             >
