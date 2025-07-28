@@ -98,16 +98,16 @@ export async function GET(req: NextRequest) {
     
     // Parse and validate pagination parameters
     const pageInput = searchParams.get('page') || '1';
-    const limitInput = searchParams.get('limit') || '20';
-    const page = Math.max(1, parseInt(pageInput, 10)) || 1;
-    const limit = Math.min(100, Math.max(1, parseInt(limitInput, 10)) || 20;
-    const offset = (page - 1) * limit;
-    
-    debugInfo.pagination = {
-      input: { page: pageInput, limit: limitInput },
-      parsed: { page, limit, offset },
-      valid: !isNaN(page) && !isNaN(limit) && !isNaN(offset)
-    };
+const limitInput = searchParams.get('limit') || '20';
+const page = Math.max(1, parseInt(pageInput, 10)) || 1;
+const limit = Math.min(100, Math.max(1, parseInt(limitInput, 10)) || 20);
+const offset = (page - 1) * limit;
+
+debugInfo.pagination = {
+  input: { page: pageInput, limit: limitInput },
+  parsed: { page, limit, offset },
+  valid: !isNaN(page) && !isNaN(limit) && !isNaN(offset),
+};
 
     if (!debugInfo.pagination.valid) {
       return debugResponse(
