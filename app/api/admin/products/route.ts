@@ -69,7 +69,7 @@ function debugResponse(
   return NextResponse.json(response, { status })
 }
 
-// GET — Fetch products with pagination, filtering, and sorting
+// GET — Fetch all products with filtering and sorting
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
   const debugInfo: Record<string, any> = {
@@ -95,28 +95,6 @@ export async function GET(req: NextRequest) {
     });
 
     const { searchParams } = new URL(req.url);
-    
-    // Parse and validate pagination parameters
-    const pageInput = searchParams.get('page') || '1';
-const limitInput = searchParams.get('limit') || '20';
-const page = Math.max(1, parseInt(pageInput, 10)) || 1;
-const limit = Math.min(100, Math.max(1, parseInt(limitInput, 10)) || 20);
-const offset = (page - 1) * limit;
-
-debugInfo.pagination = {
-  input: { page: pageInput, limit: limitInput },
-  parsed: { page, limit, offset },
-  valid: !isNaN(page) && !isNaN(limit) && !isNaN(offset),
-};
-
-    if (!debugInfo.pagination.valid) {
-      return debugResponse(
-        null,
-        'Invalid pagination parameters',
-        400,
-        debugInfo
-      );
-    }
     
     const categoryId = searchParams.get('category_id');
     const subcategoryId = searchParams.get('subcategory_id');
@@ -203,44 +181,7 @@ debugInfo.pagination = {
       params: [...params]
     };
 
-    // Get total count
-    const countQuery = 
-      "SELECT COUNT(*) AS total_count " +
-      "FROM products p " +
-      (whereClause ? whereClause : "");
-    
-    debugInfo.countQuery = {
-      sql: countQuery,
-      params: [...params]
-    };
-    
-    debugInfo.steps.push("Executing count query");
-    const countStart = Date.now();
-    
-    try {
-      const countResult = await pool.query(countQuery, params);
-      const totalCount = countResult.rows[0]?.total_count || 0;
-      debugInfo.steps.push({
-        step: 'count_query',
-        status: 'success',
-        time: Date.now() - countStart,
-        totalCount
-      });
-      debugInfo.totalCount = totalCount;
-    } catch (countError: any) {
-      debugInfo.steps.push({
-        step: 'count_query',
-        status: 'failed',
-        time: Date.now() - countStart,
-        error: countError.message,
-        code: countError.code,
-        query: countQuery,
-        params: params
-      });
-      throw countError;
-    }
-
-    // Get paginated results
+    // Get all results
     const dataQuery = 
       "SELECT " +
       "p.id, " +
@@ -267,15 +208,11 @@ debugInfo.pagination = {
       "LEFT JOIN categories c ON p.category_id = c.id " +
       "LEFT JOIN subcategories s ON p.subcategory_id = s.id " +
       (whereClause ? whereClause + " " : "") +
-      "ORDER BY p." + sortBy + " " + sortOrder + " " +
-      "LIMIT $" + (params.length + 1) + " " +
-      "OFFSET $" + (params.length + 2);
-    
-    const dataParams = [...params, limit, offset];
+      "ORDER BY p." + sortBy + " " + sortOrder;
     
     debugInfo.dataQuery = {
       sql: dataQuery,
-      params: dataParams
+      params: [...params]
     };
     
     debugInfo.steps.push("Executing data query");
@@ -283,7 +220,7 @@ debugInfo.pagination = {
     let result;
     
     try {
-      result = await pool.query(dataQuery, dataParams);
+      result = await pool.query(dataQuery, params);
       debugInfo.steps.push({
         step: 'data_query',
         status: 'success',
@@ -298,7 +235,7 @@ debugInfo.pagination = {
         error: dataError.message,
         code: dataError.code,
         query: dataQuery,
-        params: dataParams
+        params: params
       });
       throw dataError;
     }
@@ -314,12 +251,7 @@ debugInfo.pagination = {
         weight: row.weight ? Number(row.weight) : null,
         images: row.images || [],
       })),
-      pagination: {
-        totalItems: parseInt(debugInfo.totalCount),
-        totalPages: Math.ceil(debugInfo.totalCount / limit),
-        currentPage: page,
-        itemsPerPage: limit
-      }
+      totalItems: result.rowCount
     };
 
     if (debugMode) {
@@ -792,4 +724,4 @@ export async function DELETE(req: NextRequest) {
   } finally {
     client.release()
   }
-}
+      }
