@@ -301,41 +301,42 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Build WHERE conditions
+        // Build WHERE conditions
     const conditions: string[] = [];
     const params: any[] = [];
     
     if (categoryId) {
-      conditions.push(`p.category_id = $${params.length + 1}`);
+      conditions.push("p.category_id = $" + (params.length + 1));
       params.push(categoryId);
-      debugInfo.steps.push(`Added category filter: ${categoryId}`);
+      debugInfo.steps.push("Added category filter: " + categoryId);
     }
 
     if (subcategoryId) {
-      conditions.push(`p.subcategory_id = $${params.length + 1}`);
+      conditions.push("p.subcategory_id = $" + (params.length + 1));
       params.push(subcategoryId);
-      debugInfo.steps.push(`Added subcategory filter: ${subcategoryId}`);
+      debugInfo.steps.push("Added subcategory filter: " + subcategoryId);
     }
 
     if (searchTerm) {
-      conditions.push(`(p.name ILIKE $${params.length + 1} OR p.description ILIKE $${params.length + 1})`);
-      params.push(`%${searchTerm}%`);
-      debugInfo.steps.push(`Added search term: ${searchTerm}`);
+      const paramIndex = params.length + 1;
+      conditions.push("(p.name ILIKE $" + paramIndex + " OR p.description ILIKE $" + paramIndex + ")");
+      params.push("%" + searchTerm + "%");
+      debugInfo.steps.push("Added search term: " + searchTerm);
     }
 
     if (activeOnly) {
-      conditions.push(`p.is_active = true`);
-      debugInfo.steps.push('Added active only filter');
+      conditions.push("p.is_active = true");
+      debugInfo.steps.push("Added active only filter");
     }
 
     if (lowStockOnly) {
-      conditions.push(`p.stock < 10 AND p.stock > 0`);
-      debugInfo.steps.push('Added low stock filter');
+      conditions.push("p.stock < 10 AND p.stock > 0");
+      debugInfo.steps.push("Added low stock filter");
     }
 
     const whereClause = conditions.length > 0 
-      ? `WHERE ${conditions.join(' AND ')}` 
-      : '';
+      ? "WHERE " + conditions.join(" AND ") 
+      : "";
     
     debugInfo.whereClause = {
       raw: whereClause,
