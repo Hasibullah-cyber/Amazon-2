@@ -1,4 +1,5 @@
 // app/admin/products/page.tsx
+
 "use client"
 import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
