@@ -1,47 +1,4 @@
 "use client"
-// Show console logs & errors on screen (for debugging on phone)
-if (typeof window !== "undefined") {
-  const debugBox = document.createElement("div")
-  debugBox.style.position = "fixed"
-  debugBox.style.bottom = "0"
-  debugBox.style.left = "0"
-  debugBox.style.maxHeight = "40vh"
-  debugBox.style.overflowY = "auto"
-  debugBox.style.zIndex = "9999"
-  debugBox.style.background = "#000"
-  debugBox.style.color = "#0f0"
-  debugBox.style.fontSize = "12px"
-  debugBox.style.padding = "4px"
-  debugBox.style.borderTopRightRadius = "6px"
-  debugBox.style.width = "100%"
-  document.body.appendChild(debugBox)
-
-  const log = console.log
-  const error = console.error
-
-  console.log = function (...args) {
-    log.apply(console, args)
-    const msg = document.createElement("div")
-    msg.textContent = "[LOG] " + args.join(" ")
-    debugBox.appendChild(msg)
-  }
-
-  console.error = function (...args) {
-    error.apply(console, args)
-    const msg = document.createElement("div")
-    msg.style.color = "#f55"
-    msg.textContent = "[ERROR] " + args.join(" ")
-    debugBox.appendChild(msg)
-  }
-
-  window.onerror = function (message, source, lineno, colno, err) {
-    const msg = document.createElement("div")
-    msg.style.color = "#f55"
-    msg.textContent = `[ERROR] ${message} at ${source}:${lineno}:${colno}`
-    debugBox.appendChild(msg)
-  }
-}
-import { debugFetch } from "@/lib/debug-fetch"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
@@ -56,7 +13,10 @@ import {
   AlertTriangle,
   Eye,
   Edit,
+  List,
+  LayoutGrid
 } from "lucide-react"
+import { debugFetch } from "@/lib/debug-fetch"
 
 export const dynamic = "force-dynamic"
 
@@ -64,43 +24,105 @@ export default function AdminHome() {
   const [stats, setStats] = useState<any>(null)
   const [orders, setOrders] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
+  const [categories, setCategories] = useState<any[]>([])
   const [showAdminLogin, setShowAdminLogin] = useState(false)
   const { isAdminAuthenticated, adminSignOut } = useAdminAuth()
 
+  // Setup debug console
   useEffect(() => {
-    const updateData = async () => {
+    const debugBox = document.createElement("div")
+    debugBox.style.position = "fixed"
+    debugBox.style.bottom = "0"
+    debugBox.style.left = "0"
+    debugBox.style.maxHeight = "40vh"
+    debugBox.style.overflowY = "auto"
+    debugBox.style.zIndex = "9999"
+    debugBox.style.background = "#000"
+    debugBox.style.color = "#0f0"
+    debugBox.style.fontSize = "12px"
+    debugBox.style.padding = "4px"
+    debugBox.style.borderTopRightRadius = "6px"
+    debugBox.style.width = "100%"
+    document.body.appendChild(debugBox)
+
+    const originalLog = console.log
+    const originalError = console.error
+    const originalWindowError = window.onerror
+
+    console.log = function (...args) {
+      originalLog.apply(console, args)
+      const msg = document.createElement("div")
+      msg.textContent = "[LOG] " + args.join(" ")
+      debugBox.appendChild(msg)
+    }
+
+    console.error = function (...args) {
+      originalError.apply(console, args)
+      const msg = document.createElement("div")
+      msg.style.color = "#f55"
+      msg.textContent = "[ERROR] " + args.join(" ")
+      debugBox.appendChild(msg)
+    }
+
+    window.onerror = function (message, source, lineno, colno, err) {
+      const msg = document.createElement("div")
+      msg.style.color = "#f55"
+      msg.textContent = `[ERROR] ${message} at ${source}:${lineno}:${colno}`
+      debugBox.appendChild(msg)
+      if (originalWindowError) return originalWindowError(message, source, lineno, colno, err)
+    }
+
+    return () => {
+      document.body.removeChild(debugBox)
+      console.log = originalLog
+      console.error = originalError
+      window.onerror = originalWindowError
+    }
+  }, [])
+
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        const [statsResponse, ordersResponse, productsResponse] = await Promise.all([
-  debugFetch("/api/admin/stats"),
-  debugFetch("/api/admin/orders"),
-  debugFetch("/api/admin/products"),
+        const [
+          statsResponse, 
+          ordersResponse, 
+          productsResponse,
+          categoriesResponse // New categories fetch
+        ] = await Promise.all([
+          debugFetch("/api/admin/stats"),
+          debugFetch("/api/admin/orders"),
+          debugFetch("/api/admin/products"),
+          debugFetch("/api/admin/categories") // New endpoint
         ])
 
-        if (statsResponse.ok && ordersResponse.ok && productsResponse.ok) {
-          const [fetchedStats, fetchedOrders, fetchedProducts] = await Promise.all([
+        const allResponses = [statsResponse, ordersResponse, productsResponse, categoriesResponse]
+        const allOk = allResponses.every(res => res.ok)
+        
+        if (allOk) {
+          const [statsData, ordersData, productsData, categoriesData] = await Promise.all([
             statsResponse.json(),
             ordersResponse.json(),
             productsResponse.json(),
+            categoriesResponse.json()
           ])
 
-          setStats(fetchedStats)
-          setOrders(fetchedOrders)
-          setProducts(fetchedProducts)
+          setStats(statsData)
+          setOrders(ordersData)
+          setProducts(productsData)
+          setCategories(categoriesData) // Set categories state
         } else {
-          console.error(
-            "One or more admin API responses failed:",
-            statsResponse.status,
-            ordersResponse.status,
-            productsResponse.status
-          )
+          const statuses = allResponses.map(res => res.status)
+          console.error("One or more API responses failed:", statuses)
         }
       } catch (error) {
         console.error("Error fetching admin data:", error)
       }
     }
 
-    updateData()
-  }, [])
+    if (isAdminAuthenticated) {
+      fetchData()
+    }
+  }, [isAdminAuthenticated])
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
@@ -111,6 +133,11 @@ export default function AdminHome() {
       })
 
       if (!response.ok) throw new Error(`HTTP error: ${response.status}`)
+      
+      // Update local state
+      setOrders(orders.map(order => 
+        order.id === orderId ? { ...order, status: newStatus } : order
+      ))
     } catch (error) {
       console.error("Error updating order status:", error)
     }
@@ -207,7 +234,7 @@ export default function AdminHome() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
         <Button asChild className="h-12">
           <Link href="/admin/orders">
             <ShoppingCart className="h-4 w-4 mr-2" />
@@ -230,6 +257,13 @@ export default function AdminHome() {
           <Link href="/admin/dashboard">
             <TrendingUp className="h-4 w-4 mr-2" />
             Analytics
+          </Link>
+        </Button>
+        {/* NEW: Categories Management Button */}
+        <Button asChild variant="outline" className="h-12">
+          <Link href="/admin/categories">
+            <LayoutGrid className="h-4 w-4 mr-2" />
+            Manage Categories
           </Link>
         </Button>
       </div>
@@ -285,9 +319,11 @@ export default function AdminHome() {
                     </td>
                     <td className="p-2">
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
-                          <Eye className="h-3 w-3" />
-                        </Button>
+                        <Link href={`/admin/orders/${order.id}`}>
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                        </Link>
                       </div>
                     </td>
                   </tr>
@@ -305,7 +341,7 @@ export default function AdminHome() {
       </Card>
 
       {/* Product Inventory */}
-      <Card className="p-6">
+      <Card className="p-6 mb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Product Inventory</h2>
           <Link href="/admin/products" className="text-blue-600 hover:underline">
@@ -334,9 +370,11 @@ export default function AdminHome() {
                     {product.stock} in stock
                   </span>
                   <div className="flex gap-1">
-                    <Button size="sm" variant="outline">
-                      <Edit className="h-3 w-3" />
-                    </Button>
+                    <Link href={`/admin/products/${product.id}`}>
+                      <Button size="sm" variant="outline">
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -346,6 +384,59 @@ export default function AdminHome() {
           )}
         </div>
       </Card>
+
+      {/* NEW: Categories Section */}
+      <Card className="p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Product Categories</h2>
+          <Link href="/admin/categories" className="text-blue-600 hover:underline">
+            Manage All
+          </Link>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left p-2">ID</th>
+                <th className="text-left p-2">Name</th>
+                <th className="text-left p-2">Slug</th>
+                <th className="text-left p-2">Subcategories</th>
+                <th className="text-left p-2">Products</th>
+                <th className="text-left p-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.isArray(categories) && categories.length > 0 ? (
+                categories.slice(0, 5).map((category: any) => (
+                  <tr key={category.id} className="border-b hover:bg-gray-50">
+                    <td className="p-2">{category.id}</td>
+                    <td className="p-2 font-medium">{category.name}</td>
+                    <td className="p-2 text-gray-600">{category.slug}</td>
+                    <td className="p-2">{category.subcategories?.length || 0}</td>
+                    <td className="p-2">{category.productCount || 0}</td>
+                    <td className="p-2">
+                      <div className="flex gap-2">
+                        <Link href={`/admin/categories/${category.id}`}>
+                          <Button size="sm" variant="outline">
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="p-2 text-center" colSpan={6}>
+                    No categories found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   )
-}
+                                                         }
