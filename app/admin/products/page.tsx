@@ -38,29 +38,42 @@ export default function ProductsPage() {
   const [activeProductId, setActiveProductId] = useState<string | null>(null)
   const [isStockUpdating, setIsStockUpdating] = useState(false)
 
+const isMountedRef = useRef(true); // Track mounted state
+
   const fetchData = useCallback(async () => {
+    if (!isMountedRef.current) return;
+    
     try {
-      setLoading(true)
+      setLoading(true);
       const [allProducts, allCategories] = await Promise.all([
         storeManager.getProducts(),
         storeManager.getCategories()
-      ])
-      setProducts(allProducts)
-      setCategories(allCategories)
+      ]);
+      setProducts(allProducts);
+      setCategories(allCategories);
     } catch (err) {
-      toast.error("Failed to load products", {
-        description: "Please try again later"
-      })
-      console.error("Failed to load data:", err)
+      console.error("Failed to load data:", err);
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    fetchData()
-    const unsubscribe = storeManager.subscribe(fetchData)
-    return unsubscribe
+    isMountedRef.current = true;
+    fetchData();
+
+    // Get the unsubscribe function
+    const unsubscribe = storeManager.subscribe(() => {
+      // Only refresh if not already loading
+      if (!loading) fetchData();
+    });
+
+    return () => {
+      isMountedRef.current = false;
+      unsubscribe(); // Properly unsubscribe
+    };
   }, [fetchData])
 
   const filteredProducts = useMemo(() => {
