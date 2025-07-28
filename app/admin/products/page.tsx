@@ -1,6 +1,6 @@
 // app/admin/products/page.tsx
 "use client"
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,7 +38,7 @@ export default function ProductsPage() {
   const [activeProductId, setActiveProductId] = useState<string | null>(null)
   const [isStockUpdating, setIsStockUpdating] = useState(false)
 
-const isMountedRef = useRef(true); // Track mounted state
+  const isMountedRef = useRef(true); // Track mounted state
 
   const fetchData = useCallback(async () => {
     if (!isMountedRef.current) return;
@@ -186,17 +186,6 @@ const isMountedRef = useRef(true); // Track mounted state
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product)
-    setFormData({
-      name: product.name,
-      description: product.description,
-      price: product.price.toString(),
-      salePrice: product.salePrice?.toString() || "",
-      stock: product.stock.toString(),
-      categoryId: product.categoryId,
-      subcategoryId: product.subcategoryId || "",
-      sku: product.sku || "",
-      weight: product.weight?.toString() || ""
-    })
     setShowForm(true)
   }
 
@@ -217,23 +206,23 @@ const isMountedRef = useRef(true); // Track mounted state
   }
 
   const handleStockUpdate = async (id: string, newStock: number) => {
-  if (isNaN(newStock)) return  // Added missing parenthesis here
-  
-  try {
-    setActiveProductId(id)
-    setIsStockUpdating(true)
-    await storeManager.updateProduct(id, { stock: newStock })
-    fetchData()
-    toast.success("Stock updated successfully")
-  } catch (err) {
-    toast.error("Stock update failed", {
-      description: "Please try again later"
-    })
-    console.error("Stock update failed:", err)
-  } finally {
-    setIsStockUpdating(false)
-    setActiveProductId(null)
-  }
+    if (isNaN(newStock)) return
+    
+    try {
+      setActiveProductId(id)
+      setIsStockUpdating(true)
+      await storeManager.updateProduct(id, { stock: newStock })
+      fetchData()
+      toast.success("Stock updated successfully")
+    } catch (err) {
+      toast.error("Stock update failed", {
+        description: "Please try again later"
+      })
+      console.error("Stock update failed:", err)
+    } finally {
+      setIsStockUpdating(false)
+      setActiveProductId(null)
+    }
   }
 
   const currentCategory = useMemo(() => 
@@ -611,7 +600,7 @@ const isMountedRef = useRef(true); // Track mounted state
                       {categories.map(c => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
-                    </SelectContent>
+            </SelectContent>
                   </Select>
                   {formErrors.categoryId && (
                     <p className="text-sm text-red-500 mt-1">{formErrors.categoryId}</p>
