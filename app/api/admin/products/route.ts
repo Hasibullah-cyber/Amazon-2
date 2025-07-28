@@ -1,4 +1,3 @@
-// app/api/admin/products/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { pool } from '@/lib/database'
 
@@ -80,9 +79,21 @@ export async function GET(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    
+    // Validate pagination parameters
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20') || 20))
     const offset = (page - 1) * limit
+    
+    // Validate numeric parameters
+    if (isNaN(page) || isNaN(limit) || isNaN(offset)) {
+      return debugResponse(
+        null,
+        'Invalid pagination parameters',
+        400,
+        { page, limit, offset }
+      )
+    }
     
     const categoryId = searchParams.get('category_id')
     const subcategoryId = searchParams.get('subcategory_id')
@@ -169,7 +180,7 @@ export async function GET(req: NextRequest) {
     const countResult = await pool.query(countQuery, params)
     const totalCount = countResult.rows[0]?.total_count || 0
 
-    // Get paginated results
+    // Get paginated results - SAFE parameterized sort using whitelist
     const dataQuery = `
       SELECT 
         p.id,
@@ -196,7 +207,7 @@ export async function GET(req: NextRequest) {
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN subcategories s ON p.subcategory_id = s.id
       ${whereClause}
-      ORDER BY p.${sortBy} ${sortOrder}
+      ORDER BY ${validSortColumns.includes(sortBy) ? `p.${sortBy}` : 'p.created_at'} ${sortOrder}
       LIMIT $${params.length + 1}
       OFFSET $${params.length + 2}
     `
@@ -238,8 +249,41 @@ export async function GET(req: NextRequest) {
     }
     
     return NextResponse.json(response);
-  } catch (error) {
+  } catch (error: any) {
     debugInfo.executionTime = `${Date.now() - startTime}ms`;
+    
+    // Handle specific database errors
+    if (error.code) {
+      // Invalid UUID format (22P02 is PostgreSQL error code for invalid text representation)
+      if (error.code === '22P02') {
+        return debugResponse(
+          error,
+          'Invalid ID format in request',
+          400,
+          debugInfo
+        )
+      }
+      // Foreign key violation (23503 is PostgreSQL error code for foreign key violation)
+      if (error.code === '23503') {
+        return debugResponse(
+          error,
+          'Invalid category reference',
+          400,
+          debugInfo
+        )
+      }
+    }
+    
+    // Handle connection issues
+    if (error.message.includes('connection') || error.message.includes('pool')) {
+      return debugResponse(
+        error,
+        'Database connection error',
+        503,
+        debugInfo
+      )
+    }
+
     return debugResponse(
       error,
       'Failed to fetch products',
@@ -346,6 +390,25 @@ export async function POST(req: NextRequest) {
         409,
         debugInfo
       );
+    }
+    
+    // Handle specific database errors
+    if (error.code === '22P02') {
+      return debugResponse(
+        error,
+        'Invalid UUID format for category',
+        400,
+        debugInfo
+      )
+    }
+    
+    if (error.code === '23503') {
+      return debugResponse(
+        error,
+        'Invalid category reference',
+        400,
+        debugInfo
+      )
     }
     
     return debugResponse(
@@ -528,6 +591,25 @@ export async function PATCH(req: NextRequest) {
       );
     }
     
+    // Handle specific database errors
+    if (error.code === '22P02') {
+      return debugResponse(
+        error,
+        'Invalid UUID format for category',
+        400,
+        debugInfo
+      )
+    }
+    
+    if (error.code === '23503') {
+      return debugResponse(
+        error,
+        'Invalid category reference',
+        400,
+        debugInfo
+      )
+    }
+    
     return debugResponse(
       error,
       'Failed to update product',
@@ -609,9 +691,20 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json(
       { success: true, message: 'Product deleted successfully' }
     );
-  } catch (error) {
+  } catch (error: any) {
     await client.query('ROLLBACK')
     debugInfo.steps.push('Transaction rolled back');
+    
+    // Handle specific database errors
+    if (error.code === '22P02') {
+      return debugResponse(
+        error,
+        'Invalid UUID format for product ID',
+        400,
+        debugInfo
+      )
+    }
+    
     return debugResponse(
       error,
       'Failed to delete product',
@@ -621,5 +714,4 @@ export async function DELETE(req: NextRequest) {
   } finally {
     client.release()
   }
-}
-    
+        }
