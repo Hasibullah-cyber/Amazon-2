@@ -13,7 +13,6 @@ import {
   AlertTriangle,
   Eye,
   Edit,
-  List,
   LayoutGrid
 } from "lucide-react"
 import { debugFetch } from "@/lib/debug-fetch"
@@ -26,6 +25,8 @@ export default function AdminHome() {
   const [products, setProducts] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [showAdminLogin, setShowAdminLogin] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { isAdminAuthenticated, adminSignOut } = useAdminAuth()
 
   // Setup debug console
@@ -83,39 +84,37 @@ export default function AdminHome() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true)
+        setError(null)
+        
         const [
           statsResponse, 
           ordersResponse, 
           productsResponse,
-          categoriesResponse // New categories fetch
+          categoriesResponse
         ] = await Promise.all([
           debugFetch("/api/admin/stats"),
           debugFetch("/api/admin/orders"),
           debugFetch("/api/admin/products"),
-          debugFetch("/api/admin/categories") // New endpoint
+          debugFetch("/api/admin/categories")
         ])
 
-        const allResponses = [statsResponse, ordersResponse, productsResponse, categoriesResponse]
-        const allOk = allResponses.every(res => res.ok)
-        
-        if (allOk) {
-          const [statsData, ordersData, productsData, categoriesData] = await Promise.all([
-            statsResponse.json(),
-            ordersResponse.json(),
-            productsResponse.json(),
-            categoriesResponse.json()
-          ])
+        const statsData = statsResponse.ok ? await statsResponse.json() : null
+        const ordersData = ordersResponse.ok ? await ordersResponse.json() : []
+        const productsData = productsResponse.ok ? await productsResponse.json() : []
+        const categoriesData = categoriesResponse.ok ? await categoriesResponse.json() : []
 
-          setStats(statsData)
-          setOrders(ordersData)
-          setProducts(productsData)
-          setCategories(categoriesData) // Set categories state
-        } else {
-          const statuses = allResponses.map(res => res.status)
-          console.error("One or more API responses failed:", statuses)
-        }
+        // Handle different API response structures
+        setStats(statsData)
+        setOrders(Array.isArray(ordersData) ? ordersData : ordersData.orders || [])
+        setProducts(Array.isArray(productsData) ? productsData : productsData.products || [])
+        setCategories(Array.isArray(categoriesData) ? categoriesData : categoriesData.categories || [])
+        
       } catch (error) {
         console.error("Error fetching admin data:", error)
+        setError("Failed to load data. Check console for details.")
+      } finally {
+        setLoading(false)
       }
     }
 
@@ -163,7 +162,8 @@ export default function AdminHome() {
     )
   }
 
-  if (!stats) return <div className="p-6">Loading admin dashboard...</div>
+  if (loading) return <div className="p-6">Loading admin dashboard...</div>
+  if (error) return <div className="p-6 text-red-500">{error}</div>
 
   const {
     totalOrders = 0,
@@ -259,7 +259,6 @@ export default function AdminHome() {
             Analytics
           </Link>
         </Button>
-        {/* NEW: Categories Management Button */}
         <Button asChild variant="outline" className="h-12">
           <Link href="/admin/categories">
             <LayoutGrid className="h-4 w-4 mr-2" />
@@ -289,11 +288,11 @@ export default function AdminHome() {
               </tr>
             </thead>
             <tbody>
-              {Array.isArray(recentOrders) && recentOrders.length > 0 ? (
-                recentOrders.map((order: any) => (
+              {orders.length > 0 ? (
+                orders.slice(0, 10).map((order: any) => (
                   <tr key={order.id} className="border-b hover:bg-gray-50">
                     <td className="p-2 font-mono text-sm">{order.orderId || order.id}</td>
-                    <td className="p-2">{order.customerName || "Unknown"}</td>
+                    <td className="p-2">{order.customerName || order.user?.name || "Unknown"}</td>
                     <td className="p-2">{order.items?.length || 0} items</td>
                     <td className="p-2">৳{order.totalAmount?.toFixed(2) || "0.00"}</td>
                     <td className="p-2">
@@ -349,7 +348,7 @@ export default function AdminHome() {
           </Link>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.isArray(products) ? (
+          {products.length > 0 ? (
             products.slice(0, 6).map((product: any) => (
               <div key={product.id} className="border p-4 rounded-lg hover:shadow-md transition">
                 <div className="flex justify-between items-start mb-2">
@@ -380,12 +379,12 @@ export default function AdminHome() {
               </div>
             ))
           ) : (
-            <p className="text-sm text-red-500">Error loading products.</p>
+            <p className="text-sm text-gray-500">No products found.</p>
           )}
         </div>
       </Card>
 
-      {/* NEW: Categories Section */}
+      {/* Categories Section */}
       <Card className="p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Product Categories</h2>
@@ -407,14 +406,14 @@ export default function AdminHome() {
               </tr>
             </thead>
             <tbody>
-              {Array.isArray(categories) && categories.length > 0 ? (
+              {categories.length > 0 ? (
                 categories.slice(0, 5).map((category: any) => (
                   <tr key={category.id} className="border-b hover:bg-gray-50">
                     <td className="p-2">{category.id}</td>
                     <td className="p-2 font-medium">{category.name}</td>
                     <td className="p-2 text-gray-600">{category.slug}</td>
                     <td className="p-2">{category.subcategories?.length || 0}</td>
-                    <td className="p-2">{category.productCount || 0}</td>
+                    <td className="p-2">{category.productCount || category.products?.length || 0}</td>
                     <td className="p-2">
                       <div className="flex gap-2">
                         <Link href={`/admin/categories/${category.id}`}>
@@ -439,4 +438,4 @@ export default function AdminHome() {
       </Card>
     </div>
   )
-                                                         }
+                    }
