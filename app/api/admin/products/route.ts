@@ -218,7 +218,9 @@ export async function GET(req: NextRequest) {
     steps: [],
     environment: {
       node_env: process.env.NODE_ENV,
-      db_host: process.env.DB_HOST ? `${process.env.DB_HOST.slice(0, 8)}*****` : 'undefined',
+      db_host: process.env.DB_HOST 
+          ? process.env.DB_HOST.slice(0, 8) + '*****'  // FIXED HERE
+          : 'undefined',
       db_port: process.env.DB_PORT,
       db_user: process.env.DB_USER,
       db_name: process.env.DB_NAME,
