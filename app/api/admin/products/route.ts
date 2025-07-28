@@ -116,36 +116,35 @@ export async function GET(req: NextRequest) {
 
     // Get paginated results
     const dataQuery = `
-      SELECT 
-        p.id,
-        p.name,
-        p.description,
-        p.price,
-        p.sale_price AS "salePrice",
-        p.stock,
-        p.sku,
-        p.weight,
-        p.image,
-        p.images,
-        p.rating,
-        p.reviews,
-        p.is_active AS "isActive",
-        p.featured,
-        p.created_at AS "createdAt",
-        p.updated_at AS "updatedAt",
-        c.id AS "categoryId",
-        c.name AS "categoryName",
-        s.id AS "subcategoryId",
-        s.name AS "subcategoryName"
-      FROM products p
-      LEFT JOIN subcategories s ON p.subcategory_id = s.id
-      LEFT JOIN categories c ON s.category_id = c.id
-      ${whereClause}
-      ORDER BY p.${sortBy} ${sortOrder}
-      LIMIT $${paramIndex++}
-      OFFSET $${paramIndex}
-    `
-
+  SELECT 
+    p.id,
+    p.name,
+    p.description,
+    p.price,
+    p.sale_price AS "salePrice",
+    p.stock,
+    p.sku,
+    p.weight,
+    p.image,
+    p.images,
+    p.rating,
+    p.reviews,
+    p.is_active AS "isActive",
+    p.featured,
+    p.created_at AS "createdAt",
+    p.updated_at AS "updatedAt",
+    p.category_id AS "categoryId",
+    c.name AS "categoryName",
+    p.subcategory_id AS "subcategoryId",
+    s.name AS "subcategoryName"
+  FROM products p
+  LEFT JOIN categories c ON p.category_id = c.id
+  LEFT JOIN subcategories s ON p.subcategory_id = s.id
+  ${whereClause}
+  ORDER BY p.${sortBy} ${sortOrder}
+  LIMIT $${paramIndex++}
+  OFFSET $${paramIndex}
+`
     const result = await pool.query(dataQuery, params)
 
     return NextResponse.json({
