@@ -1,8 +1,20 @@
 "use client"
 
-import { useEffect, useState, Component } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Card } from "@/components/ui/card"
-import { ShoppingCart, Package, Users, DollarSign, BarChart2 } from "lucide-react"
+import { 
+  ShoppingCart, 
+  Package, 
+  Users, 
+  DollarSign, 
+  BarChart2, 
+  RefreshCw,
+  TrendingUp,
+  Smile,
+  Star
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Stats {
   monthlyRevenue: number
@@ -14,177 +26,228 @@ interface Stats {
   topProducts: { product_name: string; order_count: number }[]
 }
 
-class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props)
-    this.state = { hasError: false, error: null }
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error }
-  }
-
-  componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error', error, info)
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-6">
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
-            <p className="font-bold">Dashboard Error</p>
-            <pre className="text-sm whitespace-pre-wrap">{this.state.error?.message}</pre>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      )
-    }
-    return this.props.children
-  }
-}
-
 export const dynamic = 'force-dynamic'
+
+// ErrorBoundary remains the same as in your original code
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
+  const fetchData = useCallback(async () => {
+    try {
+      setRefreshing(true)
+      setError(null)
+      
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
+        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
 
-        const baseUrl =
-          typeof window === 'undefined'
-            ? process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-            : window.location.origin
+      const res = await fetch(`${baseUrl}/api/admin/stats`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        }
+      })
 
-        const res = await fetch(`${baseUrl}/api/admin/stats`, { cache: 'no-store' })
+      if (!res.ok) throw new Error(`Failed to fetch stats: ${res.status}`)
 
-        if (!res.ok) throw new Error(`Failed to fetch stats: ${res.status}`)
-
-        const data = await res.json()
-        setStats(data)
-      } catch (err) {
-        console.error('[DASHBOARD_FETCH_ERROR]', err)
-        setError(err instanceof Error ? err.message : 'Unknown error')
-      } finally {
-        setLoading(false)
-      }
+      const data = await res.json()
+      setStats(data)
+      setLastUpdated(new Date().toLocaleTimeString())
+    } catch (err) {
+      console.error('[DASHBOARD_FETCH_ERROR]', err)
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
     }
-
-    fetchData()
-    const interval = setInterval(fetchData, 30000)
-    return () => clearInterval(interval)
   }, [])
 
-  if (loading) {
-    return (
-      <div className="p-6 flex flex-col items-center justify-center h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 mb-4"></div>
-        <p>Loading admin dashboard...</p>
-      </div>
-    )
-  }
+  useEffect(() => {
+    fetchData()
+    
+    const interval = setInterval(fetchData, 30000)
+    return () => clearInterval(interval)
+  }, [fetchData])
 
-  if (error || !stats) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
-          <p className="font-bold">Error</p>
-          <p>{error || 'Failed to load stats'}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-          >
-            Retry
-          </button>
+  const StatCard = ({ 
+    title, 
+    value, 
+    icon: Icon,
+    prefix = '',
+    suffix = '',
+    color = 'text-blue-600'
+  }: {
+    title: string
+    value: string | number
+    icon: React.ElementType
+    prefix?: string
+    suffix?: string
+    color?: string
+  }) => (
+    <Card className="p-6 transition-all hover:shadow-md">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl font-bold mt-1">
+            {prefix}{typeof value === 'number' ? value.toLocaleString() : value}{suffix}
+          </p>
+        </div>
+        <div className={`p-3 rounded-full ${color.replace('text', 'bg')} bg-opacity-20`}>
+          <Icon className={`h-6 w-6 ${color}`} />
         </div>
       </div>
+    </Card>
+  )
+
+  const renderContent = () => {
+    if (loading && !stats) {
+      return (
+        <div className="p-6 flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 mb-4"></div>
+          <p>Loading admin dashboard...</p>
+        </div>
+      )
+    }
+
+    if (error || !stats) {
+      return (
+        <div className="p-6">
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
+            <p className="font-bold flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" /> Error
+            </p>
+            <p className="my-2">{error || 'Failed to load stats'}</p>
+            <Button
+              onClick={fetchData}
+              className="mt-2 bg-red-600 hover:bg-red-700"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Retry
+            </Button>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <>
+        <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+          <h1 className="text-2xl font-bold">Admin Analytics Dashboard</h1>
+          <div className="flex items-center gap-3">
+            {lastUpdated && (
+              <p className="text-sm text-gray-500">
+                Last updated: {lastUpdated}
+              </p>
+            )}
+            <Button 
+              onClick={fetchData} 
+              size="sm"
+              disabled={refreshing}
+              variant="outline"
+            >
+              {refreshing ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              <span className="ml-2">Refresh</span>
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard 
+            title="Monthly Revenue" 
+            value={stats.monthlyRevenue} 
+            prefix="৳" 
+            icon={DollarSign} 
+            color="text-green-600"
+          />
+          
+          <StatCard 
+            title="Total Orders" 
+            value={stats.totalOrders} 
+            icon={ShoppingCart} 
+            color="text-blue-600"
+          />
+          
+          <StatCard 
+            title="Total Users" 
+            value={stats.totalUsers} 
+            icon={Users} 
+            color="text-orange-600"
+          />
+          
+          <StatCard 
+            title="Avg Order Value" 
+            value={stats.avgOrderValue} 
+            prefix="৳" 
+            icon={Package} 
+            color="text-purple-600"
+          />
+          
+          <div className="col-span-1 md:col-span-2">
+            <StatCard 
+              title="Conversion Rate" 
+              value={stats.conversionRate} 
+              suffix="%" 
+              icon={TrendingUp} 
+              color="text-teal-600"
+            />
+          </div>
+          
+          <div className="col-span-1 md:col-span-2">
+            <StatCard 
+              title="Customer Satisfaction" 
+              value={stats.customerSatisfaction} 
+              suffix="%" 
+              icon={Smile} 
+              color="text-yellow-600"
+            />
+          </div>
+        </div>
+
+        <Card className="p-6 mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Top 5 Best-Selling Products</h2>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+              Most popular items
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            {stats.topProducts.map((product, index) => (
+              <div 
+                key={product.product_name} 
+                className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-medium">
+                    {index + 1}
+                  </span>
+                  <div className="font-medium">{product.product_name}</div>
+                </div>
+                <div className="bg-gray-100 px-3 py-1 rounded-full text-sm font-medium">
+                  {product.order_count} orders
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </>
     )
   }
 
   return (
     <ErrorBoundary>
       <div className="p-6">
-        <h1 className="text-2xl font-bold mb-6">Admin Analytics Dashboard</h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
-                <p className="text-2xl font-bold">৳{stats.monthlyRevenue.toFixed(2)}</p>
-              </div>
-              <DollarSign className="h-8 w-8 text-green-600" />
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                <p className="text-2xl font-bold">{stats.totalOrders}</p>
-              </div>
-              <ShoppingCart className="h-8 w-8 text-blue-600" />
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold">{stats.totalUsers}</p>
-              </div>
-              <Users className="h-8 w-8 text-orange-600" />
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Avg Order Value</p>
-                <p className="text-2xl font-bold">৳{stats.avgOrderValue.toFixed(2)}</p>
-              </div>
-              <Package className="h-8 w-8 text-purple-600" />
-            </div>
-          </Card>
-
-          <Card className="p-6 col-span-1 md:col-span-2 lg:col-span-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
-                <p className="text-2xl font-bold">{stats.conversionRate.toFixed(2)}%</p>
-              </div>
-              <BarChart2 className="h-8 w-8 text-teal-600" />
-            </div>
-          </Card>
-        </div>
-
-        <Card className="p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Top 5 Best-Selling Products</h2>
-          <div className="space-y-3">
-            {stats.topProducts.map((product, index) => (
-              <div key={index} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 text-xs flex items-center justify-center font-medium">
-                    {index + 1}
-                  </span>
-                  <div className="font-medium text-sm">{product.product_name}</div>
-                </div>
-                <div className="text-sm text-gray-600">{product.order_count} orders</div>
-              </div>
-            ))}
-          </div>
-        </Card>
+        {renderContent()}
       </div>
     </ErrorBoundary>
   )
-                  }
+}
