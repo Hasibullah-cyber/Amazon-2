@@ -88,17 +88,30 @@ export default function DashboardPage() {
       setRefreshing(true)
       setError(null)
       
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 
-        (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
-
-      const res = await fetch(`${baseUrl}/api/admin/stats`, {
+      // Use relative path for API call
+      const res = await fetch('/api/admin/stats', {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate'
         }
       })
 
-      if (!res.ok) throw new Error(`Failed to fetch stats: ${res.status}`)
+      // Handle HTTP errors with detailed messages
+      if (!res.ok) {
+        let errorMessage = `HTTP error! Status: ${res.status}`
+        
+        try {
+          // Attempt to get error details from response
+          const errorData = await res.json()
+          if (errorData.message) {
+            errorMessage = errorData.message
+          }
+        } catch (e) {
+          console.warn('Failed to parse error response', e)
+        }
+        
+        throw new Error(errorMessage)
+      }
 
       const data = await res.json()
       setStats(data)
@@ -167,6 +180,9 @@ export default function DashboardPage() {
               <AlertCircle className="h-5 w-5" /> Error
             </p>
             <p className="my-2">{error || 'Failed to load stats'}</p>
+            <p className="text-sm text-gray-600 mb-3">
+              Please check your network connection and try again
+            </p>
             <Button
               onClick={fetchData}
               className="mt-2 bg-red-600 hover:bg-red-700"
@@ -269,7 +285,7 @@ export default function DashboardPage() {
           <div className="space-y-3">
             {stats.topProducts.map((product, index) => (
               <div 
-                key={product.product_name} 
+                key={`${product.product_name}-${index}`} 
                 className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 <div className="flex items-center gap-3">
@@ -296,4 +312,4 @@ export default function DashboardPage() {
       </div>
     </ErrorBoundary>
   )
-              }
+}
