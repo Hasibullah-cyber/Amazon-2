@@ -209,17 +209,239 @@ export async function GET(req: NextRequest) {
       ${whereClause}
       ORDER BY ${validSortColumns.includes(sortBy) ? `p.${sortBy}` : 'p.created_at'} ${sortOrder}
       LIMIT $${params.length + 1}
+
+// GET — Fetch products with pagination, filtering, and sorting
+export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+  const debugInfo: Record<string, any> = {
+    queryParams: Object.fromEntries(req.nextUrl.searchParams),
+    steps: [],
+    environment: {
+      node_env: process.env.NODE_ENV,
+      db_host: process.env.DB_HOST ? `${process.env.DB_HOST.slice(0, 8)}*****` : 'undefined',
+      db_port: process.env.DB_PORT,
+      db_user: process.env.DB_USER,
+      db_name: process.env.DB_NAME,
+      app_version: process.env.npm_package_version
+    }
+  };
+
+  try {
+    debugInfo.steps.push({
+      step: 'init',
+      message: 'Starting products fetch',
+      timestamp: Date.now() - startTime
+    });
+
+    const { searchParams } = new URL(req.url);
+    
+    // Parse and validate pagination parameters
+    const pageInput = searchParams.get('page') || '1';
+    const limitInput = searchParams.get('limit') || '20';
+    const page = Math.max(1, parseInt(pageInput, 10) || 1;
+    const limit = Math.min(100, Math.max(1, parseInt(limitInput, 10) || 20);
+    const offset = (page - 1) * limit;
+    
+    debugInfo.pagination = {
+      input: { page: pageInput, limit: limitInput },
+      parsed: { page, limit, offset },
+      valid: !isNaN(page) && !isNaN(limit) && !isNaN(offset)
+    };
+
+    if (!debugInfo.pagination.valid) {
+      return debugResponse(
+        null,
+        'Invalid pagination parameters',
+        400,
+        debugInfo
+      );
+    }
+    
+    const categoryId = searchParams.get('category_id');
+    const subcategoryId = searchParams.get('subcategory_id');
+    const searchTerm = searchParams.get('search');
+    const sortBy = searchParams.get('sort_by') || 'created_at';
+    const sortOrder = searchParams.get('sort_order') || 'DESC';
+    const activeOnly = searchParams.get('active_only') === 'true';
+    const lowStockOnly = searchParams.get('low_stock') === 'true';
+    const debugMode = searchParams.get('debug') === 'true';
+
+    // Validate sorting parameters
+    const validSortColumns = ['name', 'price', 'stock', 'created_at', 'updated_at', 'rating'];
+    debugInfo.sortValidation = {
+      validColumn: validSortColumns.includes(sortBy),
+      validOrder: sortOrder === 'ASC' || sortOrder === 'DESC'
+    };
+    
+    if (!debugInfo.sortValidation.validColumn) {
+      return debugResponse(
+        null,
+        'Invalid sort column',
+        400,
+        { 
+          validSortColumns, 
+          provided: sortBy,
+          ...debugInfo
+        }
+      );
+    }
+
+    if (!debugInfo.sortValidation.validOrder) {
+      return debugResponse(
+        null,
+        'Invalid sort order',
+        400,
+        { 
+          validOrders: ['ASC', 'DESC'], 
+          provided: sortOrder,
+          ...debugInfo
+        }
+      );
+    }
+
+    // Build WHERE conditions
+    const conditions: string[] = [];
+    const params: any[] = [];
+    
+    if (categoryId) {
+      conditions.push(`p.category_id = $${params.length + 1}`);
+      params.push(categoryId);
+      debugInfo.steps.push(`Added category filter: ${categoryId}`);
+    }
+
+    if (subcategoryId) {
+      conditions.push(`p.subcategory_id = $${params.length + 1}`);
+      params.push(subcategoryId);
+      debugInfo.steps.push(`Added subcategory filter: ${subcategoryId}`);
+    }
+
+    if (searchTerm) {
+      conditions.push(`(p.name ILIKE $${params.length + 1} OR p.description ILIKE $${params.length + 1})`);
+      params.push(`%${searchTerm}%`);
+      debugInfo.steps.push(`Added search term: ${searchTerm}`);
+    }
+
+    if (activeOnly) {
+      conditions.push(`p.is_active = true`);
+      debugInfo.steps.push('Added active only filter');
+    }
+
+    if (lowStockOnly) {
+      conditions.push(`p.stock < 10 AND p.stock > 0`);
+      debugInfo.steps.push('Added low stock filter');
+    }
+
+    const whereClause = conditions.length > 0 
+      ? `WHERE ${conditions.join(' AND ')}` 
+      : '';
+    
+    debugInfo.whereClause = {
+      raw: whereClause,
+      conditions: conditions,
+      params: [...params]
+    };
+
+    // Get total count
+    const countQuery = `
+      SELECT COUNT(*) AS total_count
+      FROM products p
+      ${whereClause}
+    `;
+    
+    debugInfo.countQuery = {
+      sql: countQuery,
+      params: [...params]
+    };
+    
+    debugInfo.steps.push(`Executing count query`);
+    const countStart = Date.now();
+    
+    try {
+      const countResult = await pool.query(countQuery, params);
+      const totalCount = countResult.rows[0]?.total_count || 0;
+      debugInfo.steps.push({
+        step: 'count_query',
+        status: 'success',
+        time: Date.now() - countStart,
+        totalCount
+      });
+      debugInfo.totalCount = totalCount;
+    } catch (countError: any) {
+      debugInfo.steps.push({
+        step: 'count_query',
+        status: 'failed',
+        time: Date.now() - countStart,
+        error: countError.message,
+        code: countError.code,
+        query: countQuery,
+        params: params
+      });
+      throw countError;
+    }
+
+    // Get paginated results
+    const dataQuery = `
+      SELECT 
+        p.id,
+        p.name,
+        p.description,
+        p.price,
+        p.sale_price AS "salePrice",
+        p.stock,
+        p.sku,
+        p.weight,
+        p.image,
+        p.images,
+        p.rating,
+        p.reviews,
+        p.is_active AS "isActive",
+        p.featured,
+        p.created_at AS "createdAt",
+        p.updated_at AS "updatedAt",
+        p.category_id AS "categoryId",
+        c.name AS "categoryName",
+        p.subcategory_id AS "subcategoryId",
+        s.name AS "subcategoryName"
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN subcategories s ON p.subcategory_id = s.id
+      ${whereClause}
+      ORDER BY p.${sortBy} ${sortOrder}
+      LIMIT $${params.length + 1}
       OFFSET $${params.length + 2}
-    `
+    `;
     
     const dataParams = [...params, limit, offset];
+    
     debugInfo.dataQuery = {
       sql: dataQuery,
       params: dataParams
     };
     
-    debugInfo.steps.push('Executing data query');
-    const result = await pool.query(dataQuery, dataParams)
+    debugInfo.steps.push(`Executing data query`);
+    const dataStart = Date.now();
+    let result;
+    
+    try {
+      result = await pool.query(dataQuery, dataParams);
+      debugInfo.steps.push({
+        step: 'data_query',
+        status: 'success',
+        time: Date.now() - dataStart,
+        rowCount: result.rowCount
+      });
+    } catch (dataError: any) {
+      debugInfo.steps.push({
+        step: 'data_query',
+        status: 'failed',
+        time: Date.now() - dataStart,
+        error: dataError.message,
+        code: dataError.code,
+        query: dataQuery,
+        params: dataParams
+      });
+      throw dataError;
+    }
 
     const response = {
       products: result.rows.map(row => ({
@@ -233,12 +455,12 @@ export async function GET(req: NextRequest) {
         images: row.images || [],
       })),
       pagination: {
-        totalItems: parseInt(totalCount),
-        totalPages: Math.ceil(totalCount / limit),
+        totalItems: parseInt(debugInfo.totalCount),
+        totalPages: Math.ceil(debugInfo.totalCount / limit),
         currentPage: page,
         itemsPerPage: limit
       }
-    }
+    };
 
     if (debugMode) {
       debugInfo.executionTime = `${Date.now() - startTime}ms`;
@@ -251,43 +473,39 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(response);
   } catch (error: any) {
     debugInfo.executionTime = `${Date.now() - startTime}ms`;
-    
+    debugInfo.error = {
+      name: error.name,
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      code: error.code,
+      timestamp: new Date().toISOString()
+    };
+
     // Handle specific database errors
-    if (error.code) {
-      // Invalid UUID format (22P02 is PostgreSQL error code for invalid text representation)
-      if (error.code === '22P02') {
-        return debugResponse(
-          error,
-          'Invalid ID format in request',
-          400,
-          debugInfo
-        )
-      }
-      // Foreign key violation (23503 is PostgreSQL error code for foreign key violation)
-      if (error.code === '23503') {
-        return debugResponse(
-          error,
-          'Invalid category reference',
-          400,
-          debugInfo
-        )
-      }
+    const dbErrorMap: Record<string, any> = {
+      '22P02': { status: 400, message: 'Invalid ID format in request' },
+      '23503': { status: 400, message: 'Invalid category reference' },
+      '42601': { status: 500, message: 'SQL syntax error' },
+      'ECONNREFUSED': { status: 503, message: 'Database connection refused' },
+      'ETIMEDOUT': { status: 504, message: 'Database connection timeout' }
+    };
+
+    // Detect connection errors from message
+    if (error.message.includes('connect ECONNREFUSED')) {
+      error.code = 'ECONNREFUSED';
+    } else if (error.message.includes('timeout')) {
+      error.code = 'ETIMEDOUT';
     }
-    
-    // Handle connection issues
-    if (error.message.includes('connection') || error.message.includes('pool')) {
-      return debugResponse(
-        error,
-        'Database connection error',
-        503,
-        debugInfo
-      )
-    }
+
+    const errorConfig = dbErrorMap[error.code] || { 
+      status: 500, 
+      message: 'Failed to fetch products' 
+    };
 
     return debugResponse(
       error,
-      'Failed to fetch products',
-      500,
+      errorConfig.message,
+      errorConfig.status,
       debugInfo
     );
   }
