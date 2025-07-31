@@ -60,15 +60,15 @@ function StarRating({ rating }: { rating?: number }) {
 
 function ProductCardSkeleton() {
   return (
-    <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200">
-      <div className="aspect-square p-4 bg-white">
-        <Skeleton className="w-full h-full" />
+    <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200 animate-pulse">
+      <div className="aspect-square p-4 bg-gray-100">
+        <div className="w-full h-full bg-gray-200 rounded-lg" />
       </div>
       <div className="p-4 pt-2 space-y-3">
-        <Skeleton className="h-5 w-3/4" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-6 w-1/3" />
+        <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+        <div className="h-4 bg-gray-200 rounded w-full"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        <div className="h-6 bg-gray-200 rounded w-1/3"></div>
       </div>
     </div>
   )
@@ -77,20 +77,23 @@ function ProductCardSkeleton() {
 function ProductGrid({ products }: { products: Product[] }) {
   return (
     <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-      {products.map((product) => (
+      {products.map((product, index) => (
         <div
           key={product.id}
-          className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition duration-200 flex flex-col"
+          className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-xl transition-all duration-300 flex flex-col transform hover:-translate-y-1"
+          style={{ animation: `slideUp 0.5s ease-out ${index * 50}ms forwards`, opacity: 0 }}
         >
           <Link href={`/product/${product.id}`} className="flex-grow">
             <div className="aspect-square p-4 bg-white">
-              <Image
-  src={product.image || "/placeholder.svg?height=300&width=300"}
-  alt={product.name}
-  width={300}
-  height={300}
-  className="object-contain w-full h-full transition-transform hover:scale-105"
-/>
+              <div className="relative w-full h-full">
+                <Image
+                  src={product.image || "/placeholder.svg?height=300&width=300"}
+                  alt={product.name}
+                  width={300}
+                  height={300}
+                  className="object-contain w-full h-full transition-transform duration-500 hover:scale-110"
+                />
+              </div>
             </div>
 
             <div className="p-4 pt-2">
@@ -153,12 +156,17 @@ export default async function SubcategoryPage({ params }: { params: { slug: stri
   return (
     <div className="min-h-screen bg-[#f6f6f6]">
       {/* Breadcrumb Navigation */}
-      <div className="bg-white border-b py-3">
+      <div className="bg-white border-b py-3 shadow-sm">
         <div className="container mx-auto px-4">
-          <nav className="flex items-center text-sm text-gray-600 space-x-1">
+          <nav className="flex items-center text-sm text-gray-600 space-x-1 animate-slide-up">
             <Link href="/" className="hover:text-[#C7511F] transition-colors">Home</Link>
             <ChevronRight className="w-4 h-4" />
-            <Link href={`/category/${slug}`} className="capitalize hover:text-[#C7511F] transition-colors">{category.name}</Link>
+            <Link 
+              href={`/category/${slug}`} 
+              className="capitalize hover:text-[#C7511F] transition-colors"
+            >
+              {category.name}
+            </Link>
             <ChevronRight className="w-4 h-4" />
             <span className="text-gray-900 font-semibold">{subcat.name}</span>
           </nav>
@@ -166,7 +174,7 @@ export default async function SubcategoryPage({ params }: { params: { slug: stri
       </div>
 
       {/* Header Section */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-6 animate-slide-up delay-100">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">{subcat.name}</h1>
         <p className="text-gray-600 text-base">{subcat.description}</p>
         <p className="text-sm text-gray-500 mt-1">{products.length} product(s) available</p>
@@ -175,7 +183,18 @@ export default async function SubcategoryPage({ params }: { params: { slug: stri
       {/* Product Grid */}
       <div className="container mx-auto px-4 pb-12">
         {products.length === 0 ? (
-          <div className="text-center text-gray-500 py-12 text-lg">No products found in this subcategory.</div>
+          <div className="text-center py-12 text-lg animate-fade-in">
+            <div className="mb-6">
+              <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16 mx-auto" />
+            </div>
+            <h3 className="text-xl font-medium text-gray-900 mb-2">No products found</h3>
+            <p className="text-gray-600 mb-6">
+              This subcategory doesn't have any products yet
+            </p>
+            <Button asChild className="transition-transform hover:scale-105">
+              <Link href={`/category/${slug}`}>Browse other subcategories</Link>
+            </Button>
+          </div>
         ) : (
           <Suspense fallback={
             <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
@@ -188,6 +207,37 @@ export default async function SubcategoryPage({ params }: { params: { slug: stri
           </Suspense>
         )}
       </div>
+      
+      <style jsx global>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+          from { 
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fade-in {
+          animation: fadeIn 0.6s ease-out forwards;
+        }
+        
+        .animate-slide-up {
+          animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+        }
+        
+        .delay-100 {
+          animation-delay: 100ms;
+        }
+      `}</style>
     </div>
   )
 }
