@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ShoppingCart, Menu, X, User, LogOut, Search, Heart } from "lucide-react" // Fixed: Combined imports
+import { ShoppingCart, Menu, X, User, LogOut, Search, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
 import { useWishlist } from "@/components/wishlist-provider"
@@ -33,7 +33,6 @@ export default function Navbar() {
 
   const totalItems = cartItems.reduce((total, item) => total + item.quantity, 0)
 
-  // Handle checkout redirection
   const handleCheckout = () => {
     if (cartItems.length === 0) {
       toast({
@@ -45,7 +44,6 @@ export default function Navbar() {
     }
 
     if (!isAuthenticated) {
-      // Save current URL for redirect after login
       sessionStorage.setItem("preAuthUrl", "/checkout")
       setIsAuthOpen(true)
       setAuthMode('signin')
@@ -59,7 +57,6 @@ export default function Navbar() {
     }
   }
 
-  // Open auth modal with specific mode
   const openAuthModal = (mode: 'signin' | 'signup') => {
     setAuthMode(mode)
     setIsAuthOpen(true)
@@ -82,7 +79,6 @@ export default function Navbar() {
     }
   }
 
-  // Handle redirect after login
   useEffect(() => {
     if (isAuthenticated && isAuthOpen) {
       const redirectUrl = sessionStorage.getItem("preAuthUrl")
@@ -96,16 +92,13 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full">
-      {/* Main header */}
       <div className="amazon-header">
         <div className="container mx-auto px-2 sm:px-4">
           <div className="flex items-center h-16 gap-4">
-            {/* Logo */}
             <Link href="/" className="flex-shrink-0">
               <span className="text-xl sm:text-2xl font-bold text-white">Hasib Shop</span>
             </Link>
 
-            {/* Search bar - takes most space */}
             <form onSubmit={handleSearch} className="relative flex-1 max-w-xl">
               <div className="relative flex items-center bg-white rounded-md shadow-sm border border-gray-300 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
@@ -126,9 +119,7 @@ export default function Navbar() {
               </div>
             </form>
 
-            {/* Right side icons */}
             <div className="flex items-center gap-2">
-              {/* Profile Icon */}
               {isAuthenticated ? (
                 <div className="flex items-center text-white p-3 hover:bg-gray-700 rounded-md transition-colors min-w-[44px] min-h-[44px]">
                   <div className="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
@@ -145,7 +136,6 @@ export default function Navbar() {
                 </button>
               )}
 
-              {/* Wishlist */}
               <Link
                 href="/wishlist"
                 className="flex items-center text-white p-3 hover:bg-gray-700 rounded-md transition-colors min-w-[44px] min-h-[44px]"
@@ -161,10 +151,15 @@ export default function Navbar() {
                 </div>
               </Link>
 
-              {/* Cart */}
               <button
                 className="flex items-center text-white p-3 hover:bg-gray-700 rounded-md transition-colors min-w-[44px] min-h-[44px]"
-                onClick={() => setIsCartOpen(true)}
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    openAuthModal('signin')
+                  } else {
+                    setIsCartOpen(true)
+                  }
+                }}
                 aria-label="Shopping cart"
               >
                 <div className="relative">
@@ -177,7 +172,6 @@ export default function Navbar() {
                 </div>
               </button>
 
-              {/* Three bars menu */}
               <div className="relative">
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -321,7 +315,6 @@ export default function Navbar() {
                 )}
               </div>
 
-              {/* Mobile hamburger menu */}
               <div className="md:hidden">
                 <Button 
                   variant="ghost" 
@@ -337,7 +330,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Navigation bar */}
       <div className="amazon-nav">
         <div className="container mx-auto px-4">
           <div className="flex items-center h-10">
@@ -368,7 +360,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-[#232f3e] border-t border-gray-700">
           <div className="container mx-auto px-4 py-3 space-y-2">
@@ -428,14 +419,13 @@ export default function Navbar() {
       <CartDrawer 
         open={isCartOpen} 
         onClose={() => setIsCartOpen(false)}
-        onCheckout={handleCheckout} // Pass checkout handler to CartDrawer
+        onCheckout={handleCheckout}
       />
       <AuthModal 
         isOpen={isAuthOpen} 
         onClose={() => setIsAuthOpen(false)} 
         initialMode={authMode}
         onLoginSuccess={() => {
-                // Handle any post-login actions
           const redirectUrl = sessionStorage.getItem("preAuthUrl")
           if (redirectUrl) {
             sessionStorage.removeItem("preAuthUrl")
