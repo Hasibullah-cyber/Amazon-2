@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -31,20 +31,31 @@ export default function ProductPage() {
   const { addToCart } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist, toggleWishlistItem } = useWishlist()
   const { toast } = useToast()
+  const imageRef = useRef<HTMLDivElement>(null)
 
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
   const [imageError, setImageError] = useState(false)
+  const [imageLoaded, setImageLoaded] = useState(false)
 
   useEffect(() => {
     if (!params.id) return
+    
+    // Load product from localStorage if available
+    const cachedProduct = localStorage.getItem(`product-${params.id}`)
+    if (cachedProduct) {
+      setProduct(JSON.parse(cachedProduct))
+    }
+    
     loadProduct()
   }, [params.id])
 
   useEffect(() => {
     if (product) {
+      // Save product to localStorage for better refresh experience
+      localStorage.setItem(`product-${product.id}`, JSON.stringify(product))
       loadRelatedProducts()
     }
   }, [product])
@@ -111,7 +122,7 @@ export default function ProductPage() {
     if (!product) return
 
     addToCart({
-      id: product.id, // Use string ID consistently
+      id: product.id,
       name: product.name,
       price: product.price,
       image: product.image,
@@ -122,6 +133,13 @@ export default function ProductPage() {
       title: "Added to Cart",
       description: `${quantity} × ${product.name} has been added to your cart.`,
     })
+    
+    // Animation for cart button
+    const cartBtn = document.getElementById("add-to-cart-btn")
+    if (cartBtn) {
+      cartBtn.classList.add("animate-pulse")
+      setTimeout(() => cartBtn.classList.remove("animate-pulse"), 500)
+    }
   }
 
   const handleWishlistToggle = () => {
@@ -142,41 +160,48 @@ export default function ProductPage() {
       title: isInWishlistNow ? "Added to Wishlist" : "Removed from Wishlist",
       description: `${product.name} has been ${isInWishlistNow ? "added to" : "removed from"} your wishlist.`,
     })
+    
+    // Animation for wishlist button
+    const wishBtn = document.getElementById("wishlist-btn")
+    if (wishBtn) {
+      wishBtn.classList.add("animate-ping")
+      setTimeout(() => wishBtn.classList.remove("animate-ping"), 500)
+    }
   }
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Image Skeleton */}
-          <div className="aspect-square relative bg-gray-100 rounded-lg overflow-hidden">
-            <Skeleton className="w-full h-full" />
+          {/* Image Skeleton with animation */}
+          <div className="aspect-square relative bg-gray-100 rounded-lg overflow-hidden animate-pulse">
+            <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-shimmer" />
           </div>
           
           {/* Details Skeleton */}
           <div className="space-y-6">
-            <Skeleton className="h-8 w-24 mb-2" />
-            <Skeleton className="h-10 w-3/4 mb-4" />
-            <Skeleton className="h-6 w-1/3 mb-4" />
+            <Skeleton className="h-8 w-24 mb-2 animate-pulse" />
+            <Skeleton className="h-10 w-3/4 mb-4 animate-pulse" />
+            <Skeleton className="h-6 w-1/3 mb-4 animate-pulse" />
             <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-4/5" />
-              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-full animate-pulse" />
+              <Skeleton className="h-4 w-4/5 animate-pulse" />
+              <Skeleton className="h-4 w-3/4 animate-pulse" />
             </div>
-            <Skeleton className="h-6 w-24 mb-6" />
+            <Skeleton className="h-6 w-24 mb-6 animate-pulse" />
             
             <div className="flex items-center gap-4 mb-6">
-              <Skeleton className="h-10 w-32" />
-              <Skeleton className="h-10 flex-1" />
-              <Skeleton className="h-10 w-10" />
-              <Skeleton className="h-10 w-10" />
+              <Skeleton className="h-10 w-32 animate-pulse" />
+              <Skeleton className="h-10 flex-1 animate-pulse" />
+              <Skeleton className="h-10 w-10 animate-pulse" />
+              <Skeleton className="h-10 w-10 animate-pulse" />
             </div>
             
             <div className="grid grid-cols-3 gap-4">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <Skeleton className="h-6 w-6" />
-                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-6 w-6 animate-pulse" />
+                  <Skeleton className="h-4 w-20 animate-pulse" />
                 </div>
               ))}
             </div>
@@ -188,10 +213,13 @@ export default function ProductPage() {
 
   if (!product) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
+      <div className="container mx-auto px-4 py-8 text-center animate-fade-in">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h1>
         <p className="text-gray-600 mb-6">The product you're looking for doesn't exist.</p>
-        <Button onClick={() => router.push("/")}>
+        <Button 
+          onClick={() => router.push("/")}
+          className="transform transition-transform hover:scale-105"
+        >
           Continue Shopping
         </Button>
       </div>
@@ -207,32 +235,60 @@ export default function ProductPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-        {/* Product Image */}
-        <div className="aspect-square relative bg-gray-50 rounded-lg overflow-hidden">
+        {/* Product Image with animations */}
+        <div 
+          ref={imageRef}
+          className="aspect-square relative bg-gray-50 rounded-lg overflow-hidden border border-gray-200 shadow-md hover:shadow-xl transition-shadow duration-300"
+        >
           <Image
             src={imageError ? FALLBACK_IMAGE : product.image || FALLBACK_IMAGE}
             alt={product.name}
             fill
-            className="object-contain p-8"
+            className={`object-contain p-8 transition-all duration-500 ${
+              imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
+            }`}
             onError={() => setImageError(true)}
+            onLoadingComplete={() => {
+              setImageLoaded(true)
+              if (imageRef.current) {
+                imageRef.current.classList.add("animate-pop-in")
+                setTimeout(() => imageRef.current?.classList.remove("animate-pop-in"), 500)
+              }
+            }}
           />
+          
+          {/* Loading overlay */}
+          {!imageLoaded && !imageError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 animate-pulse">
+              <div className="bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-shimmer w-full h-full" />
+            </div>
+          )}
         </div>
 
-        {/* Product Details */}
-        <div className="space-y-6">
+        {/* Product Details with animations */}
+        <div 
+          className="space-y-6 transition-all duration-700 delay-150"
+          style={{
+            opacity: imageLoaded ? 1 : 0,
+            transform: imageLoaded ? "translateY(0)" : "translateY(20px)"
+          }}
+        >
           <div>
-            <Badge variant="secondary" className="mb-2 capitalize">
+            <Badge 
+              variant="secondary" 
+              className="mb-2 capitalize animate-bounce-in"
+            >
               {categoryName}
             </Badge>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
 
-            {/* Rating */}
+            {/* Rating with shimmer animation */}
             <div className="flex items-center gap-2 mb-4">
               <div className="flex items-center">
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}
-                    className={`h-4 w-4 ${
+                    className={`h-5 w-5 transition-all duration-300 delay-${i * 100} ${
                       i < Math.floor(product.rating || 0)
                         ? "text-yellow-400 fill-current"
                         : "text-gray-300"
@@ -245,14 +301,14 @@ export default function ProductPage() {
               </span>
             </div>
 
-            <div className="text-3xl font-bold text-orange-600 mb-4">
+            <div className="text-3xl font-bold text-orange-600 mb-4 animate-pulse-once">
               ৳{product.price.toLocaleString()}
             </div>
 
-            <p className="text-gray-700 mb-6">{product.description}</p>
+            <p className="text-gray-700 mb-6 animate-fade-in">{product.description}</p>
 
             {/* Stock Status */}
-            <div className="mb-6">
+            <div className="mb-6 animate-slide-up">
               {product.stock > 0 ? (
                 <Badge variant="outline" className="text-green-600 border-green-600">
                   {product.stock < 10 
@@ -268,10 +324,10 @@ export default function ProductPage() {
 
             {/* Quantity & Actions */}
             <div className="flex items-center gap-4 mb-6">
-              <div className="flex items-center border rounded-md">
+              <div className="flex items-center border rounded-md shadow-sm">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-3 py-2 hover:bg-gray-50 disabled:opacity-50"
+                  className="px-3 py-2 hover:bg-gray-50 disabled:opacity-50 transition-all active:scale-95"
                   disabled={quantity <= 1}
                 >
                   -
@@ -279,7 +335,7 @@ export default function ProductPage() {
                 <span className="px-4 py-2 border-x">{quantity}</span>
                 <button
                   onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                  className="px-3 py-2 hover:bg-gray-50 disabled:opacity-50"
+                  className="px-3 py-2 hover:bg-gray-50 disabled:opacity-50 transition-all active:scale-95"
                   disabled={quantity >= product.stock}
                 >
                   +
@@ -287,42 +343,51 @@ export default function ProductPage() {
               </div>
 
               <Button
+                id="add-to-cart-btn"
                 onClick={handleAddToCart}
                 disabled={product.stock === 0}
-                className="flex-1 bg-[#febd69] hover:bg-[#f3a847] text-black"
+                className="flex-1 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-black shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02]"
               >
                 <ShoppingCart className="w-4 h-4 mr-2" />
                 Add to Cart
               </Button>
 
               <Button 
+                id="wishlist-btn"
                 variant="outline" 
                 onClick={handleWishlistToggle}
-                className="px-3"
+                className="px-3 shadow-md hover:shadow-lg transition-all"
                 aria-label={isInWishlist(product.id) ? "Remove from wishlist" : "Add to wishlist"}
               >
                 <Heart 
-                  className={`w-4 h-4 ${isInWishlist(product.id) ? "text-red-500 fill-current" : "text-gray-600"}`} 
+                  className={`w-5 h-5 transition-all ${
+                    isInWishlist(product.id) 
+                      ? "text-red-500 fill-current animate-heart-beat" 
+                      : "text-gray-600"
+                  }`} 
                 />
               </Button>
 
-              <Button variant="outline" className="px-3">
+              <Button 
+                variant="outline" 
+                className="px-3 shadow-md hover:shadow-lg transition-all"
+              >
                 <Share2 className="w-4 h-4" />
               </Button>
             </div>
 
             {/* Features */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Truck className="w-4 h-4" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-slide-up delay-300">
+              <div className="flex items-center gap-2 text-sm text-gray-600 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all">
+                <Truck className="w-5 h-5 text-blue-500" />
                 Free Delivery
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Shield className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-sm text-gray-600 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all">
+                <Shield className="w-5 h-5 text-green-500" />
                 1 Year Warranty
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <RotateCcw className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-sm text-gray-600 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all">
+                <RotateCcw className="w-5 h-5 text-purple-500" />
                 30-Day Returns
               </div>
             </div>
@@ -332,7 +397,7 @@ export default function ProductPage() {
 
       {/* Recommended Products */}
       {relatedProducts.length > 0 && (
-        <div>
+        <div className="animate-slide-up">
           <h2 className="text-2xl font-bold mb-6">
             {relatedProducts.some(p => {
               const pCat = typeof p.category === "string" ? p.category : p.category?.name
@@ -351,21 +416,21 @@ export default function ProductPage() {
               return (
                 <Card
                   key={relatedProduct.id}
-                  className="p-4 hover:shadow-lg transition-shadow"
+                  className="p-4 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100"
                 >
-                  <div className="aspect-square relative mb-3">
+                  <div className="aspect-square relative mb-3 rounded-lg overflow-hidden bg-gray-50">
                     <Image
                       src={relatedProduct.image || FALLBACK_IMAGE}
                       alt={relatedProduct.name}
                       fill
-                      className="object-contain"
+                      className="object-contain p-4 transition-all duration-500 hover:scale-105"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src = FALLBACK_IMAGE;
                       }}
                     />
                   </div>
-                  <h3 className="font-medium text-sm mb-2 line-clamp-2">
+                  <h3 className="font-medium text-sm mb-2 line-clamp-2 hover:text-orange-600 transition-colors">
                     {relatedProduct.name}
                   </h3>
                   <p className="text-orange-600 font-semibold mb-2">
@@ -375,12 +440,19 @@ export default function ProductPage() {
                     <Badge variant="secondary" className="text-xs">
                       {relatedCategory || "Uncategorized"}
                     </Badge>
-                    <span className="text-xs text-gray-500">
-                      {relatedProduct.reviews?.toLocaleString() || 0} reviews
-                    </span>
+                    <div className="flex items-center">
+                      <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                      <span className="text-xs text-gray-500 ml-1">
+                        {relatedProduct.rating?.toFixed(1) || "0.0"}
+                      </span>
+                    </div>
                   </div>
                   <Link href={`/product/${relatedProduct.id}`} className="block">
-                    <Button variant="outline" size="sm" className="w-full">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full transition-all hover:bg-orange-50 hover:border-orange-300"
+                    >
                       View Details
                     </Button>
                   </Link>
@@ -390,6 +462,93 @@ export default function ProductPage() {
           </div>
         </div>
       )}
+      
+      <style jsx global>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+          from { 
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes popIn {
+          0% { transform: scale(0.95); opacity: 0; }
+          70% { transform: scale(1.05); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes shimmer {
+          0% { background-position: -1000px 0; }
+          100% { background-position: 1000px 0; }
+        }
+        
+        @keyframes pulseOnce {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+          100% { transform: scale(1); }
+        }
+        
+        @keyframes heartBeat {
+          0% { transform: scale(1); }
+          25% { transform: scale(1.2); }
+          50% { transform: scale(1); }
+          75% { transform: scale(1.1); }
+          100% { transform: scale(1); }
+        }
+        
+        @keyframes bounceIn {
+          0% { transform: translateY(-10px); opacity: 0; }
+          60% { transform: translateY(5px); opacity: 1; }
+          100% { transform: translateY(0); opacity: 1; }
+        }
+        
+        .animate-fade-in {
+          animation: fadeIn 0.6s ease-out forwards;
+        }
+        
+        .animate-slide-up {
+          animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        .animate-pop-in {
+          animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        .animate-shimmer {
+          animation: shimmer 2s infinite linear;
+          background: linear-gradient(to right, #f0f0f0 8%, #e0e0e0 18%, #f0f0f0 33%);
+          background-size: 1000px 100%;
+        }
+        
+        .animate-pulse-once {
+          animation: pulseOnce 1s ease-in-out;
+        }
+        
+        .animate-heart-beat {
+          animation: heartBeat 0.5s ease-in-out;
+        }
+        
+        .animate-bounce-in {
+          animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        .delay-150 {
+          animation-delay: 150ms;
+        }
+        
+        .delay-300 {
+          animation-delay: 300ms;
+        }
+      `}</style>
     </div>
   )
 }
