@@ -95,11 +95,13 @@ export default function OrderHistoryPage() {
     let filtered = [...orders]
 
     if (searchTerm) {
-      filtered = filtered.filter(order =>
-        (order.orderId || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.items || []).some(item =>
+      filtered = filtered.filter(order => {
+        const idMatch = (order.orderId || "").toLowerCase().includes(searchTerm.toLowerCase());
+        const itemMatch = (order.items || []).some((item: any) => 
           (item.name || "").toLowerCase().includes(searchTerm.toLowerCase())
-      )
+        );
+        return idMatch || itemMatch;
+      });
     }
 
     if (filterStatus !== "all") {
@@ -322,7 +324,7 @@ export default function OrderHistoryPage() {
 
                     <div className="border-t border-gray-100 pt-4 mt-2">
                       <div className="grid gap-4">
-                        {(order.items || []).map((item, index) => (
+                        {(order.items || []).map((item: any, index: number) => (
                           <motion.div 
                             key={index} 
                             className="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-50"
