@@ -12,14 +12,14 @@ export interface CartItem {
 
 interface CartContextType {
   cartItems: CartItem[]
-  cart: CartItem[] // Alias for backward compatibility
-  items: CartItem[] // Another alias
+  cart: CartItem[]
+  items: CartItem[]
   addToCart: (item: CartItem) => void
   removeFromCart: (id: number) => void
   updateQuantity: (id: number, quantity: number) => void
   clearCart: () => void
   totalPrice: number
-  total: number // Alias for backward compatibility
+  total: number
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -29,7 +29,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [totalPrice, setTotalPrice] = useState(0)
   const [mounted, setMounted] = useState(false)
 
-  // Load cart from localStorage on initial render
   useEffect(() => {
     if (typeof window !== "undefined") {
       setMounted(true)
@@ -38,18 +37,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         try {
           const parsedCart = JSON.parse(savedCart)
           if (Array.isArray(parsedCart)) {
-            console.log("CartProvider: Loaded cart from localStorage:", parsedCart)
             setCartItems(parsedCart)
           }
         } catch (error) {
-          console.error("Failed to parse cart from localStorage:", error)
           localStorage.removeItem("cart")
         }
       }
     }
   }, [])
 
-  // Save cart and recalculate total whenever it changes
   useEffect(() => {
     if (mounted) {
       if (cartItems.length > 0) {
@@ -63,7 +59,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setTotalPrice(subtotal)
   }, [cartItems, mounted])
 
-  // ✅ Add item or increase quantity if exists
   const addToCart = (item: CartItem) => {
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((i) => i.id === item.id)
@@ -84,7 +79,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  // ✅ Remove item and clear localStorage if cart is empty
   const removeFromCart = (id: number) => {
     setCartItems((prevItems) => {
       const updatedItems = prevItems.filter((item) => item.id !== id)
@@ -101,7 +95,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  // ✅ Update quantity (or remove if 0)
   const updateQuantity = (id: number, quantity: number) => {
     if (quantity < 1) {
       removeFromCart(id)
@@ -121,7 +114,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  // ✅ Clear cart
   const clearCart = () => {
     setCartItems([])
     if (mounted) {
