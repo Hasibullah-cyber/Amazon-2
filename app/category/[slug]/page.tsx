@@ -26,6 +26,7 @@ export default async function ServerCategoryPage({
   const { slug } = params
 
   try {
+    // CORRECTED QUERY: Removed LOWER() functions and added proper grouping
     const result = await pool.query(
       `
       SELECT 
@@ -41,7 +42,7 @@ export default async function ServerCategoryPage({
               'slug', s.slug,
               'description', s.description,
               'productcount', COALESCE(pc.count, 0)
-            ORDER BY s.name
+            )
           ) FILTER (WHERE s.id IS NOT NULL),
           '[]'
         ) AS subcategories
@@ -53,7 +54,7 @@ export default async function ServerCategoryPage({
         WHERE is_active = true
         GROUP BY subcategory_id
       ) pc ON pc.subcategory_id = s.id
-      WHERE LOWER(c.slug) = LOWER($1)
+      WHERE c.slug = $1
       GROUP BY c.id
       `,
       [slug.trim()]
