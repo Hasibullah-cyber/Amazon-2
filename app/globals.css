@@ -2,6 +2,232 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== DINOSAUR LOADER ANIMATION ===== */
+.dino-loader {
+  position: relative;
+  height: 120px;
+  overflow: hidden;
+  background: linear-gradient(to bottom, #c5e1f9, #eaf5ff);
+}
+
+.ground {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 25px;
+  background: linear-gradient(to bottom, #8c6d46, #5e4528);
+}
+
+.cactus {
+  position: absolute;
+  bottom: 25px;
+  width: 15px;
+  height: 40px;
+  background: #4a7c59;
+  border-radius: 5px;
+}
+
+.cactus::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -5px;
+  width: 25px;
+  height: 15px;
+  background: #4a7c59;
+  border-radius: 50%;
+}
+
+.cactus::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: -10px;
+  width: 15px;
+  height: 25px;
+  background: #4a7c59;
+  border-radius: 5px;
+}
+
+.dino {
+  position: absolute;
+  bottom: 25px;
+  left: 0;
+  z-index: 10;
+  animation: dino-run 5s linear infinite;
+}
+
+.dino-body {
+  position: relative;
+  width: 70px;
+  height: 40px;
+  background: #4CAF50;
+  border-radius: 15px 15px 5px 5px;
+}
+
+.dino-head {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  width: 35px;
+  height: 35px;
+  background: #4CAF50;
+  border-radius: 50%;
+  transform-origin: bottom left;
+  animation: dino-head 0.8s infinite alternate;
+}
+
+.dino-eye {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+}
+
+.dino-eye::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 4px;
+  height: 4px;
+  background: #333;
+  border-radius: 50%;
+}
+
+.dino-mouth {
+  position: absolute;
+  top: 18px;
+  right: 5px;
+  width: 15px;
+  height: 8px;
+  border-bottom: 3px solid #333;
+  border-radius: 0 0 10px 10px;
+}
+
+.dino-tail {
+  position: absolute;
+  top: 10px;
+  left: -20px;
+  width: 30px;
+  height: 10px;
+  background: #4CAF50;
+  border-radius: 10px 0 0 10px;
+  transform-origin: right center;
+  animation: dino-tail 0.6s infinite alternate;
+}
+
+.dino-leg {
+  position: absolute;
+  bottom: -15px;
+  width: 12px;
+  height: 20px;
+  background: #388E3C;
+  border-radius: 5px 5px 0 0;
+  transform-origin: top center;
+}
+
+.leg-front {
+  right: 20px;
+  animation: dino-leg 0.5s infinite alternate;
+}
+
+.leg-back {
+  right: 40px;
+  animation: dino-leg 0.5s infinite alternate-reverse;
+}
+
+.dino-foot {
+  position: absolute;
+  bottom: -5px;
+  left: -2px;
+  width: 16px;
+  height: 5px;
+  background: #1B5E20;
+  border-radius: 3px;
+}
+
+.cloud {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  opacity: 0.8;
+}
+
+.cloud-1 {
+  top: 20px;
+  left: 10%;
+  width: 40px;
+  height: 20px;
+}
+
+.cloud-2 {
+  top: 35px;
+  left: 30%;
+  width: 60px;
+  height: 25px;
+}
+
+.cloud-3 {
+  top: 15px;
+  right: 20%;
+  width: 50px;
+  height: 22px;
+}
+
+.loading-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #2E7D32;
+  text-shadow: 0 0 5px rgba(255,255,255,0.7);
+  animation: text-pulse 2s infinite;
+}
+
+.dino-shadow {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  width: 50px;
+  height: 10px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 50%;
+  filter: blur(3px);
+  animation: dino-run 5s linear infinite;
+}
+
+@keyframes dino-run {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100vw); }
+}
+
+@keyframes dino-leg {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-25deg); }
+}
+
+@keyframes dino-head {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(5deg); }
+}
+
+@keyframes dino-tail {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-10deg); }
+}
+
+@keyframes text-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+/* ===== END DINOSAUR LOADER ===== */
+
 /* Amazon-style Components */
 .amazon-title {
   @apply font-bold text-gray-900;
@@ -12,11 +238,11 @@
 }
 
 .amazon-link {
-  @apply text-blue-600 hover:text-red-600 hover:underline;
+  @apply text-blue-600 hover:text-red-600 hover:underline transition-colors duration-200;
 }
 
 .amazon-button {
-  @apply bg-gradient-to-b from-yellow-200 to-yellow-400 hover:from-yellow-300 hover:to-yellow-500 text-black font-medium border border-yellow-600 rounded-sm px-4 py-2 transition-all duration-200 shadow-sm hover:shadow-md;
+  @apply bg-gradient-to-b from-yellow-200 to-yellow-400 hover:from-yellow-300 hover:to-yellow-500 text-black font-medium border border-yellow-600 rounded-sm px-4 py-2 transition-all duration-200 shadow-sm hover:shadow-md transform transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98];
 }
 
 .amazon-button:hover {
@@ -24,15 +250,15 @@
 }
 
 .amazon-button-secondary {
-  @apply bg-gradient-to-b from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-black font-medium border border-gray-400 rounded-sm transition-all duration-200;
+  @apply bg-gradient-to-b from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-black font-medium border border-gray-400 rounded-sm transition-all duration-200 transform transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98];
 }
 
 .amazon-card {
-  @apply bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200;
+  @apply bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-300 transform transition-transform duration-300 hover:-translate-y-0.5;
 }
 
 .amazon-input {
-  @apply border border-gray-300 rounded-sm px-3 py-2 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none;
+  @apply border border-gray-300 rounded-sm px-3 py-2 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-all duration-300;
 }
 
 /* Search bar specific styles */
@@ -41,7 +267,7 @@
 }
 
 .search-container {
-  @apply relative flex items-center bg-white rounded-md shadow-sm border border-gray-300 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500;
+  @apply relative flex items-center bg-white rounded-md shadow-sm border border-gray-300 focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500 transition-all duration-300;
 }
 
 /* Product grid styles */
@@ -65,26 +291,6 @@
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-/* Glass effect for modern sections */
-.glass-card {
-  @apply backdrop-blur-md bg-white/80 border border-white/20 shadow-xl;
-}
-
-/* Responsive text truncation */
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 /* Custom scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
@@ -98,6 +304,7 @@
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #c1c1c1;
   border-radius: 3px;
+  transition: background-color 0.3s;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -106,32 +313,32 @@
 
 /* Checkout form styles */
 .checkout-input {
-  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300;
 }
 
 .checkout-label {
-  @apply block text-sm font-medium text-gray-700 mb-1;
+  @apply block text-sm font-medium text-gray-700 mb-1 transition-colors duration-300;
 }
 
 /* Order status badges */
 .status-pending {
-  @apply bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium;
+  @apply bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium transition-all duration-300 hover:scale-105;
 }
 
 .status-processing {
-  @apply bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium;
+  @apply bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium transition-all duration-300 hover:scale-105;
 }
 
 .status-shipped {
-  @apply bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium;
+  @apply bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium transition-all duration-300 hover:scale-105;
 }
 
 .status-delivered {
-  @apply bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium;
+  @apply bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium transition-all duration-300 hover:scale-105;
 }
 
 .status-cancelled {
-  @apply bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium;
+  @apply bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium transition-all duration-300 hover:scale-105;
 }
 
 /* Mobile responsive improvements */
@@ -237,83 +444,120 @@
   }
 }
 
-/* Amazon-like styles using regular CSS instead of @apply */
-.amazon-header {
-  background-color: #131921;
-  color: white;
+/* ===== NEW ANIMATIONS ===== */
+/* Floating animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }
 
-.amazon-nav {
-  background-color: #232f3e;
-  color: white;
+.float-animation {
+  animation: float 3s ease-in-out infinite;
 }
 
-.amazon-button {
-  background-color: #ffd814;
-  color: black;
-  font-weight: 500;
-  border: 1px solid #fcd200;
-  border-radius: 0.25rem;
+/* Pulse animation */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
 }
 
-.amazon-button:hover {
-  background-color: #f7ca00;
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-.amazon-button-secondary {
-  background-color: #f0f2f2;
-  color: black;
-  font-weight: 500;
-  border: 1px solid #d5d9d9;
-  border-radius: 0.25rem;
+/* Loading spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.amazon-button-secondary:hover {
-  background-color: #e0e2e2;
+.spinner {
+  animation: spin 1s linear infinite;
+  border-top-color: #f59e0b;
 }
 
-.amazon-link {
-  color: #007185;
+/* Input field focus animation */
+@keyframes input-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
 }
 
-.amazon-link:hover {
-  color: #c7511f;
-  text-decoration: underline;
+.amazon-input:focus, 
+.checkout-input:focus {
+  animation: input-pulse 1.5s ease-in-out infinite;
 }
 
-.amazon-card {
-  background-color: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.125rem;
-  padding: 1rem;
-  transition: box-shadow 0.2s;
+/* Product image hover effect */
+.product-image {
+  @apply transition-transform duration-500;
 }
 
-.amazon-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+.amazon-card:hover .product-image {
+  transform: scale(1.05);
 }
 
-.amazon-title {
-  color: black;
-  font-weight: 500;
+/* Cart bounce animation */
+@keyframes cart-bounce {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
 
-.amazon-price {
-  color: black;
-  font-weight: 700;
+.cart-added {
+  animation: cart-bounce 0.6s ease;
 }
 
-.amazon-rating {
-  color: #ffa41c;
+/* Progress bar animation */
+@keyframes progress-grow {
+  from { width: 0; }
 }
 
-/* Remove glassmorphism effects */
-.glass,
-.glass-card,
-.glass-dark {
-  background-color: white;
-  border: 1px solid #e5e7eb;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  box-shadow: none;
+.progress-bar {
+  animation: progress-grow 1.2s ease-out forwards;
 }
+
+/* Notification animation */
+@keyframes notify {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.notification {
+  animation: notify 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Hover underline animation */
+.hover-underline {
+  position: relative;
+}
+
+.hover-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: currentColor;
+  transition: width 0.3s ease;
+}
+
+.hover-underline:hover::after {
+  width: 100%;
+}
+
+/* Scale in animation */
+@keyframes scale-in {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.scale-in {
+  animation: scale-in 0.3s ease-out;
+}
+
+/* Dark mode spinner */
+@media (prefers-color-scheme: dark) {
+  .spinner {
+    border-top-color: #fbbf24;
+  }
+  }
