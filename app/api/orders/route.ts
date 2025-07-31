@@ -167,7 +167,7 @@ export async function POST(request: Request) {
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7)
           `, [
-            newOrder.id,           // Use DB primary key id here (not orderId string)
+            newOrder.orderId,          // Use DB primary key id here (not orderId string)
             item.id,
             item.name,
             item.sku || '',
