@@ -1,5 +1,5 @@
 "use client"
-import { X, Plus, Minus } from "lucide-react"
+import { X, Plus, Minus, ShoppingCart } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart-provider"
@@ -22,7 +22,6 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
   const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
-    // Close drawer when escape key is pressed
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose()
     }
@@ -54,20 +53,20 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
     }
 
     if (!isAuthenticated) {
-      // Save current URL for redirect after login
       sessionStorage.setItem("preAuthUrl", "/checkout")
       toast({
         title: "Sign in required",
         description: "Please sign in to proceed to checkout",
         duration: 3000,
       })
+      onClose() // Close drawer before redirect
       router.push("/login")
-      onClose()
       setIsProcessing(false)
       return
     }
 
-    // Use custom checkout handler if provided
+    onClose() // Close drawer before checkout
+
     if (onCheckout) {
       onCheckout()
     } else {
