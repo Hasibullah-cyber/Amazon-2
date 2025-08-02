@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 function validateProductData(data: any, isUpdate = true) {
   const errors: string[] = []
   
+  // Use camelCase field names (matches frontend)
   if (!isUpdate || data.name !== undefined) {
     if (!data.name) errors.push('Product name is required')
     else if (data.name.length < 2) errors.push('Name must be at least 2 characters')
@@ -29,17 +30,18 @@ function validateProductData(data: any, isUpdate = true) {
     else if (data.stock < 0) errors.push('Stock cannot be negative')
   }
   
-  if (!isUpdate || data.category_id !== undefined) {
-    if (!data.category_id) errors.push('Category is required')
+  // Use camelCase: categoryId instead of category_id
+  if (!isUpdate || data.categoryId !== undefined) {
+    if (!data.categoryId) errors.push('Category is required')
   }
   
-  // Validate sale price
-  if (data.sale_price !== undefined && data.sale_price !== null) {
-    if (isNaN(data.sale_price)) errors.push('Sale price must be a number')
-    else if (data.sale_price < 0) errors.push('Sale price cannot be negative')
+  // Validate sale price (camelCase: salePrice)
+  if (data.salePrice !== undefined && data.salePrice !== null) {
+    if (isNaN(data.salePrice)) errors.push('Sale price must be a number')
+    else if (data.salePrice < 0) errors.push('Sale price cannot be negative')
     
     // Compare sale price to regular price
-    if (data.price !== undefined && data.sale_price >= data.price) {
+    if (data.price !== undefined && data.salePrice >= data.price) {
       errors.push('Sale price must be less than regular price')
     }
   }
@@ -84,10 +86,10 @@ export async function PUT(
     
     // Additional validation for sale price vs current price
     const currentPrice = checkResult.rows[0].price
-    if (productData.sale_price !== undefined && 
-        productData.sale_price !== null &&
+    if (productData.salePrice !== undefined && 
+        productData.salePrice !== null &&
         (productData.price === undefined || productData.price === null)) {
-      if (productData.sale_price >= currentPrice) {
+      if (productData.salePrice >= currentPrice) {
         return NextResponse.json(
           { error: 'Sale price must be less than current price' },
           { status: 400 }
@@ -95,7 +97,7 @@ export async function PUT(
       }
     }
     
-    // Build dynamic update query
+    // Build dynamic update query with camelCase to snake_case mapping
     const updateFields: string[] = []
     const values: any[] = []
     let paramIndex = 1
@@ -104,7 +106,7 @@ export async function PUT(
       name: 'name',
       description: 'description',
       price: 'price',
-      sale_price: 'sale_price',
+      salePrice: 'sale_price',  // Map camelCase to snake_case
       stock: 'stock',
       sku: 'sku',
       weight: 'weight',
@@ -112,10 +114,10 @@ export async function PUT(
       images: 'images',
       rating: 'rating',
       reviews: 'reviews',
-      is_active: 'is_active',
+      isActive: 'is_active',
       featured: 'featured',
-      category_id: 'category_id',
-      subcategory_id: 'subcategory_id'
+      categoryId: 'category_id', // Map camelCase to snake_case
+      subcategoryId: 'subcategory_id' // Map camelCase to snake_case
     }
     
     for (const [key, value] of Object.entries(productData)) {
@@ -132,12 +134,30 @@ export async function PUT(
     // Add product ID as last parameter
     values.push(productId)
     
-    // Execute update
+    // Execute update with proper field aliases
     const query = `
       UPDATE products
       SET ${updateFields.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING *
+      RETURNING 
+        id,
+        name,
+        description,
+        price,
+        sale_price AS "salePrice",
+        stock,
+        sku,
+        weight,
+        image,
+        images,
+        rating,
+        reviews,
+        is_active AS "isActive",
+        featured,
+        created_at AS "createdAt",
+        updated_at AS "updatedAt",
+        category_id AS "categoryId",
+        subcategory_id AS "subcategoryId"
     `
     
     const result = await client.query(query, values)
