@@ -34,8 +34,9 @@ function validateProduct(data: any, isUpdate = false) {
     else if (data.stock < 0) errors.push('Stock cannot be negative')
   }
   
-  if (!isUpdate || data.category_id !== undefined) {
-    if (!data.category_id) errors.push('Category is required')
+  // Use camelCase: categoryId instead of category_id
+  if (!isUpdate || data.categoryId !== undefined) {
+    if (!data.categoryId) errors.push('Category is required')
   }
   
   if (errors.length > 0) {
@@ -327,8 +328,9 @@ export async function POST(req: NextRequest) {
       weight = null,
       image = '/placeholder.svg',
       images = [],
-      category_id,
-      subcategory_id = null,
+      // Use camelCase: categoryId
+      categoryId,
+      subcategoryId = null,
       rating = 4.0,
       reviews = 0,
       isActive = true,
@@ -355,7 +357,25 @@ export async function POST(req: NextRequest) {
         image, images, category_id, subcategory_id, rating, reviews,
         is_active, featured
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-      RETURNING *
+      RETURNING 
+        id,
+        name,
+        description,
+        price,
+        sale_price AS "salePrice",
+        stock,
+        sku,
+        weight,
+        image,
+        images,
+        rating,
+        reviews,
+        is_active AS "isActive",
+        featured,
+        created_at AS "createdAt",
+        updated_at AS "updatedAt",
+        category_id AS "categoryId",
+        subcategory_id AS "subcategoryId"
     `
     
     const queryParams = [
@@ -369,8 +389,8 @@ export async function POST(req: NextRequest) {
       weight,
       image,
       images,
-      category_id,
-      subcategory_id,
+      categoryId,  // Use camelCase value
+      subcategoryId,
       rating,
       reviews,
       isActive,
@@ -528,7 +548,7 @@ export async function PATCH(req: NextRequest) {
     debugInfo.steps.push('Starting database transaction');
     await client.query('BEGIN')
 
-    // Build dynamic update query
+    // Build dynamic update query with camelCase to snake_case mapping
     const updateFields: string[] = []
     const values: any[] = []
     
@@ -536,7 +556,7 @@ export async function PATCH(req: NextRequest) {
       name: 'name',
       description: 'description',
       price: 'price',
-      salePrice: 'sale_price',
+      salePrice: 'sale_price',  // Map camelCase to snake_case
       stock: 'stock',
       sku: 'sku',
       weight: 'weight',
@@ -546,8 +566,8 @@ export async function PATCH(req: NextRequest) {
       reviews: 'reviews',
       isActive: 'is_active',
       featured: 'featured',
-      category_id: 'category_id',
-      subcategory_id: 'subcategory_id'
+      categoryId: 'category_id', // Map camelCase to snake_case
+      subcategoryId: 'subcategory_id' // Map camelCase to snake_case
     }
 
     for (const [key, value] of Object.entries(updates)) {
@@ -565,7 +585,25 @@ export async function PATCH(req: NextRequest) {
       UPDATE products
       SET ${updateFields.join(', ')}
       WHERE id = $${values.length}
-      RETURNING *
+      RETURNING 
+        id,
+        name,
+        description,
+        price,
+        sale_price AS "salePrice",
+        stock,
+        sku,
+        weight,
+        image,
+        images,
+        rating,
+        reviews,
+        is_active AS "isActive",
+        featured,
+        created_at AS "createdAt",
+        updated_at AS "updatedAt",
+        category_id AS "categoryId",
+        subcategory_id AS "subcategoryId"
     `
     
     debugInfo.query = {
@@ -656,7 +694,323 @@ export async function DELETE(req: NextRequest) {
     debugInfo.steps.push('Starting database transaction');
     await client.query('BEGIN')
 
-// Check if product exists in any orders
+    // Check if product exists in any orders
+    const orderCheckQuery = `SELECT COUNT(*) FROM order_items WHERE product_id = $1`;
+    debugInfo.orderCheckQuery = {
+      sql: orderCheckQuery,
+      params: [id]
+    };
+    
+    debugInfo.steps.push('Checking for existing orders');
+    const orderCheck = await client.query(orderCheckQuery, [id])
+    
+    if (parseInt(orderCheck.rows[0].count) > 0) {
+      return debugResponse(
+        null,
+        'Cannot delete product with existing orders',
+        400,
+        {
+          orderCount: orderCheck.rows[0].count,
+          ...debugInfo
+        }
+      );
+    }
+
+    const deleteQuery = `DELETE FROM products WHERE id = $1 RETURNING *`;
+    debugInfo.deleteQuery = {
+      sql: deleteQuery,
+      params: [id]
+    };
+    
+    debugInfo.steps.push('Executing delete query');
+    const result = await client.query(deleteQuery, [id])
+    
+    if (result.rowCount === 0) {
+      return debugResponse(
+        null,
+        'Product not found',
+        404,
+        debugInfo
+      );
+    }
+
+    await client.query('COMMIT')
+    debugInfo.steps.push('Transaction committed');
+    return NextResponse.json(
+      { success: true, message: 'Product deleted successfully' }
+    );
+  } catch (error: any) {
+    await client.query('ROLLBACK')
+    debugInfo.steps.push('Transaction rolled back');
+    
+  // Handle specific database errors
+    if (error.code === '22P02') {
+      return debugResponse(
+        error,
+        'Invalid UUID format for category',
+        400,
+        debugInfo
+      )
+    }
+    
+    if (error.code === '23503') {
+      return debugResponse(
+        error,
+        'Invalid category reference',
+        400,
+        debugInfo
+      )
+    }
+    
+    return debugResponse(
+      error,
+      'Invalid product data',
+      400,
+      debugInfo
+    );
+  } finally {
+    client.release()
+  }
+}
+
+// PATCH — Update existing product with partial updates
+export async function PATCH(req: NextRequest) {
+  const client = await pool.connect()
+  const startTime = Date.now();
+  const debugInfo: Record<string, any> = {
+    steps: []
+  };
+  
+  try {
+    debugInfo.steps.push('Parsing request body');
+    const { id, ...updates } = await req.json()
+    debugInfo.updates = updates;
+
+    if (!id) {
+      return debugResponse(
+        null,
+        'Product ID is required',
+        400,
+        debugInfo
+      );
+    }
+    // Validate at least one field is being updated
+    if (Object.keys(updates).length === 0) {
+      return debugResponse(
+        null,
+        'No fields provided for update',
+        400,
+        debugInfo
+      );
+    }
+
+    debugInfo.steps.push('Validating update data');
+    validateProduct(updates, true)
+
+    // Additional validation for sale price
+    if ('salePrice' in updates && updates.salePrice !== null) {
+      // We need to get current price if salePrice is being updated without price
+      if (!('price' in updates)) {
+        debugInfo.steps.push('Fetching current price for validation');
+        const current = await client.query(
+          'SELECT price FROM products WHERE id = $1',
+          [id]
+        )
+        
+        if (current.rows.length === 0) {
+          return debugResponse(
+            null,
+            'Product not found',
+            404,
+            debugInfo
+          );
+        }
+        
+        const currentPrice = current.rows[0].price
+        if (updates.salePrice >= currentPrice) {
+          return debugResponse(
+            null,
+            'Sale price must be less than regular price',
+            400,
+            {
+              currentPrice,
+              salePrice: updates.salePrice,
+              ...debugInfo
+            }
+          );
+        }
+      } else {
+        if (updates.salePrice >= updates.price) {
+          return debugResponse(
+            null,
+            'Sale price must be less than regular price',
+            400,
+            {
+              price: updates.price,
+              salePrice: updates.salePrice,
+              ...debugInfo
+            }
+          );
+        }
+      }
+    }
+        // Prevent negative stock
+    if ('stock' in updates && updates.stock < 0) {
+      return debugResponse(
+        null,
+        'Stock cannot be negative',
+        400,
+        debugInfo
+      );
+    }
+
+    debugInfo.steps.push('Starting database transaction');
+    await client.query('BEGIN')
+
+    // Build dynamic update query with camelCase to snake_case mapping
+    const updateFields: string[] = []
+    const values: any[] = []
+    
+    const fieldMappings: Record<string, string> = {
+      name: 'name',
+      description: 'description',
+      price: 'price',
+      salePrice: 'sale_price',  // Map camelCase to snake_case
+      stock: 'stock',
+      sku: 'sku',
+      weight: 'weight',
+      image: 'image',
+      images: 'images',
+      rating: 'rating',
+      reviews: 'reviews',
+      isActive: 'is_active',
+      featured: 'featured',
+      categoryId: 'category_id', // Map camelCase to snake_case
+      subcategoryId: 'subcategory_id' // Map camelCase to snake_case
+    }
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (fieldMappings[key]) {
+        updateFields.push(`${fieldMappings[key]} = $${values.length + 1}`)
+        values.push(value)
+      }
+    }
+        // Add updated_at timestamp
+    updateFields.push(`updated_at = NOW()`)
+    values.push(id)
+
+    const query = `
+      UPDATE products
+      SET ${updateFields.join(', ')}
+      WHERE id = $${values.length}
+      RETURNING 
+        id,
+        name,
+        description,
+        price,
+        sale_price AS "salePrice",
+        stock,
+        sku,
+        weight,
+        image,
+        images,
+        rating,
+        reviews,
+        is_active AS "isActive",
+        featured,
+        created_at AS "createdAt",
+        updated_at AS "updatedAt",
+        category_id AS "categoryId",
+        subcategory_id AS "subcategoryId"
+    `
+    
+    debugInfo.query = {
+      sql: query,
+      params: values
+    };
+
+    debugInfo.steps.push('Executing update query');
+    const result = await client.query(query, values)
+    
+    if (result.rowCount === 0) {
+      return debugResponse(
+        null,
+        'Product not found',
+        404,
+        debugInfo
+      );
+    }
+
+    await client.query('COMMIT')
+    debugInfo.steps.push('Transaction committed');
+    return NextResponse.json(result.rows[0]);
+  } catch (error: any) {
+    await client.query('ROLLBACK')
+    debugInfo.steps.push('Transaction rolled back');
+    
+    if (error.message.includes('unique constraint')) {
+      return debugResponse(
+        error,
+        'Product with this SKU or name already exists',
+        409,
+        debugInfo
+      );
+    }
+    // Handle specific database errors
+    if (error.code === '22P02') {
+      return debugResponse(
+        error,
+        'Invalid UUID format for category',
+        400,
+        debugInfo
+      )
+    }
+    
+    if (error.code === '23503') {
+      return debugResponse(
+        error,
+        'Invalid category reference',
+        400,
+        debugInfo
+      )
+    }
+    
+    return debugResponse(
+      error,
+      'Failed to update product',
+      400,
+      debugInfo
+    );
+  } finally {
+    client.release()
+  }
+}
+
+// DELETE — Remove a product
+export async function DELETE(req: NextRequest) {
+  const client = await pool.connect()
+  const startTime = Date.now();
+  const debugInfo: Record<string, any> = {
+    steps: []
+  };
+  
+  try {
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+    debugInfo.productId = id;
+    
+    if (!id) {
+      return debugResponse(
+        null,
+        'Product ID is required',
+        400,
+        debugInfo
+      );
+    }
+
+    debugInfo.steps.push('Starting database transaction');
+    await client.query('BEGIN')
+    // Check if product exists in any orders
     const orderCheckQuery = `SELECT COUNT(*) FROM order_items WHERE product_id = $1`;
     debugInfo.orderCheckQuery = {
       sql: orderCheckQuery,
@@ -724,4 +1078,4 @@ export async function DELETE(req: NextRequest) {
   } finally {
     client.release()
   }
-      }
+}
