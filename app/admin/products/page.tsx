@@ -468,7 +468,7 @@ export default function ProductsPage() {
       {/* Add/Edit Product Form */}
       {showForm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          < NangCard className="w-full max-w-2xl">
+          <Card className="w-full max-w-2xl">
             <CardHeader className="flex flex-row justify-between items-center">
               <CardTitle>{editingProduct ? "Edit Product" : "Add New Product"}</CardTitle>
               <Button variant="ghost" size="icon" onClick={resetForm}>
@@ -525,20 +525,7 @@ export default function ProductsPage() {
                 </div>
                 
                 <div>
-                <Label htmlFor="salePrice">Sale Price (৳)</Label>
-                  <Input
-                    id="salePrice"
-                    name="salePrice"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    defaultValue={editingProduct?.salePrice?.toString() || ""}
-                    placeholder="Optional"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="stock">Stock *</Label>
+                <Label htmlFor="stock">Stock *</Label>
                   <Input
                     id="stock"
                     name="stock"
