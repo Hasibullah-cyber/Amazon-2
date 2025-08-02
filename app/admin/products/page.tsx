@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { storeManager } from "@/lib/store"
-import { Search, Plus, Edit, AlertTriangle, Package, X, Trash2, ChevronDown, ChevronUp, Loader2 } from "lucide-react"
+import { Search, Plus, Edit, AlertTriangle, Package, X, Trash2, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Label } from "@/components/ui/label"
@@ -38,64 +38,62 @@ export default function ProductsPage() {
   const [formErrors, setFormErrors] = useState<Partial<ProductFormData>>({})
   const [activeProductId, setActiveProductId] = useState<string | null>(null)
   const [isStockUpdating, setIsStockUpdating] = useState(false)
+  const [selectedCategoryId, setSelectedCategoryId] = useState('')
 
-  const isMountedRef = useRef(true); // Track mounted state
+  const isMountedRef = useRef(true)
 
   const fetchData = useCallback(async () => {
-    if (!isMountedRef.current) return;
+    if (!isMountedRef.current) return
     
     try {
-      setLoading(true);
+      setLoading(true)
       const [allProducts, allCategories] = await Promise.all([
         storeManager.getProducts(),
         storeManager.getCategories()
-      ]);
-      setProducts(allProducts);
-      setCategories(allCategories);
+      ])
+      setProducts(allProducts)
+      setCategories(allCategories)
     } catch (err) {
-      console.error("Failed to load data:", err);
+      console.error("Failed to load data:", err)
     } finally {
       if (isMountedRef.current) {
-        setLoading(false);
+        setLoading(false)
       }
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    isMountedRef.current = true;
-    fetchData();
+    isMountedRef.current = true
+    fetchData()
 
-    // Get the unsubscribe function
     const unsubscribe = storeManager.subscribe(() => {
-      // Only refresh if not already loading
-      if (!loading) fetchData();
-    });
+      if (!loading) fetchData()
+    })
 
     return () => {
-      isMountedRef.current = false;
-      unsubscribe(); // Properly unsubscribe
-    };
+      isMountedRef.current = false
+      unsubscribe()
+    }
   }, [fetchData])
 
   const filteredProducts = useMemo(() => {
-  let filtered = [...products]
-  
-  if (searchTerm) {
-    const term = searchTerm.toLowerCase()
+    let filtered = [...products]
     
-    filtered = products.filter(p => 
-      p.name.toLowerCase().includes(term) ||
-      p.id.toLowerCase().includes(term) ||
-      p.sku?.toLowerCase().includes(term)
-    );
-  }
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      filtered = products.filter(p => 
+        p.name.toLowerCase().includes(term) ||
+        p.id.toLowerCase().includes(term) ||
+        p.sku?.toLowerCase().includes(term)
+      )
+    }
     
-  if (categoryFilter !== "all") {
-    filtered = filtered.filter(p => p.categoryId === categoryFilter)
-  }
-  
-  return filtered
-}, [products, searchTerm, categoryFilter])
+    if (categoryFilter !== "all") {
+      filtered = filtered.filter(p => p.categoryId === categoryFilter)
+    }
+    
+    return filtered
+  }, [products, searchTerm, categoryFilter])
 
   const stats = useMemo(() => {
     const totalProducts = products.length
@@ -112,6 +110,7 @@ export default function ProductsPage() {
     setFormErrors({})
     setActiveProductId(null)
     setIsStockUpdating(false)
+    setSelectedCategoryId('')
   }
 
   const validateForm = (formData: ProductFormData) => {
@@ -187,6 +186,7 @@ export default function ProductsPage() {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product)
+    setSelectedCategoryId(product.categoryId)
     setShowForm(true)
   }
 
@@ -226,15 +226,8 @@ export default function ProductsPage() {
     }
   }
 
-  const currentCategory = useMemo(() => 
-    categories.find(c => c.id === categoryFilter), 
-    [categoryFilter, categories]
-  )
-
-  const subcategories = useMemo(() => 
-    currentCategory?.subcategories || [], 
-    [currentCategory]
-  )
+  const selectedCategory = categories.find(c => c.id === selectedCategoryId)
+  const formSubcategories = selectedCategory?.subcategories || []
 
   if (loading) {
     return (
@@ -243,15 +236,11 @@ export default function ProductsPage() {
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-10 w-36" />
         </div>
-        
-        {/* Search & Filter Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
         </div>
-        
-        {/* Stats Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
             <Card key={i} className="p-4">
@@ -260,8 +249,6 @@ export default function ProductsPage() {
             </Card>
           ))}
         </div>
-        
-        {/* Product Grid Skeleton */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="p-4">
@@ -294,7 +281,7 @@ export default function ProductsPage() {
             Manage your product inventory and details
           </p>
         </div>
-        <Button onClick={() => { setShowForm(true); setEditingProduct(null) }}>
+        <Button onClick={() => { setShowForm(true); setEditingProduct(null); setSelectedCategoryId('') }}>
           <Plus className="h-4 w-4 mr-2" /> Add Product
         </Button>
       </div>
@@ -362,7 +349,7 @@ export default function ProductsPage() {
           <p className="text-muted-foreground mb-4">
             Try adjusting your search or add a new product
           </p>
-          <Button onClick={() => { setShowForm(true); setEditingProduct(null) }}>
+          <Button onClick={() => { setShowForm(true); setEditingProduct(null); setSelectedCategoryId('') }}>
             <Plus className="h-4 w-4 mr-2" /> Add Product
           </Button>
         </Card>
@@ -481,7 +468,7 @@ export default function ProductsPage() {
       {/* Add/Edit Product Form */}
       {showForm && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-2xl">
+          < NangCard className="w-full max-w-2xl">
             <CardHeader className="flex flex-row justify-between items-center">
               <CardTitle>{editingProduct ? "Edit Product" : "Add New Product"}</CardTitle>
               <Button variant="ghost" size="icon" onClick={resetForm}>
@@ -521,7 +508,7 @@ export default function ProductsPage() {
                 </div>
                 
                 <div>
-                   <Label htmlFor="price">Price (৳) *</Label>
+                  <Label htmlFor="price">Price (৳) *</Label>
                   <Input
                     id="price"
                     name="price"
@@ -538,7 +525,7 @@ export default function ProductsPage() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="salePrice">Sale Price (৳)</Label>
+                <Label htmlFor="salePrice">Sale Price (৳)</Label>
                   <Input
                     id="salePrice"
                     name="salePrice"
@@ -588,11 +575,13 @@ export default function ProductsPage() {
                     placeholder="0.00"
                   />
                 </div>
+                
                 <div>
                   <Label htmlFor="categoryId">Category *</Label>
                   <Select 
                     name="categoryId" 
-                    defaultValue={editingProduct?.categoryId || ""}
+                    value={selectedCategoryId}
+                    onValueChange={setSelectedCategoryId}
                   >
                     <SelectTrigger className={formErrors.categoryId ? "border-red-500" : ""}>
                       <SelectValue placeholder="Select category" />
@@ -601,7 +590,7 @@ export default function ProductsPage() {
                       {categories.map(c => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
-            </SelectContent>
+                    </SelectContent>
                   </Select>
                   {formErrors.categoryId && (
                     <p className="text-sm text-red-500 mt-1">{formErrors.categoryId}</p>
@@ -619,7 +608,7 @@ export default function ProductsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">None</SelectItem>
-                      {subcategories.map(sub => (
+                      {formSubcategories.map(sub => (
                         <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
                       ))}
                     </SelectContent>
