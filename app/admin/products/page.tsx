@@ -48,6 +48,13 @@ export default function ProductsPage() {
 
   const isMountedRef = useRef(true)
 
+  // Debugging useEffect
+  useEffect(() => {
+    console.log("[DEBUG] Editing product changed:", editingProduct);
+    console.log("[DEBUG] Selected category ID:", selectedCategoryId);
+    console.log("[DEBUG] Form errors:", formErrors);
+  }, [editingProduct, selectedCategoryId, formErrors]);
+
   const fetchData = useCallback(async () => {
     if (!isMountedRef.current) return
     
@@ -59,6 +66,8 @@ export default function ProductsPage() {
       ])
       setProducts(allProducts)
       setCategories(allCategories)
+      console.log("[DEBUG] Fetched products:", allProducts);
+      console.log("[DEBUG] Fetched categories:", allCategories);
     } catch (err) {
       console.error("Failed to load data:", err)
     } finally {
@@ -203,9 +212,17 @@ export default function ProductsPage() {
   }
 
   const handleEdit = (product: Product) => {
-    setEditingProduct(product)
-    setSelectedCategoryId(product.categoryId)
-    setShowForm(true)
+    try {
+      console.log("[DEBUG] Editing product data:", JSON.stringify(product, null, 2));
+      setEditingProduct(product);
+      setSelectedCategoryId(product.categoryId);
+      setShowForm(true);
+    } catch (error) {
+      console.error("[ERROR] Failed to load product for editing:", error);
+      toast.error("Edit failed", {
+        description: "Could not load product data. Check console for details."
+      });
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -525,7 +542,7 @@ export default function ProductsPage() {
                 </div>
                 
                 <div className="md:col-span-2">
-              <Label htmlFor="description">Description *</Label>
+                  <Label htmlFor="description">Description *</Label>
                   <Textarea
                     id="description"
                     name="description"
@@ -547,7 +564,7 @@ export default function ProductsPage() {
                     type="number"
                     step="0.01"
                     min="0"
-                    defaultValue={editingProduct?.price.toString() || ""}
+                    defaultValue={editingProduct?.price?.toString() || ""}
                     placeholder="0.00"
                     className={formErrors.price ? "border-red-500" : ""}
                   />
@@ -580,7 +597,7 @@ export default function ProductsPage() {
                     name="stock"
                     type="number"
                     min="0"
-                    defaultValue={editingProduct?.stock.toString() || ""}
+                    defaultValue={editingProduct?.stock?.toString() || ""}
                     placeholder="0"
                     className={formErrors.stock ? "border-red-500" : ""}
                   />
@@ -660,7 +677,7 @@ export default function ProductsPage() {
                   ) : (
                     "Add Product"
                   )}
-                </Button>
+                  </Button>
               </CardFooter>
             </form>
           </Card>
