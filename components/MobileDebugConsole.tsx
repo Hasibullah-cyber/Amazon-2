@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 
-type LogType = "log" | "warn" | "error" | "info"
+type LogType = "log" | "warn" | "error" | "info" | "exception"
 
 interface LogEntry {
   type: LogType
@@ -17,14 +17,22 @@ export default function MobileDebugConsole() {
   const position = useRef({ x: 10, y: 100 })
   const dragging = useRef(false)
   const offset = useRef({ x: 0, y: 0 })
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  const addLog = (type: LogType, message: string) => {
+    const timestamp = new Date().toLocaleTimeString()
+    setLogs(prev => [...prev.slice(-99), { type, message, timestamp }])
+  }
 
   useEffect(() => {
+    // Hook into all console types
     const captureLog = (type: LogType) => {
-      const original = console[type]
+      const original = console[type] as (...args: any[]) => void
       console[type] = (...args: any[]) => {
-        const message = args.map(String).join(" ")
-        const timestamp = new Date().toLocaleTimeString()
-        setLogs(prev => [...prev.slice(-99), { type, message, timestamp }])
+        const message = args.map(arg =>
+          typeof arg === "object" ? JSON.stringify(arg) : String(arg)
+        ).join(" ")
+        addLog(type, message)
         original(...args)
       }
     }
@@ -33,10 +41,24 @@ export default function MobileDebugConsole() {
     captureLog("warn")
     captureLog("error")
     captureLog("info")
+
+    // Catch runtime exceptions
+    window.onerror = (message, source, lineno, colno) => {
+      addLog("exception", `[Exception] ${message} at ${source}:${lineno}:${colno}`)
+    }
+
+    // Catch unhandled promise rejections
+    window.onunhandledrejection = (event: PromiseRejectionEvent) => {
+      addLog("exception", `[Unhandled Rejection] ${event.reason}`)
+    }
   }, [])
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent | TouchEvent) => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [logs])
+
+  useEffect(() => {
+    const handleMove = (e: MouseEvent | TouchEvent) => {
       if (!dragging.current || !containerRef.current) return
       const clientX = (e as TouchEvent).touches?.[0]?.clientX ?? (e as MouseEvent).clientX
       const clientY = (e as TouchEvent).touches?.[0]?.clientY ?? (e as MouseEvent).clientY
@@ -48,15 +70,15 @@ export default function MobileDebugConsole() {
 
     const stopDragging = () => (dragging.current = false)
 
-    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mousemove", handleMove)
     window.addEventListener("mouseup", stopDragging)
-    window.addEventListener("touchmove", handleMouseMove)
+    window.addEventListener("touchmove", handleMove)
     window.addEventListener("touchend", stopDragging)
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("mousemove", handleMove)
       window.removeEventListener("mouseup", stopDragging)
-      window.removeEventListener("touchmove", handleMouseMove)
+      window.removeEventListener("touchmove", handleMove)
       window.removeEventListener("touchend", stopDragging)
     }
   }, [])
@@ -68,6 +90,8 @@ export default function MobileDebugConsole() {
     offset.current.x = clientX - position.current.x
     offset.current.y = clientY - position.current.y
   }
+
+  const clearLogs = () => setLogs([])
 
   return (
     <>
@@ -109,10 +133,28 @@ export default function MobileDebugConsole() {
             cursor: "move",
           }}
         >
-          <div style={{ fontWeight: "bold", marginBottom: "6px" }}>Debug Console</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontWeight: "bold", marginBottom: "6px" }}>🛠 Debug Console</div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                clearLogs()
+              }}
+              style={{
+                fontSize: "10px",
+                background: "#333",
+                color: "#fff",
+                padding: "2px 6px",
+                borderRadius: "4px",
+              }}
+            >
+              Clear
+            </button>
+          </div>
+
           {logs.map((log, index) => (
             <div key={index} style={{ marginBottom: "4px" }}>
-              <span style={{ opacity: 0.6 }}>{log.timestamp}</span>{" "}
+              <span style={{ opacity: 0.5 }}>{log.timestamp}</span>{" "}
               <span
                 style={{
                   color:
@@ -122,6 +164,8 @@ export default function MobileDebugConsole() {
                       ? "orange"
                       : log.type === "info"
                       ? "#00bfff"
+                      : log.type === "exception"
+                      ? "#ff69b4"
                       : "white",
                 }}
               >
@@ -130,6 +174,8 @@ export default function MobileDebugConsole() {
               {log.message}
             </div>
           ))}
+
+          <div ref={bottomRef} />
         </div>
       )}
     </>
