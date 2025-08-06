@@ -39,6 +39,19 @@ function validateProduct(data: any, isUpdate = false) {
     if (!data.categoryId) errors.push('Category is required')
   }
   
+  // Add sale price validation
+  if (data.salePrice !== undefined && data.salePrice !== null) {
+    if (isNaN(data.salePrice)) {
+      errors.push('Sale price must be a number')
+    } else if (data.salePrice < 0) {
+      errors.push('Sale price cannot be negative')
+    }
+    
+    if (data.price !== undefined && data.salePrice >= data.price) {
+      errors.push('Sale price must be less than regular price')
+    }
+  }
+  
   if (errors.length > 0) {
     throw new Error(errors.join(', '))
   }
