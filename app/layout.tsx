@@ -5,7 +5,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { cn } from "@/lib/utils"
 import ClientAppWrapper from "@/components/client-app-wrapper"
-import { ShoppingCart } from "lucide-react"
+import MobileDebugConsole from "@/components/MobileDebugConsole" // ✅ Import it
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -23,6 +23,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={cn(inter.className, "antialiased min-h-screen flex flex-col")}>
         <ClientAppWrapper>{children}</ClientAppWrapper>
+
+        <MobileDebugConsole /> {/* ✅ Just added this line */}
       </body>
     </html>
   )
