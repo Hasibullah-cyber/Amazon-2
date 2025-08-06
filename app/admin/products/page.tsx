@@ -27,6 +27,12 @@ interface ProductFormData {
   weight: string
 }
 
+// Helper function to format currency
+function formatCurrency(value: number | null | undefined) {
+  if (value === null || value === undefined || isNaN(value)) return "N/A";
+  return "৳" + value.toFixed(2);
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -129,6 +135,18 @@ export default function ProductsPage() {
     else if (parseInt(formData.stock) < 0) errors.stock = "Invalid stock"
     
     if (!formData.categoryId) errors.categoryId = "Category is required"
+    
+    // Add sale price validation
+    if (formData.salePrice.trim() !== "") {
+      const salePriceVal = parseFloat(formData.salePrice);
+      if (isNaN(salePriceVal)) {
+        errors.salePrice = "Sale price must be a number";
+      } else if (salePriceVal < 0) {
+        errors.salePrice = "Sale price cannot be negative";
+      } else if (salePriceVal >= parseFloat(formData.price)) {
+        errors.salePrice = "Sale price must be less than regular price";
+      }
+    }
     
     setFormErrors(errors)
     return Object.keys(errors).length === 0
@@ -281,7 +299,12 @@ export default function ProductsPage() {
             Manage your product inventory and details
           </p>
         </div>
-        <Button onClick={() => { setShowForm(true); setEditingProduct(null); setSelectedCategoryId('') }}>
+        <Button onClick={() => { 
+          setShowForm(true); 
+          setEditingProduct(null); 
+          setSelectedCategoryId('');
+          setFormErrors({});
+        }}>
           <Plus className="h-4 w-4 mr-2" /> Add Product
         </Button>
       </div>
@@ -349,7 +372,12 @@ export default function ProductsPage() {
           <p className="text-muted-foreground mb-4">
             Try adjusting your search or add a new product
           </p>
-          <Button onClick={() => { setShowForm(true); setEditingProduct(null); setSelectedCategoryId('') }}>
+          <Button onClick={() => { 
+            setShowForm(true); 
+            setEditingProduct(null); 
+            setSelectedCategoryId('');
+            setFormErrors({});
+          }}>
             <Plus className="h-4 w-4 mr-2" /> Add Product
           </Button>
         </Card>
@@ -403,13 +431,17 @@ export default function ProductsPage() {
                   <div>
                     <div className="text-muted-foreground">Price</div>
                     <div className="flex items-center gap-1">
-                      {p.salePrice ? (
+                      {p.salePrice != null && !isNaN(p.salePrice) ? (
                         <>
-                          <span className="line-through text-muted-foreground">৳{p.price.toFixed(2)}</span>
-                          <span className="font-bold text-green-600">৳{p.salePrice.toFixed(2)}</span>
+                          <span className="line-through text-muted-foreground">
+                            {formatCurrency(p.price)}
+                          </span>
+                          <span className="font-bold text-green-600">
+                            {formatCurrency(p.salePrice)}
+                          </span>
                         </>
                       ) : (
-                        <span>৳{p.price.toFixed(2)}</span>
+                        <span>{formatCurrency(p.price)}</span>
                       )}
                     </div>
                   </div>
@@ -492,6 +524,7 @@ export default function ProductsPage() {
                   )}
                 </div>
                 
+                
                 <div className="md:col-span-2">
                   <Label htmlFor="description">Description *</Label>
                   <Textarea
@@ -525,7 +558,24 @@ export default function ProductsPage() {
                 </div>
                 
                 <div>
-                <Label htmlFor="stock">Stock *</Label>
+                  <Label htmlFor="salePrice">Sale Price (৳)</Label>
+                  <Input
+                    id="salePrice"
+                    name="salePrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    defaultValue={editingProduct?.salePrice?.toString() || ""}
+                    placeholder="0.00"
+                    className={formErrors.salePrice ? "border-red-500" : ""}
+                  />
+                  {formErrors.salePrice && (
+                    <p className="text-sm text-red-500 mt-1">{formErrors.salePrice}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <Label htmlFor="stock">Stock *</Label>
                   <Input
                     id="stock"
                     name="stock"
@@ -540,7 +590,7 @@ export default function ProductsPage() {
                   )}
                 </div>
                 
-                <div>
+     <div>
                   <Label htmlFor="sku">SKU</Label>
                   <Input
                     id="sku"
@@ -602,7 +652,6 @@ export default function ProductsPage() {
                   </Select>
                 </div>
               </CardContent>
-              
               <CardFooter className="flex justify-end gap-2">
                 <Button variant="outline" onClick={resetForm}>Cancel</Button>
                 <Button type="submit" disabled={isStockUpdating}>
