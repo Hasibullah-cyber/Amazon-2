@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
-import { Product, Category } from "@/types" // Define your types
+import { Product, Category } from "@/types"
 
 interface ProductFormData {
   name: string
@@ -524,9 +524,8 @@ export default function ProductsPage() {
                   )}
                 </div>
                 
-                
                 <div className="md:col-span-2">
-                  <Label htmlFor="description">Description *</Label>
+              <Label htmlFor="description">Description *</Label>
                   <Textarea
                     id="description"
                     name="description"
@@ -589,8 +588,7 @@ export default function ProductsPage() {
                     <p className="text-sm text-red-500 mt-1">{formErrors.stock}</p>
                   )}
                 </div>
-                
-     <div>
+                <div>
                   <Label htmlFor="sku">SKU</Label>
                   <Input
                     id="sku"
