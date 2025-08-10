@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { storeManager } from "@/lib/store";
 import { 
-  Search, Plus, Edit, AlertTriangle, Package, X, Trash2, Loader2 
+  Search, Plus, Edit, AlertTriangle, Package, X, Trash2, Loader2, RefreshCw 
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Product, Category } from "@/types";
+import Head from "next/head";
 
 // Helper function to format currency
 function formatCurrency(value: number | null | undefined) {
@@ -28,7 +29,7 @@ function formatCurrency(value: number | null | undefined) {
   return "৳" + value.toFixed(2);
 }
 
-// Stats card component
+// Stats card component with animation
 const StatsCard = ({ 
   title, 
   value, 
@@ -48,15 +49,15 @@ const StatsCard = ({
   };
 
   return (
-    <Card className="p-4 text-center">
-      <div className={`text-2xl font-bold ${variantColors[variant]}`}>{value}</div>
+    <Card className="p-4 text-center transition-all duration-300 hover:scale-[1.03] hover:shadow-md">
+      <div className={`text-2xl font-bold ${variantColors[variant]} animate-fadeIn`}>{value}</div>
       <div className="text-sm text-muted-foreground">{title}</div>
       <p className="text-xs text-muted-foreground mt-1">{description}</p>
     </Card>
   );
 };
 
-// Product card component
+// Product card component with animations
 const ProductCard = ({
   product,
   categories,
@@ -90,7 +91,10 @@ const ProductCard = ({
       : "success";
 
   return (
-    <Card key={product.id} className="overflow-hidden transition-all hover:shadow-md">
+    <Card 
+      key={product.id} 
+      className="overflow-hidden transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-fadeIn"
+    >
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
           {isLoading ? (
@@ -102,7 +106,7 @@ const ProductCard = ({
             <Button 
               size="icon" 
               variant="ghost"
-              className="h-7 w-7"
+              className="h-7 w-7 transition-colors duration-200 hover:bg-blue-100"
               onClick={() => onEdit(product)}
               disabled={activeProductId === product.id || isLoading}
               aria-label="Edit product"
@@ -112,7 +116,7 @@ const ProductCard = ({
             <Button 
               size="icon" 
               variant="ghost"
-              className="h-7 w-7 text-red-500 hover:text-red-700"
+              className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-100 transition-colors duration-200"
               onClick={() => onDelete(product.id)}
               disabled={activeProductId === product.id || isLoading}
               aria-label="Delete product"
@@ -165,7 +169,7 @@ const ProductCard = ({
                     <span className="line-through text-muted-foreground">
                       {formatCurrency(product.price)}
                     </span>
-                    <span className="font-bold text-green-600">
+                    <span className="font-bold text-green-600 animate-pulse">
                       {formatCurrency(product.salePrice)}
                     </span>
                   </>
@@ -197,7 +201,7 @@ const ProductCard = ({
                   type="number"
                   defaultValue={product.stock}
                   min="0"
-                  className="w-24 h-8 text-center"
+                  className="w-24 h-8 text-center transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                   onBlur={(e) => {
                     const newStock = parseInt(e.target.value)
                     if (!isNaN(newStock) && newStock !== product.stock) {
@@ -206,8 +210,8 @@ const ProductCard = ({
                   }}
                   disabled={isStockUpdating && activeProductId !== product.id}
                 />
-                {product.stock < 10 && product.stock > 0 && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
-                {product.stock === 0 && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                {product.stock < 10 && product.stock > 0 && <AlertTriangle className="h-4 w-4 text-yellow-500 animate-pulse" />}
+                {product.stock === 0 && <AlertTriangle className="h-4 w-4 text-red-500 animate-pulse" />}
               </div>
             )}
           </div>
@@ -231,7 +235,7 @@ const ProductCard = ({
         ) : (
           <Badge 
             variant={stockVariant}
-            className="w-full text-center"
+            className="w-full text-center transition-all duration-300 animate-pulse-once"
           >
             {stockStatus}
           </Badge>
@@ -241,7 +245,7 @@ const ProductCard = ({
   );
 };
 
-// Product form component
+// Product form component with animations
 const ProductForm = ({
   product,
   categories,
@@ -265,8 +269,8 @@ const ProductForm = ({
   const formSubcategories = selectedCategory?.subcategories || [];
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-auto">
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 animate-fadeIn">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-auto animate-scaleIn">
         <CardHeader className="flex flex-row justify-between items-center sticky top-0 bg-background z-10">
           <CardTitle>{product ? "Edit Product" : "Add New Product"}</CardTitle>
           <Button 
@@ -275,6 +279,7 @@ const ProductForm = ({
             onClick={onCancel}
             disabled={isSaving}
             aria-label="Close form"
+            className="transition-all duration-200 hover:scale-110"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -289,10 +294,10 @@ const ProductForm = ({
                 name="name"
                 defaultValue={product?.name || ""}
                 placeholder="Enter product name"
-                className={formErrors.name ? "border-destructive" : ""}
+                className={`transition-all duration-200 ${formErrors.name ? "border-destructive animate-shake" : "focus:ring-2 focus:ring-blue-500"}`}
               />
               {formErrors.name && (
-                <p className="text-sm text-destructive mt-1">{formErrors.name}</p>
+                <p className="text-sm text-destructive mt-1 animate-fadeIn">{formErrors.name}</p>
               )}
             </div>
             
@@ -304,10 +309,10 @@ const ProductForm = ({
                 defaultValue={product?.description || ""}
                 placeholder="Enter product description"
                 rows={3}
-                className={formErrors.description ? "border-destructive" : ""}
+                className={`transition-all duration-200 ${formErrors.description ? "border-destructive animate-shake" : "focus:ring-2 focus:ring-blue-500"}`}
               />
               {formErrors.description && (
-                <p className="text-sm text-destructive mt-1">{formErrors.description}</p>
+                <p className="text-sm text-destructive mt-1 animate-fadeIn">{formErrors.description}</p>
               )}
             </div>
             
@@ -321,10 +326,10 @@ const ProductForm = ({
                 min="0"
                 defaultValue={product?.price?.toString() || ""}
                 placeholder="0.00"
-                className={formErrors.price ? "border-destructive" : ""}
+                className={`transition-all duration-200 ${formErrors.price ? "border-destructive animate-shake" : "focus:ring-2 focus:ring-blue-500"}`}
               />
               {formErrors.price && (
-                <p className="text-sm text-destructive mt-1">{formErrors.price}</p>
+                <p className="text-sm text-destructive mt-1 animate-fadeIn">{formErrors.price}</p>
               )}
             </div>
             
@@ -338,10 +343,10 @@ const ProductForm = ({
                 min="0"
                 defaultValue={product?.salePrice?.toString() || ""}
                 placeholder="0.00"
-                className={formErrors.salePrice ? "border-destructive" : ""}
+                className={`transition-all duration-200 ${formErrors.salePrice ? "border-destructive animate-shake" : "focus:ring-2 focus:ring-blue-500"}`}
               />
               {formErrors.salePrice && (
-                <p className="text-sm text-destructive mt-1">{formErrors.salePrice}</p>
+                <p className="text-sm text-destructive mt-1 animate-fadeIn">{formErrors.salePrice}</p>
               )}
             </div>
             
@@ -354,10 +359,10 @@ const ProductForm = ({
                 min="0"
                 defaultValue={product?.stock?.toString() || ""}
                 placeholder="0"
-                className={formErrors.stock ? "border-destructive" : ""}
+                className={`transition-all duration-200 ${formErrors.stock ? "border-destructive animate-shake" : "focus:ring-2 focus:ring-blue-500"}`}
               />
               {formErrors.stock && (
-                <p className="text-sm text-destructive mt-1">{formErrors.stock}</p>
+                <p className="text-sm text-destructive mt-1 animate-fadeIn">{formErrors.stock}</p>
               )}
             </div>
             
@@ -368,6 +373,7 @@ const ProductForm = ({
                 name="sku"
                 defaultValue={product?.sku || ""}
                 placeholder="Product SKU"
+                className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
               />
             </div>
             
@@ -381,6 +387,7 @@ const ProductForm = ({
                 min="0"
                 defaultValue={product?.weight?.toString() || ""}
                 placeholder="0.00"
+                className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
               />
             </div>
             
@@ -391,17 +398,17 @@ const ProductForm = ({
                 value={selectedCategoryId}
                 onValueChange={setSelectedCategoryId}
               >
-                <SelectTrigger className={formErrors.categoryId ? "border-destructive" : ""}>
+                <SelectTrigger className={`transition-all duration-200 ${formErrors.categoryId ? "border-destructive animate-shake" : "focus:ring-2 focus:ring-blue-500"}`}>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="animate-scaleIn">
                   {categories.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    <SelectItem key={c.id} value={c.id} className="transition-colors duration-200 hover:bg-blue-50">{c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {formErrors.categoryId && (
-                <p className="text-sm text-destructive mt-1">{formErrors.categoryId}</p>
+                <p className="text-sm text-destructive mt-1 animate-fadeIn">{formErrors.categoryId}</p>
               )}
             </div>
             
@@ -411,13 +418,13 @@ const ProductForm = ({
                 name="subcategoryId" 
                 defaultValue={product?.subcategoryId || ""}
               >
-                <SelectTrigger>
+                <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-blue-500">
                   <SelectValue placeholder="Select subcategory" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="animate-scaleIn">
                   <SelectItem value="">None</SelectItem>
                   {formSubcategories.map(sub => (
-                    <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
+                    <SelectItem key={sub.id} value={sub.id} className="transition-colors duration-200 hover:bg-blue-50">{sub.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -430,12 +437,14 @@ const ProductForm = ({
               onClick={onCancel}
               disabled={isSaving}
               type="button"
+              className="transition-all duration-200 hover:scale-105"
             >
               Cancel
             </Button>
             <Button 
               type="submit" 
               disabled={isSaving}
+              className="transition-all duration-200 hover:scale-105"
             >
               {isSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -486,14 +495,6 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchData();
-
-    const unsubscribe = storeManager.subscribe(() => {
-      fetchData();
-    });
-
-    return () => {
-      unsubscribe();
-    };
   }, [fetchData]);
 
   const filteredProducts = useMemo(() => {
@@ -547,7 +548,7 @@ export default function ProductsPage() {
     if (!formData.price) errors.price = "Price is required";
     else if (parseFloat(formData.price) <= 0) errors.price = "Invalid price";
     
-    if (!formData.stock) errors.stock = "Stock is required";
+       if (!formData.stock) errors.stock = "Stock is required";
     else if (parseInt(formData.stock) < 0) errors.stock = "Invalid stock";
     
     if (!formData.categoryId) errors.categoryId = "Category is required";
@@ -607,7 +608,6 @@ export default function ProductsPage() {
       setActiveProductId(null);
     }
   };
-
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setSelectedCategoryId(product.categoryId);
@@ -649,28 +649,81 @@ export default function ProductsPage() {
       setActiveProductId(null);
     }
   };
-
   return (
     <div className="p-6 max-w-screen-2xl mx-auto">
-         {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <Head>
+        <style>{`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+          }
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+          }
+          @keyframes pulse-once {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+          .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out;
+          }
+          .animate-scaleIn {
+            animation: scaleIn 0.3s ease-out;
+          }
+          .animate-shake {
+            animation: shake 0.4s ease-in-out;
+          }
+          .animate-pulse-once {
+            animation: pulse-once 1s ease-in-out;
+          }
+          .skeleton-pulse {
+            animation: pulse-once 2s infinite;
+          }
+        `}</style>
+      </Head>
+            {/* Header */}
+      <div className="flex justify-between items-center mb-6 animate-fadeIn">
         <div>
           <h1 className="text-2xl font-bold">Products Management</h1>
           <p className="text-sm text-muted-foreground">
             Manage your product inventory and details
           </p>
         </div>
-        <Button onClick={() => { 
-          setShowForm(true); 
-          setEditingProduct(null); 
-          setSelectedCategoryId('');
-          setFormErrors({});
-        }}>
-          <Plus className="h-4 w-4 mr-2" /> Add Product
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={fetchData}
+            disabled={loading}
+            className="transition-all duration-200 hover:scale-105"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Refresh
+          </Button>
+          <Button 
+            onClick={() => { 
+              setShowForm(true); 
+              setEditingProduct(null); 
+              setSelectedCategoryId('');
+              setFormErrors({});
+            }}
+            className="transition-all duration-200 hover:scale-105"
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add Product
+          </Button>
+        </div>
       </div>
             {/* Search & Filter */}
-      <Card className="p-4 mb-6">
+      <Card className="p-4 mb-6 animate-fadeIn">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -678,32 +731,37 @@ export default function ProductsPage() {
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 transition-all duration-200 focus:ring-2 focus:ring-blue-500"
             />
           </div>
           
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-blue-500">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="animate-scaleIn">
               <SelectItem value="all">All Categories</SelectItem>
               {categories.map(c => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                <SelectItem key={c.id} value={c.id} className="transition-colors duration-200 hover:bg-blue-50">{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           
-          <Button variant="outline" onClick={() => { 
-            setSearchTerm(""); 
-            setCategoryFilter("all") 
-          }}>
+          <Button 
+            variant="outline" 
+            onClick={() => { 
+              setSearchTerm(""); 
+              setCategoryFilter("all") 
+            }}
+            className="transition-all duration-200 hover:scale-105"
+          >
             Clear Filters
           </Button>
         </div>
       </Card>
-           {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+     
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 animate-fadeIn">
         <StatsCard 
           title="Total Products" 
           value={stats.totalProducts} 
@@ -731,7 +789,7 @@ export default function ProductsPage() {
 
       {/* Product Grid */}
       {filteredProducts.length === 0 ? (
-        <Card className="p-8 text-center">
+        <Card className="p-8 text-center animate-fadeIn">
           <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium mb-2">No products found</h3>
           <p className="text-muted-foreground mb-4">
@@ -739,12 +797,15 @@ export default function ProductsPage() {
               ? "Try adjusting your search or filters" 
               : "Add your first product to get started"}
           </p>
-          <Button onClick={() => { 
-            setShowForm(true); 
-            setEditingProduct(null); 
-            setSelectedCategoryId('');
-            setFormErrors({});
-          }}>
+          <Button 
+            onClick={() => { 
+              setShowForm(true); 
+              setEditingProduct(null); 
+              setSelectedCategoryId('');
+              setFormErrors({});
+            }}
+            className="transition-all duration-200 hover:scale-105"
+          >
             <Plus className="h-4 w-4 mr-2" /> Add Product
           </Button>
         </Card>
@@ -765,7 +826,6 @@ export default function ProductsPage() {
           ))}
         </div>
       )}
-      
       {/* Add/Edit Product Form */}
       {showForm && (
         <ProductForm
@@ -782,4 +842,3 @@ export default function ProductsPage() {
     </div>
   );
 }
-        
