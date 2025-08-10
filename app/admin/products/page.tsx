@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { 
   Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter 
 } from "@/components/ui/card";
@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Product, Category } from "@/types";
-import Head from "next/head";
 
 // Helper function to format currency
 function formatCurrency(value: number | null | undefined) {
@@ -64,8 +63,8 @@ const ProductCard = ({
   onEdit,
   onDelete,
   onStockUpdate,
-  activeProductId,
-  isStockUpdating,
+  updatingStockId,
+  deletingProductId,
   isLoading
 }: {
   product: Product;
@@ -73,8 +72,8 @@ const ProductCard = ({
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onStockUpdate: (id: string, newStock: number) => void;
-  activeProductId: string | null;
-  isStockUpdating: boolean;
+  updatingStockId: string | null;
+  deletingProductId: string | null;
   isLoading: boolean;
 }) => {
   const categoryName = categories.find(c => c.id === product.categoryId)?.name || "N/A";
@@ -108,20 +107,20 @@ const ProductCard = ({
               variant="ghost"
               className="h-7 w-7 transition-colors duration-200 hover:bg-blue-100"
               onClick={() => onEdit(product)}
-              disabled={activeProductId === product.id || isLoading}
+              disabled={isLoading || updatingStockId === product.id || deletingProductId === product.id}
               aria-label="Edit product"
             >
-              {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Edit className="h-3.5 w-3.5" />}
+              <Edit className="h-3.5 w-3.5" />
             </Button>
             <Button 
               size="icon" 
               variant="ghost"
               className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-100 transition-colors duration-200"
               onClick={() => onDelete(product.id)}
-              disabled={activeProductId === product.id || isLoading}
+              disabled={isLoading || updatingStockId === product.id || deletingProductId === product.id}
               aria-label="Delete product"
             >
-              {activeProductId === product.id ? (
+              {deletingProductId === product.id ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Trash2 className="h-3.5 w-3.5" />
@@ -193,7 +192,7 @@ const ProductCard = ({
             <div className="text-muted-foreground">Stock</div>
             {isLoading ? (
               <Skeleton className="h-8 w-24" />
-            ) : isStockUpdating && activeProductId === product.id ? (
+            ) : updatingStockId === product.id ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <div className="flex items-center gap-2">
@@ -208,7 +207,7 @@ const ProductCard = ({
                       onStockUpdate(product.id, newStock)
                     }
                   }}
-                  disabled={isStockUpdating && activeProductId !== product.id}
+                  disabled={updatingStockId !== null}
                 />
                 {product.stock < 10 && product.stock > 0 && <AlertTriangle className="h-4 w-4 text-yellow-500 animate-pulse" />}
                 {product.stock === 0 && <AlertTriangle className="h-4 w-4 text-red-500 animate-pulse" />}
@@ -258,7 +257,7 @@ const ProductForm = ({
 }: {
   product?: Product;
   categories: Category[];
-  onSave: (e: React.FormEvent) => Promise<void>;
+  onSave: (formData: Record<string, string>) => Promise<void>;
   onCancel: () => void;
   isSaving: boolean;
   formErrors: Partial<Record<string, string>>;
@@ -267,6 +266,19 @@ const ProductForm = ({
 }) => {
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
   const formSubcategories = selectedCategory?.subcategories || [];
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formRef.current) return;
+    
+    const formData = Object.fromEntries(
+      Array.from(new FormData(formRef.current)).map(([key, value]) => [key, value.toString()])
+    );
+    
+    await onSave(formData);
+  };
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 animate-fadeIn">
@@ -285,7 +297,7 @@ const ProductForm = ({
           </Button>
         </CardHeader>
         
-        <form onSubmit={onSave}>
+        <form ref={formRef} onSubmit={handleFormSubmit}>
           <CardContent className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <Label htmlFor="name">Product Name *</Label>
@@ -470,8 +482,9 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [formErrors, setFormErrors] = useState<Partial<Record<string, string>>>({});
-  const [activeProductId, setActiveProductId] = useState<string | null>(null);
-  const [isStockUpdating, setIsStockUpdating] = useState(false);
+  const [updatingStockId, setUpdatingStockId] = useState<string | null>(null);
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+  const [savingProduct, setSavingProduct] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
 
   const fetchData = useCallback(async () => {
@@ -531,14 +544,13 @@ export default function ProductsPage() {
     setEditingProduct(null);
     setShowForm(false);
     setFormErrors({});
-    setActiveProductId(null);
-    setIsStockUpdating(false);
+    setUpdatingStockId(null);
+    setSavingProduct(false);
     setSelectedCategoryId('');
   };
 
   const validateForm = (formData: Record<string, string>) => {
     const errors: Record<string, string> = {};
-    
     if (!formData.name.trim()) errors.name = "Name is required";
     else if (formData.name.length < 2) errors.name = "Name too short";
     
@@ -548,7 +560,7 @@ export default function ProductsPage() {
     if (!formData.price) errors.price = "Price is required";
     else if (parseFloat(formData.price) <= 0) errors.price = "Invalid price";
     
-       if (!formData.stock) errors.stock = "Stock is required";
+    if (!formData.stock) errors.stock = "Stock is required";
     else if (parseInt(formData.stock) < 0) errors.stock = "Invalid stock";
     
     if (!formData.categoryId) errors.categoryId = "Category is required";
@@ -568,13 +580,7 @@ export default function ProductsPage() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const formData = Object.fromEntries(
-      Array.from(new FormData(e.currentTarget as HTMLFormElement)).map(([key, value]) => [key, value.toString()])
-    );
-    
+  const handleSaveProduct = async (formData: Record<string, string>) => {
     if (!validateForm(formData)) return;
     
     const payload = {
@@ -586,8 +592,7 @@ export default function ProductsPage() {
     };
     
     try {
-      setActiveProductId(editingProduct?.id || null);
-      setIsStockUpdating(true);
+      setSavingProduct(true);
       
       if (editingProduct) {
         await storeManager.updateProduct(editingProduct.id, payload);
@@ -597,6 +602,7 @@ export default function ProductsPage() {
         toast.success("Product added successfully");
       }
       
+      fetchData();
       resetForm();
     } catch (err) {
       toast.error("Operation failed", {
@@ -604,8 +610,7 @@ export default function ProductsPage() {
       });
       console.error("Failed to submit:", err);
     } finally {
-      setIsStockUpdating(false);
-      setActiveProductId(null);
+      setSavingProduct(false);
     }
   };
   const handleEdit = (product: Product) => {
@@ -618,16 +623,17 @@ export default function ProductsPage() {
     if (!confirm('Are you sure you want to delete this product?')) return;
     
     try {
-      setActiveProductId(id);
+      setDeletingProductId(id);
       await storeManager.deleteProduct(id);
       toast.success("Product deleted successfully");
+      fetchData();
     } catch (err) {
       toast.error("Deletion failed", {
         description: "Could not delete product. Please try again."
       });
       console.error("Delete failed:", err);
     } finally {
-      setActiveProductId(null);
+      setDeletingProductId(null);
     }
   };
 
@@ -635,59 +641,55 @@ export default function ProductsPage() {
     if (isNaN(newStock)) return;
     
     try {
-      setActiveProductId(id);
-      setIsStockUpdating(true);
+      setUpdatingStockId(id);
       await storeManager.updateProduct(id, { stock: newStock });
       toast.success("Stock updated successfully");
+      fetchData();
     } catch (err) {
       toast.error("Stock update failed", {
         description: "Please try again later"
       });
       console.error("Stock update failed:", err);
     } finally {
-      setIsStockUpdating(false);
-      setActiveProductId(null);
+      setUpdatingStockId(null);
     }
   };
+  
   return (
     <div className="p-6 max-w-screen-2xl mx-auto">
-      <Head>
-        <style>{`
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          @keyframes scaleIn {
-            from { transform: scale(0.95); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-          }
-          @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-          }
-          @keyframes pulse-once {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-          .animate-fadeIn {
-            animation: fadeIn 0.3s ease-out;
-          }
-          .animate-scaleIn {
-            animation: scaleIn 0.3s ease-out;
-          }
-          .animate-shake {
-            animation: shake 0.4s ease-in-out;
-          }
-          .animate-pulse-once {
-            animation: pulse-once 1s ease-in-out;
-          }
-          .skeleton-pulse {
-            animation: pulse-once 2s infinite;
-          }
-        `}</style>
-      </Head>
-            {/* Header */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        @keyframes pulse-once {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+        .animate-scaleIn {
+          animation: scaleIn 0.3s ease-out;
+        }
+        .animate-shake {
+          animation: shake 0.4s ease-in-out;
+        }
+        .animate-pulse-once {
+          animation: pulse-once 1s ease-in-out;
+        }
+      `}</style>
+      
+      {/* Header */}
       <div className="flex justify-between items-center mb-6 animate-fadeIn">
         <div>
           <h1 className="text-2xl font-bold">Products Management</h1>
@@ -722,7 +724,8 @@ export default function ProductsPage() {
           </Button>
         </div>
       </div>
-            {/* Search & Filter */}
+      
+{/* Search & Filter */}
       <Card className="p-4 mb-6 animate-fadeIn">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative">
@@ -759,7 +762,7 @@ export default function ProductsPage() {
           </Button>
         </div>
       </Card>
-     
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 animate-fadeIn">
         <StatsCard 
@@ -786,8 +789,7 @@ export default function ProductsPage() {
           variant="success"
         />
       </div>
-
-      {/* Product Grid */}
+            {/* Product Grid */}
       {filteredProducts.length === 0 ? (
         <Card className="p-8 text-center animate-fadeIn">
           <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -819,21 +821,22 @@ export default function ProductsPage() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onStockUpdate={handleStockUpdate}
-              activeProductId={activeProductId}
-              isStockUpdating={isStockUpdating}
+              updatingStockId={updatingStockId}
+              deletingProductId={deletingProductId}
               isLoading={loading}
             />
           ))}
         </div>
       )}
+
       {/* Add/Edit Product Form */}
       {showForm && (
         <ProductForm
           product={editingProduct || undefined}
           categories={categories}
-          onSave={handleSubmit}
+          onSave={handleSaveProduct}
           onCancel={resetForm}
-          isSaving={isStockUpdating}
+          isSaving={savingProduct}
           formErrors={formErrors}
           selectedCategoryId={selectedCategoryId}
           setSelectedCategoryId={setSelectedCategoryId}
