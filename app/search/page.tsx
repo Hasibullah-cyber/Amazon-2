@@ -258,9 +258,9 @@ function SearchResults() {
     setExpandedDescriptionId(expandedDescriptionId === id ? null : id)
   }
 
-  return (
+    return (
   <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-    <style>{`
+    <style jsx>{`
       @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -332,7 +332,7 @@ function SearchResults() {
         background: linear-gradient(to right, #fff, #f9fafb);
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
       }
-       .search-header:hover {
+      .search-header:hover {
         box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
         transform: translateY(-2px);
       }
@@ -346,8 +346,6 @@ function SearchResults() {
       }
     `}</style>
     
-      
-      
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Search Header */}
         <div className="search-header p-6 rounded-2xl mb-6">
