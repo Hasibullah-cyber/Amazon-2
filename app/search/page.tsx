@@ -260,91 +260,91 @@ function SearchResults() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-  <style>{`
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes slideDown {
-      from { max-height: 0; opacity: 0; padding: 0; }
-      to { max-height: 500px; opacity: 1; padding: 1.5rem; }
-    }
-    @keyframes slideUp {
-      from { max-height: 500px; opacity: 1; padding: 1.5rem; }
-      to { max-height: 0; opacity: 0; padding: 0; }
-    }
-    @keyframes float {
-      0% { transform: translateY(0); }
-      50% { transform: translateY(-5px); }
-      100% { transform: translateY(0); }
-    }
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.02); }
-      100% { transform: scale(1); }
-    }
-    .animate-fade-in {
-      animation: fadeIn 0.4s ease-out forwards;
-    }
-    .animate-slide-down {
-      animation: slideDown 0.3s ease-out forwards;
-    }
-    .animate-slide-up {
-      animation: slideUp 0.3s ease-out forwards;
-      overflow: hidden;
-    }
-    .animate-float {
-      animation: float 4s ease-in-out infinite;
-    }
-    .animate-pulse {
-      animation: pulse 2s ease-in-out infinite;
-    }
-    .product-card {
-      transition: all 0.3s ease;
-      perspective: 1000px;
-      transform-style: preserve-3d;
-    }
-    .product-card:hover {
-      transform: translateY(-5px) scale(1.02);
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-    }
-    .description-container {
-      transition: max-height 0.3s ease;
-      overflow: hidden;
-    }
-    .description-expanded {
-      max-height: 500px;
-    }
-    .description-collapsed {
-      max-height: 3.6rem;
-    }
-    .rating-stars {
-      display: inline-flex;
-    }
-    .rating-stars .star {
-      transition: transform 0.3s ease, color 0.3s ease;
-    }
-    .rating-stars .star:hover {
-      transform: scale(1.3);
-    }
-    .search-header {
-      transition: all 0.3s ease;
-      background: linear-gradient(to right, #fff, #f9fafb);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    }
-    .search-header:hover {
-      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
-      transform: translateY(-2px);
-    }
-    .no-results-card {
-      background: linear-gradient(135deg, #fff, #f8f9fa);
-      transition: all 0.5s ease;
-    }
-    .no-results-card:hover {
-      transform: scale(1.02);
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-    }
-  `}</style>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideDown {
+          from { max-height: 0; opacity: 0; padding: 0; }
+          to { max-height: 500px; opacity: 1; padding: 1.5rem; }
+        }
+        @keyframes slideUp {
+          from { max-height: 500px; opacity: 1; padding: 1.5rem; }
+          to { max-height: 0; opacity: 0; padding: 0; }
+        }
+        @keyframes float {
+          0% { transform: translateY(0); }
+          50% { transform: translateY(-5px); }
+          100% { transform: translateY(0); }
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.02); }
+          100% { transform: scale(1); }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.4s ease-out forwards;
+        }
+        .animate-slide-down {
+          animation: slideDown 0.3s ease-out forwards;
+        }
+        .animate-slide-up {
+          animation: slideUp 0.3s ease-out forwards;
+          overflow: hidden;
+        }
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
+        }
+        .animate-pulse {
+          animation: pulse 2s ease-in-out infinite;
+        }
+        .product-card {
+          transition: all 0.3s ease;
+          perspective: 1000px;
+          transform-style: preserve-3d;
+        }
+        .product-card:hover {
+          transform: translateY(-5px) scale(1.02);
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        }
+        .description-container {
+          transition: max-height 0.3s ease;
+          overflow: hidden;
+        }
+        .description-expanded {
+          max-height: 500px;
+        }
+        .description-collapsed {
+          max-height: 3.6rem;
+        }
+        .rating-stars {
+          display: inline-flex;
+        }
+        .rating-stars .star {
+          transition: transform 0.3s ease, color 0.3s ease;
+        }
+        .rating-stars .star:hover {
+          transform: scale(1.3);
+        }
+        .search-header {
+          transition: all 0.3s ease;
+          background: linear-gradient(to right, #fff, #f9fafb);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        .search-header:hover {
+          box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+          transform: translateY(-2px);
+        }
+        .no-results-card {
+          background: linear-gradient(135deg, #fff, #f8f9fa);
+          transition: all 0.5s ease;
+        }
+        .no-results-card:hover {
+          transform: scale(1.02);
+          box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+      `}</style>
       
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Search Header */}
@@ -516,8 +516,7 @@ function SearchResults() {
                 <span className="text-gray-600 mr-3">Sort:</span>
                 <select
                   value={filters.sortBy}
-                  
-                    onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
+                  onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
                   className="border rounded-xl px-4 py-2 bg-white shadow-sm transition-all duration-300 hover:shadow-md focus:border-orange-500"
                 >
                   <option value="relevance">Relevance</option>
@@ -576,8 +575,8 @@ function SearchResults() {
                     </Link>
                     
                     <div className="flex justify-between items-center mb-3">
-                      <p className="text-xl font-bold text
-                      (2)}</p>
+                      <p className="text-xl font-bold text-orange-600">৳{product.price.toFixed
+                                       <p className="text-xl font-bold text-orange-600">৳{product.price.toFixed(2)}</p>
                       <div className="flex items-center">
                         <div className="rating-stars flex mr-1">
                           {[...Array(5)].map((_, i) => (
@@ -631,7 +630,7 @@ function SearchResults() {
                         </>
                       )}
                     </button>
-                  <Button 
+                   <Button 
                       className="w-full mt-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow transition-all duration-300 hover:shadow-md"
                       disabled={product.stock === 0}
                     >
@@ -697,4 +696,4 @@ export default function SearchPage() {
       <SearchResults />
     </Suspense>
   )
-}
+}        
