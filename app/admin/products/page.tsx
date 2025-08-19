@@ -321,7 +321,7 @@ export default function ProductsPage() {
           setEditingProduct(null); 
           setSelectedCategoryId('');
           setFormErrors({});
-        }}>
+        }} className="transition-all duration-300 hover:scale-105">
           <Plus className="h-4 w-4 mr-2" /> Add Product
         </Button>
       </div>
@@ -511,7 +511,7 @@ export default function ProductsPage() {
                   className="w-full text-center transition-all duration-300"
                 >
                   {p.stock === 0 ? "Out of Stock" : p.stock < 10 ? "Low Stock" : "In Stock"}
-                  </Badge>
+                </Badge>
               </CardFooter>
             </Card>
           ))}
@@ -576,8 +576,7 @@ export default function ProductsPage() {
                     <p className="text-sm text-red-500 mt-1 animate-pulse">{formErrors.price}</p>
                   )}
                 </div>
-                
-            <div>
+                <div>
                   <Label htmlFor="salePrice">Sale Price (৳)</Label>
                   <Input
                     id="salePrice"
@@ -633,6 +632,7 @@ export default function ProductsPage() {
                     className="transition-all duration-300 focus:ring-2 focus:ring-primary"
                   />
                 </div>
+                
                 <div>
                   <Label htmlFor="categoryId">Category *</Label>
                   <Select 
@@ -688,6 +688,7 @@ export default function ProductsPage() {
           </Card>
         </div>
       )}
+
       <style jsx global>{`
         @keyframes fadeIn {
           from { opacity: 0; }
@@ -707,3 +708,4 @@ export default function ProductsPage() {
     </div>
   )
 }
+                  
