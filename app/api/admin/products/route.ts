@@ -463,4 +463,246 @@ export async function POST(req: NextRequest) {
   } finally {
     client.release()
   }
+}
+
+// PUT — Update existing product
+export async function PUT(req: NextRequest) {
+  const client = await pool.connect()
+  const startTime = Date.now();
+  const debugInfo: Record<string, any> = {
+    steps: []
+  };
+  
+  try {
+    debugInfo.steps.push('Parsing request body');
+    const data = await req.json()
+    
+    // Extract product ID from URL
+    const { pathname } = new URL(req.url);
+    const id = pathname.split('/').pop();
+    
+    if (!id) {
+      return debugResponse(
+        null,
+        'Product ID is required',
+        400,
+        debugInfo
+      );
+    }
+    
+    debugInfo.steps.push('Validating product data for update');
+    validateProduct(data, true)
+    
+    const {
+      name,
+      description,
+      price,
+      stock,
+      salePrice,
+      sku,
+      weight,
+      image,
+      images,
+      categoryId,
+      subcategoryId,
+      rating,
+      reviews,
+      isActive,
+      featured
+    } = data
+
+    // Additional validation
+    if (salePrice !== null && salePrice >= price) {
+      return debugResponse(
+        null,
+        'Sale price must be less than regular price',
+        400,
+        { salePrice, price }
+      )
+    }
+
+    debugInfo.steps.push('Starting database transaction');
+    await client.query('BEGIN')
+    
+    // Build the update query dynamically based on provided fields
+    const updateFields: string[] = [];
+    const queryParams: any[] = [];
+    let paramCount = 1;
+    
+    if (name !== undefined) {
+      updateFields.push(`name = $${paramCount++}`);
+      queryParams.push(name);
+    }
+    
+    if (description !== undefined) {
+      updateFields.push(`description = $${paramCount++}`);
+      queryParams.push(description);
+    }
+    
+    if (price !== undefined) {
+      updateFields.push(`price = $${paramCount++}`);
+      queryParams.push(price);
+    }
+    
+    if (salePrice !== undefined) {
+      updateFields.push(`sale_price = $${paramCount++}`);
+      queryParams.push(salePrice);
+    }
+    
+    if (stock !== undefined) {
+      updateFields.push(`stock = $${paramCount++}`);
+      queryParams.push(stock);
+    }
+    
+    if (sku !== undefined) {
+      updateFields.push(`sku = $${paramCount++}`);
+      queryParams.push(sku);
+    }
+    
+    if (weight !== undefined) {
+      updateFields.push(`weight = $${paramCount++}`);
+      queryParams.push(weight);
+    }
+    
+    if (image !== undefined) {
+      updateFields.push(`image = $${paramCount++}`);
+      queryParams.push(image);
+    }
+    
+    if (images !== undefined) {
+      updateFields.push(`images = $${paramCount++}`);
+      queryParams.push(images);
+    }
+    
+    if (categoryId !== undefined) {
+      updateFields.push(`category_id = $${paramCount++}`);
+      queryParams.push(categoryId);
+    }
+    
+    if (subcategoryId !== undefined) {
+      updateFields.push(`subcategory_id = $${paramCount++}`);
+      queryParams.push(subcategoryId);
+    }
+    
+    if (rating !== undefined) {
+      updateFields.push(`rating = $${paramCount++}`);
+      queryParams.push(rating);
+    }
+    
+    if (reviews !== undefined) {
+      updateFields.push(`reviews = $${paramCount++}`);
+      queryParams.push(reviews);
+    }
+    
+    if (isActive !== undefined) {
+      updateFields.push(`is_active = $${paramCount++}`);
+      queryParams.push(isActive);
+    }
+    
+    if (featured !== undefined) {
+      updateFields.push(`featured = $${paramCount++}`);
+      queryParams.push(featured);
+    }
+    
+    // Always update the updated_at timestamp
+    updateFields.push(`updated_at = NOW()`);
+    
+    if (updateFields.length === 0) {
+      return debugResponse(
+        null,
+        'No fields to update',
+        400,
+        debugInfo
+      );
+    }
+    
+    queryParams.push(id);
+    
+    const query = `
+      UPDATE products 
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramCount}
+      RETURNING 
+        id,
+        name,
+        description,
+        price,
+        sale_price AS "salePrice",
+        stock,
+        sku,
+        weight,
+        image,
+        images,
+        rating,
+        reviews,
+        is_active AS "isActive",
+        featured,
+        created_at AS "createdAt",
+        updated_at AS "updatedAt",
+        category_id AS "categoryId",
+        subcategory_id AS "subcategoryId"
+    `;
+    
+    debugInfo.query = {
+      sql: query,
+      params: queryParams
+    };
+    
+    debugInfo.steps.push('Executing update query');
+    const result = await client.query(query, queryParams)
+
+    if (result.rowCount === 0) {
+      return debugResponse(
+        null,
+        'Product not found',
+        404,
+        debugInfo
+      );
+    }
+
+    await client.query('COMMIT')
+    debugInfo.steps.push('Transaction committed');
+    
+    return NextResponse.json(result.rows[0]);
+  } catch (error: any) {
+    await client.query('ROLLBACK')
+    debugInfo.steps.push('Transaction rolled back');
+    
+    if (error.message.includes('unique constraint')) {
+      return debugResponse(
+        error,
+        'Product with this SKU or name already exists',
+        409,
+        debugInfo
+      );
+    }
+    
+    // Handle specific database errors
+    if (error.code === '22P02') {
+      return debugResponse(
+        error,
+        'Invalid UUID format for category',
+        400,
+        debugInfo
+      )
+    }
+    
+    if (error.code === '23503') {
+      return debugResponse(
+        error,
+        'Invalid category reference',
+        400,
+        debugInfo
+      )
+    }
+    
+    return debugResponse(
+      error,
+      'Failed to update product',
+      500,
+      debugInfo
+    );
+  } finally {
+    client.release()
   }
+}
