@@ -1,49 +1,6 @@
 // app/admin/products/page.tsx
 
 "use client"
-  // Show console logs & errors on screen (for debugging on phone)
-if (typeof window !== "undefined") {
-  const debugBox = document.createElement("div")
-  debugBox.style.position = "fixed"
-  debugBox.style.bottom = "0"
-  debugBox.style.left = "0"
-  debugBox.style.maxHeight = "40vh"
-  debugBox.style.overflowY = "auto"
-  debugBox.style.zIndex = "9999"
-  debugBox.style.background = "#000"
-  debugBox.style.color = "#0f0"
-  debugBox.style.fontSize = "12px"
-  debugBox.style.padding = "4px"
-  debugBox.style.borderTopRightRadius = "6px"
-  debugBox.style.width = "100%"
-  document.body.appendChild(debugBox)
-
-  const log = console.log
-  const error = console.error
-
-  console.log = function (...args) {
-    log.apply(console, args)
-    const msg = document.createElement("div")
-    msg.textContent = "[LOG] " + args.join(" ")
-    debugBox.appendChild(msg)
-  }
-
-  console.error = function (...args) {
-    error.apply(console, args)
-    const msg = document.createElement("div")
-    msg.style.color = "#f55"
-    msg.textContent = "[ERROR] " + args.join(" ")
-    debugBox.appendChild(msg)
-  }
-
-  window.onerror = function (message, source, lineno, colno, err) {
-    const msg = document.createElement("div")
-    msg.style.color = "#f55"
-    msg.textContent = `[ERROR] ${message} at ${source}:${lineno}:${colno}`
-    debugBox.appendChild(msg)
-  }
-}
-import { debugFetch } from "@/lib/debug-fetch"
 import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -77,7 +34,6 @@ function formatCurrency(value: number | null | undefined) {
 }
 
 export default function ProductsPage() {
-  // State management with proper typing
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -88,50 +44,32 @@ export default function ProductsPage() {
   const [formErrors, setFormErrors] = useState<Partial<ProductFormData>>({})
   const [activeProductId, setActiveProductId] = useState<string | null>(null)
   const [isStockUpdating, setIsStockUpdating] = useState(false)
-  
-  // State for category + subcategory (controlled select)
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
-  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('')
 
-  // Ref to track component mount state for safe state updates
   const isMountedRef = useRef(true)
 
-  // Debugging useEffect - helps track state changes during development
+  // Debugging useEffect
   useEffect(() => {
     console.log("[DEBUG] Editing product changed:", editingProduct);
     console.log("[DEBUG] Selected category ID:", selectedCategoryId);
-    console.log("[DEBUG] Selected subcategory ID:", selectedSubcategoryId);
     console.log("[DEBUG] Form errors:", formErrors);
-    
-    // Cleanup function to prevent state updates on unmounted component
-    return () => {
-      isMountedRef.current = false;
-    }
-  }, [editingProduct, selectedCategoryId, selectedSubcategoryId, formErrors]);
+  }, [editingProduct, selectedCategoryId, formErrors]);
 
-  // Fetch product and category data
   const fetchData = useCallback(async () => {
-    // Avoid state updates if component is unmounted
     if (!isMountedRef.current) return
     
     try {
       setLoading(true)
-      // Fetch products and categories in parallel
       const [allProducts, allCategories] = await Promise.all([
         storeManager.getProducts(),
         storeManager.getCategories()
       ])
-      
-      // Update state only if component is still mounted
-      if (isMountedRef.current) {
-        setProducts(allProducts)
-        setCategories(allCategories)
-      }
+      setProducts(allProducts)
+      setCategories(allCategories)
+      console.log("[DEBUG] Fetched products:", allProducts);
+      console.log("[DEBUG] Fetched categories:", allCategories);
     } catch (err) {
       console.error("Failed to load data:", err)
-      toast.error("Data load failed", {
-        description: "Could not fetch products and categories"
-      })
     } finally {
       if (isMountedRef.current) {
         setLoading(false)
@@ -139,30 +77,23 @@ export default function ProductsPage() {
     }
   }, [])
 
-  // Initial data fetch and setup store subscription
   useEffect(() => {
     isMountedRef.current = true
     fetchData()
 
-    // Subscribe to store changes
     const unsubscribe = storeManager.subscribe(() => {
-      if (!loading && isMountedRef.current) {
-        fetchData()
-      }
+      if (!loading) fetchData()
     })
 
-    // Cleanup on component unmount
     return () => {
       isMountedRef.current = false
       unsubscribe()
     }
   }, [fetchData])
 
-  // Memoized filtered products for better performance
   const filteredProducts = useMemo(() => {
     let filtered = [...products]
     
-    // Apply search term filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
       filtered = products.filter(p => 
@@ -172,7 +103,6 @@ export default function ProductsPage() {
       )
     }
     
-    // Apply category filter
     if (categoryFilter !== "all") {
       filtered = filtered.filter(p => p.categoryId === categoryFilter)
     }
@@ -180,7 +110,6 @@ export default function ProductsPage() {
     return filtered
   }, [products, searchTerm, categoryFilter])
 
-  // Calculate inventory stats
   const stats = useMemo(() => {
     const totalProducts = products.length
     const lowStock = products.filter(p => p.stock < 10 && p.stock > 0).length
@@ -190,7 +119,6 @@ export default function ProductsPage() {
     return { totalProducts, lowStock, outOfStock, inventoryValue }
   }, [products])
 
-  // Reset form to initial state
   const resetForm = () => {
     setEditingProduct(null)
     setShowForm(false)
@@ -198,63 +126,34 @@ export default function ProductsPage() {
     setActiveProductId(null)
     setIsStockUpdating(false)
     setSelectedCategoryId('')
-    setSelectedSubcategoryId('')
   }
 
-  // Validate form inputs
   const validateForm = (formData: ProductFormData) => {
     const errors: Partial<ProductFormData> = {}
     
-    // Name validation
-    if (!formData.name.trim()) {
-      errors.name = "Name is required"
-    } else if (formData.name.length < 2) {
-      errors.name = "Name must be at least 2 characters"
-    }
+    if (!formData.name.trim()) errors.name = "Name is required"
+    else if (formData.name.length < 2) errors.name = "Name too short"
     
-    // Description validation
-    if (!formData.description.trim()) {
-      errors.description = "Description is required"
-    } else if (formData.description.length < 10) {
-      errors.description = "Description must be at least 10 characters"
-    }
+    if (!formData.description.trim()) errors.description = "Description is required"
+    else if (formData.description.length < 10) errors.description = "Description too short"
     
-    // Price validation
-    if (!formData.price) {
-      errors.price = "Price is required"
-    } else {
-      const priceVal = parseFloat(formData.price)
-      if (isNaN(priceVal) || priceVal <= 0) {
-        errors.price = "Invalid price"
-      }
-    }
+    if (!formData.price) errors.price = "Price is required"
+    else if (parseFloat(formData.price) <= 0) errors.price = "Invalid price"
     
-    // Stock validation
-    if (!formData.stock) {
-      errors.stock = "Stock is required"
-    } else {
-      const stockVal = parseInt(formData.stock, 10)
-      if (isNaN(stockVal) || stockVal < 0) {
-        errors.stock = "Invalid stock quantity"
-      }
-    }
+    if (!formData.stock) errors.stock = "Stock is required"
+    else if (parseInt(formData.stock) < 0) errors.stock = "Invalid stock"
     
-    // Category validation
-    if (!formData.categoryId) {
-      errors.categoryId = "Category is required"
-    }
+    if (!formData.categoryId) errors.categoryId = "Category is required"
     
-    // Sale price validation
+    // Add sale price validation
     if (formData.salePrice.trim() !== "") {
-      const salePriceVal = parseFloat(formData.salePrice)
-      const priceVal = parseFloat(formData.price)
-      
+      const salePriceVal = parseFloat(formData.salePrice);
       if (isNaN(salePriceVal)) {
-        errors.salePrice = "Sale price must be a number"
+        errors.salePrice = "Sale price must be a number";
       } else if (salePriceVal < 0) {
-        errors.salePrice = "Sale price cannot be negative"
-      } else if (salePriceVal >= priceVal) {
-        errors.salePrice = "Sale price must be less than regular price"
+        errors.salePrice = "Sale price cannot be negative";
+      } else if (salePriceVal >= parseFloat(formData.price)) {
+        errors.salePrice = "Sale price must be less than regular price";
       }
     }
     
@@ -262,32 +161,28 @@ export default function ProductsPage() {
     return Object.keys(errors).length === 0
   }
 
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    const form = e.target as HTMLFormElement;
     const formData: ProductFormData = {
-      name: (form.elements.namedItem('name') as HTMLInputElement).value,
-      description: (form.elements.namedItem('description') as HTMLTextAreaElement).value,
-      price: (form.elements.namedItem('price') as HTMLInputElement).value,
-      salePrice: (form.elements.namedItem('salePrice') as HTMLInputElement).value,
-      stock: (form.elements.namedItem('stock') as HTMLInputElement).value,
-      categoryId: selectedCategoryId,
-      subcategoryId: selectedSubcategoryId,
-      sku: (form.elements.namedItem('sku') as HTMLInputElement).value,
-      weight: (form.elements.namedItem('weight') as HTMLInputElement).value
+      name: (e.target as any).name.value,
+      description: (e.target as any).description.value,
+      price: (e.target as any).price.value,
+      salePrice: (e.target as any).salePrice.value,
+      stock: (e.target as any).stock.value,
+      categoryId: (e.target as any).categoryId.value,
+      subcategoryId: (e.target as any).subcategoryId.value === "none" ? "" : (e.target as any).subcategoryId.value,
+      sku: (e.target as any).sku.value,
+      weight: (e.target as any).weight.value
     }
     
-    // Validate before submission
     if (!validateForm(formData)) return
     
-    // Prepare payload with proper data types
     const payload = {
       ...formData,
       price: parseFloat(formData.price),
       salePrice: formData.salePrice ? parseFloat(formData.salePrice) : undefined,
-      stock: parseInt(formData.stock, 10),
+      stock: parseInt(formData.stock),
       weight: formData.weight ? parseFloat(formData.weight) : undefined,
     }
     
@@ -316,12 +211,11 @@ export default function ProductsPage() {
     }
   }
 
-  // Handle product edit
   const handleEdit = (product: Product) => {
     try {
+      console.log("[DEBUG] Editing product data:", JSON.stringify(product, null, 2));
       setEditingProduct(product);
       setSelectedCategoryId(product.categoryId);
-      setSelectedSubcategoryId(product.subcategoryId || "");
       setShowForm(true);
     } catch (error) {
       console.error("[ERROR] Failed to load product for editing:", error);
@@ -331,12 +225,7 @@ export default function ProductsPage() {
     }
   }
 
-  // Handle product deletion
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
-      return;
-    }
-    
     try {
       setActiveProductId(id)
       await storeManager.deleteProduct(id)
@@ -352,21 +241,15 @@ export default function ProductsPage() {
     }
   }
 
-  // Handle stock updates
   const handleStockUpdate = async (id: string, newStock: number) => {
-    if (isNaN(newStock) || newStock < 0) {
-      toast.error("Invalid stock value", {
-        description: "Stock must be a non-negative number"
-      })
-      return;
-    }
+    if (isNaN(newStock)) return
     
     try {
       setActiveProductId(id)
       setIsStockUpdating(true)
       await storeManager.updateProduct(id, { stock: newStock })
-      toast.success("Stock updated successfully")
       fetchData()
+      toast.success("Stock updated successfully")
     } catch (err) {
       toast.error("Stock update failed", {
         description: "Please try again later"
@@ -378,48 +261,43 @@ export default function ProductsPage() {
     }
   }
 
-  // Get selected category and its subcategories
   const selectedCategory = categories.find(c => c.id === selectedCategoryId)
   const formSubcategories = selectedCategory?.subcategories || []
 
-  // Loading state UI
   if (loading) {
     return (
-      <div className="p-6 animate-pulse">
+      <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-          <Skeleton className="h-8 w-48 rounded-lg" />
-          <Skeleton className="h-10 w-36 rounded-lg" />
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-36" />
         </div>
-        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Skeleton className="h-10 w-full rounded-lg" />
-          <Skeleton className="h-10 w-full rounded-lg" />
-          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
         </div>
-        
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           {[...Array(4)].map((_, i) => (
-            <Card key={i} className="p-4 rounded-xl">
-              <Skeleton className="h-6 w-16 mx-auto mb-2 rounded-full" />
-              <Skeleton className="h-4 w-24 mx-auto rounded-full" />
+            <Card key={i} className="p-4">
+              <Skeleton className="h-6 w-16 mx-auto mb-2" />
+              <Skeleton className="h-4 w-24 mx-auto" />
             </Card>
           ))}
         </div>
-        
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (
-            <Card key={i} className="p-4 rounded-xl transform transition-all duration-300 hover:scale-[1.02]">
+            <Card key={i} className="p-4">
               <div className="flex justify-between items-start mb-2">
-                <Skeleton className="h-5 w-32 rounded-lg" />
+                <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-8 w-8 rounded-full" />
               </div>
-              <Skeleton className="h-4 w-full mb-2 rounded-lg" />
-              <Skeleton className="h-4 w-3/4 mb-2 rounded-lg" />
-              <Skeleton className="h-4 w-24 mb-4 rounded-lg" />
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-3/4 mb-2" />
+              <Skeleton className="h-4 w-24 mb-4" />
               <div className="space-y-2">
-                <Skeleton className="h-4 w-full rounded-lg" />
-                <Skeleton className="h-4 w-full rounded-lg" />
-                <Skeleton className="h-4 w-full rounded-lg" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
               </div>
             </Card>
           ))}
@@ -430,48 +308,42 @@ export default function ProductsPage() {
 
   return (
     <div className="p-6">
-      {/* Header Section */}
-      <div className="flex justify-between items-center mb-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Products Management
-          </h1>
+          <h1 className="text-2xl font-bold">Products Management</h1>
           <p className="text-sm text-muted-foreground">
             Manage your product inventory and details
           </p>
         </div>
-        <Button 
-          onClick={() => { 
-            setShowForm(true); 
-            setEditingProduct(null); 
-            setSelectedCategoryId('');
-            setSelectedSubcategoryId('');
-            setFormErrors({});
-          }}
-          className="transition-transform duration-300 hover:scale-105"
-        >
+        <Button onClick={() => { 
+          setShowForm(true); 
+          setEditingProduct(null); 
+          setSelectedCategoryId('');
+          setFormErrors({});
+        }}>
           <Plus className="h-4 w-4 mr-2" /> Add Product
         </Button>
       </div>
 
-      {/* Search & Filter Section */}
-      <Card className="p-4 mb-6 rounded-xl shadow-md transition-all duration-300 hover:shadow-lg">
+      {/* Search & Filter */}
+      <Card className="p-4 mb-6 transition-all duration-300 ease-in-out hover:shadow-md">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="relative animate-fade-in-down">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 rounded-lg"
+              className="pl-10 transition-all duration-300 focus:ring-2 focus:ring-primary"
             />
           </div>
           
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="rounded-lg animate-fade-in-down animation-delay-100">
+            <SelectTrigger className="transition-all duration-300 focus:ring-2 focus:ring-primary">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="animate-in fade-in-80">
               <SelectItem value="all">All Categories</SelectItem>
               {categories.map(c => (
                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -479,37 +351,29 @@ export default function ProductsPage() {
             </SelectContent>
           </Select>
           
-          <Button 
-            variant="outline" 
-            onClick={() => { 
-              setSearchTerm(""); 
-              setCategoryFilter("all") 
-            }}
-            className="rounded-lg animate-fade-in-down animation-delay-200"
-          >
+          <Button variant="outline" onClick={() => { 
+            setSearchTerm(""); setCategoryFilter("all") 
+          }} className="transition-all duration-300 hover:scale-105">
             Clear Filters
           </Button>
         </div>
       </Card>
 
-      {/* Stats Section */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card className="p-4 text-center rounded-xl transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+        <Card className="p-4 text-center transition-all duration-300 ease-in-out hover:shadow-md">
           <div className="text-2xl font-bold">{stats.totalProducts}</div>
           <div className="text-sm text-muted-foreground">Total Products</div>
         </Card>
-        
-        <Card className="p-4 text-center rounded-xl transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+        <Card className="p-4 text-center transition-all duration-300 ease-in-out hover:shadow-md">
           <div className="text-2xl font-bold text-yellow-600">{stats.lowStock}</div>
           <div className="text-sm text-muted-foreground">Low Stock</div>
         </Card>
-        
-        <Card className="p-4 text-center rounded-xl transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+        <Card className="p-4 text-center transition-all duration-300 ease-in-out hover:shadow-md">
           <div className="text-2xl font-bold text-red-600">{stats.outOfStock}</div>
           <div className="text-sm text-muted-foreground">Out of Stock</div>
         </Card>
-        
-        <Card className="p-4 text-center rounded-xl transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+        <Card className="p-4 text-center transition-all duration-300 ease-in-out hover:shadow-md">
           <div className="text-2xl font-bold text-green-600">
             ৳{stats.inventoryValue.toFixed(2)}
           </div>
@@ -519,31 +383,28 @@ export default function ProductsPage() {
 
       {/* Product Grid */}
       {filteredProducts.length === 0 ? (
-        <Card className="p-8 text-center rounded-xl shadow-lg animate-bounce-in">
+        <Card className="p-8 text-center transition-all duration-500 animate-fade-in">
           <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-medium mb-2">No products found</h3>
           <p className="text-muted-foreground mb-4">
             Try adjusting your search or add a new product
           </p>
-          <Button 
-            onClick={() => { 
-              setShowForm(true); 
-              setEditingProduct(null); 
-              setSelectedCategoryId('');
-              setSelectedSubcategoryId('');
-              setFormErrors({});
-            }}
-            className="transition-transform duration-300 hover:scale-105"
-          >
+          <Button onClick={() => { 
+            setShowForm(true); 
+            setEditingProduct(null); 
+            setSelectedCategoryId('');
+            setFormErrors({});
+          }} className="transition-all duration-300 hover:scale-105">
             <Plus className="h-4 w-4 mr-2" /> Add Product
           </Button>
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProducts.map(p => (
+          {filteredProducts.map((p, index) => (
             <Card 
               key={p.id} 
-              className="overflow-hidden rounded-xl shadow-md transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl"
+              className="overflow-hidden transition-all duration-500 ease-in-out hover:shadow-lg animate-fade-in"
+              style={{ animationDelay: `${index * 0.1}s` }}
             >
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
@@ -552,7 +413,7 @@ export default function ProductsPage() {
                     <Button 
                       size="icon" 
                       variant="ghost"
-                      className="h-7 w-7 transition-transform duration-300 hover:scale-110"
+                      className="h-7 w-7 transition-all duration-300 hover:scale-110"
                       onClick={() => handleEdit(p)}
                       disabled={activeProductId === p.id}
                     >
@@ -561,7 +422,7 @@ export default function ProductsPage() {
                     <Button 
                       size="icon" 
                       variant="ghost"
-                      className="h-7 w-7 text-red-500 hover:text-red-700 transition-transform duration-300 hover:scale-110"
+                      className="h-7 w-7 text-red-500 hover:text-red-700 transition-all duration-300 hover:scale-110"
                       onClick={() => handleDelete(p.id)}
                       disabled={activeProductId === p.id}
                     >
@@ -582,7 +443,6 @@ export default function ProductsPage() {
                     <div className="text-muted-foreground">ID</div>
                     <div className="font-mono truncate">{p.id}</div>
                   </div>
-                  
                   {p.sku && (
                     <div>
                       <div className="text-muted-foreground">SKU</div>
@@ -606,14 +466,12 @@ export default function ProductsPage() {
                       )}
                     </div>
                   </div>
-                  
                   <div>
                     <div className="text-muted-foreground">Category</div>
                     <div className="truncate">
                       {categories.find(c => c.id === p.categoryId)?.name || "N/A"}
                     </div>
                   </div>
-                  
                   <div>
                     <div className="text-muted-foreground">Stock</div>
                     <div className="flex items-center gap-2">
@@ -624,28 +482,20 @@ export default function ProductsPage() {
                           type="number"
                           defaultValue={p.stock}
                           min="0"
-                          className="w-24 h-8 text-center rounded-lg"
+                          className="w-24 h-8 text-center transition-all duration-300 focus:ring-2 focus:ring-primary"
                           onBlur={(e) => {
-                            const newStock = parseInt(e.target.value, 10)
+                            const newStock = parseInt(e.target.value)
                             if (!isNaN(newStock) && newStock !== p.stock) {
                               handleStockUpdate(p.id, newStock)
-                            } else {
-                                       // Reset to original value if invalid
-                              e.target.value = p.stock.toString()
                             }
                           }}
                           disabled={isStockUpdating && activeProductId !== p.id}
                         />
                       )}
-                      {p.stock < 10 && p.stock > 0 && (
-                        <AlertTriangle className="h-4 w-4 text-yellow-500 animate-pulse" />
-                      )}
-                      {p.stock === 0 && (
-                        <AlertTriangle className="h-4 w-4 text-red-500 animate-pulse" />
-                      )}
+                      {p.stock < 10 && p.stock > 0 && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
+                      {p.stock === 0 && <AlertTriangle className="h-4 w-4 text-red-500" />}
                     </div>
                   </div>
-                  
                   <div>
                     <div className="text-muted-foreground">Value</div>
                     <div className="font-medium">
@@ -658,36 +508,29 @@ export default function ProductsPage() {
               <CardFooter className="justify-center">
                 <Badge 
                   variant={p.stock === 0 ? "destructive" : p.stock < 10 ? "warning" : "success"}
-                  className="w-full text-center rounded-lg transition-colors duration-300"
+                  className="w-full text-center transition-all duration-300"
                 >
                   {p.stock === 0 ? "Out of Stock" : p.stock < 10 ? "Low Stock" : "In Stock"}
-                </Badge>
+                  </Badge>
               </CardFooter>
             </Card>
           ))}
         </div>
       )}
-            {/* Add/Edit Product Form */}
+
+      {/* Add/Edit Product Form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <Card className="w-full max-w-2xl rounded-xl animate-pop-in">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 animate-fade-in">
+          <Card className="w-full max-w-2xl animate-slide-in">
             <CardHeader className="flex flex-row justify-between items-center">
-              <CardTitle className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {editingProduct ? "Edit Product" : "Add New Product"}
-              </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={resetForm}
-                className="transition-transform duration-300 hover:scale-110"
-              >
+              <CardTitle>{editingProduct ? "Edit Product" : "Add New Product"}</CardTitle>
+              <Button variant="ghost" size="icon" onClick={resetForm} className="transition-all duration-300 hover:scale-110">
                 <X className="h-4 w-4" />
               </Button>
             </CardHeader>
             
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Product Name */}
                 <div className="md:col-span-2">
                   <Label htmlFor="name">Product Name *</Label>
                   <Input
@@ -695,14 +538,13 @@ export default function ProductsPage() {
                     name="name"
                     defaultValue={editingProduct?.name || ""}
                     placeholder="Enter product name"
-                    className={formErrors.name ? "border-red-500 rounded-lg" : "rounded-lg"}
+                    className={formErrors.name ? "border-red-500 transition-all duration-300" : "transition-all duration-300 focus:ring-2 focus:ring-primary"}
                   />
                   {formErrors.name && (
-                    <p className="text-sm text-red-500 mt-1 animate-shake">{formErrors.name}</p>
+                    <p className="text-sm text-red-500 mt-1 animate-pulse">{formErrors.name}</p>
                   )}
                 </div>
                 
-                {/* Description */}
                 <div className="md:col-span-2">
                   <Label htmlFor="description">Description *</Label>
                   <Textarea
@@ -711,13 +553,13 @@ export default function ProductsPage() {
                     defaultValue={editingProduct?.description || ""}
                     placeholder="Enter product description"
                     rows={3}
-                    className={formErrors.description ? "border-red-500 rounded-lg" : "rounded-lg"}
+                    className={formErrors.description ? "border-red-500 transition-all duration-300" : "transition-all duration-300 focus:ring-2 focus:ring-primary"}
                   />
                   {formErrors.description && (
-                    <p className="text-sm text-red-500 mt-1 animate-shake">{formErrors.description}</p>
+                    <p className="text-sm text-red-500 mt-1 animate-pulse">{formErrors.description}</p>
                   )}
                 </div>
-                    {/* Price */}
+                
                 <div>
                   <Label htmlFor="price">Price (৳) *</Label>
                   <Input
@@ -728,15 +570,14 @@ export default function ProductsPage() {
                     min="0"
                     defaultValue={editingProduct?.price?.toString() || ""}
                     placeholder="0.00"
-                    className={formErrors.price ? "border-red-500 rounded-lg" : "rounded-lg"}
+                    className={formErrors.price ? "border-red-500 transition-all duration-300" : "transition-all duration-300 focus:ring-2 focus:ring-primary"}
                   />
                   {formErrors.price && (
-                    <p className="text-sm text-red-500 mt-1 animate-shake">{formErrors.price}</p>
+                    <p className="text-sm text-red-500 mt-1 animate-pulse">{formErrors.price}</p>
                   )}
                 </div>
                 
-                {/* Sale Price */}
-                <div>
+            <div>
                   <Label htmlFor="salePrice">Sale Price (৳)</Label>
                   <Input
                     id="salePrice"
@@ -746,14 +587,13 @@ export default function ProductsPage() {
                     min="0"
                     defaultValue={editingProduct?.salePrice?.toString() || ""}
                     placeholder="0.00"
-                    className={formErrors.salePrice ? "border-red-500 rounded-lg" : "rounded-lg"}
+                    className={formErrors.salePrice ? "border-red-500 transition-all duration-300" : "transition-all duration-300 focus:ring-2 focus:ring-primary"}
                   />
                   {formErrors.salePrice && (
-                    <p className="text-sm text-red-500 mt-1 animate-shake">{formErrors.salePrice}</p>
+                    <p className="text-sm text-red-500 mt-1 animate-pulse">{formErrors.salePrice}</p>
                   )}
                 </div>
                 
-                {/* Stock */}
                 <div>
                   <Label htmlFor="stock">Stock *</Label>
                   <Input
@@ -763,13 +603,12 @@ export default function ProductsPage() {
                     min="0"
                     defaultValue={editingProduct?.stock?.toString() || ""}
                     placeholder="0"
-                    className={formErrors.stock ? "border-red-500 rounded-lg" : "rounded-lg"}
+                    className={formErrors.stock ? "border-red-500 transition-all duration-300" : "transition-all duration-300 focus:ring-2 focus:ring-primary"}
                   />
                   {formErrors.stock && (
-                    <p className="text-sm text-red-500 mt-1 animate-shake">{formErrors.stock}</p>
+                    <p className="text-sm text-red-500 mt-1 animate-pulse">{formErrors.stock}</p>
                   )}
                 </div>
-                {/* SKU */}
                 <div>
                   <Label htmlFor="sku">SKU</Label>
                   <Input
@@ -777,11 +616,10 @@ export default function ProductsPage() {
                     name="sku"
                     defaultValue={editingProduct?.sku || ""}
                     placeholder="Product SKU"
-                    className="rounded-lg"
+                    className="transition-all duration-300 focus:ring-2 focus:ring-primary"
                   />
                 </div>
                 
-                {/* Weight */}
                 <div>
                   <Label htmlFor="weight">Weight (kg)</Label>
                   <Input
@@ -792,69 +630,51 @@ export default function ProductsPage() {
                     min="0"
                     defaultValue={editingProduct?.weight?.toString() || ""}
                     placeholder="0.00"
-                    className="rounded-lg"
+                    className="transition-all duration-300 focus:ring-2 focus:ring-primary"
                   />
                 </div>
-                
-                {/* Category */}
                 <div>
                   <Label htmlFor="categoryId">Category *</Label>
                   <Select 
                     name="categoryId" 
                     value={selectedCategoryId}
-                    onValueChange={(value) => {
-                      setSelectedCategoryId(value);
-                      setSelectedSubcategoryId('');
-                    }}
+                    onValueChange={setSelectedCategoryId}
                   >
-                    <SelectTrigger className={formErrors.categoryId ? "border-red-500 rounded-lg" : "rounded-lg"}>
+                    <SelectTrigger className={formErrors.categoryId ? "border-red-500 transition-all duration-300" : "transition-all duration-300 focus:ring-2 focus:ring-primary"}>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-lg">
+                    <SelectContent className="animate-in fade-in-80">
                       {categories.map(c => (
-                        <SelectItem key={c.id} value={c.id} className="rounded-md">{c.name}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   {formErrors.categoryId && (
-                    <p className="text-sm text-red-500 mt-1 animate-shake">{formErrors.categoryId}</p>
+                    <p className="text-sm text-red-500 mt-1 animate-pulse">{formErrors.categoryId}</p>
                   )}
                 </div>
-                {/* Subcategory */}
+                
                 <div>
                   <Label htmlFor="subcategoryId">Subcategory</Label>
                   <Select 
                     name="subcategoryId" 
-                    value={selectedSubcategoryId}
-                    onValueChange={setSelectedSubcategoryId}
+                    defaultValue={editingProduct?.subcategoryId || "none"}
                   >
-                    <SelectTrigger className="rounded-lg">
+                    <SelectTrigger className="transition-all duration-300 focus:ring-2 focus:ring-primary">
                       <SelectValue placeholder="Select subcategory" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-lg">
-                      <SelectItem value="" className="rounded-md">None</SelectItem>
+                    <SelectContent className="animate-in fade-in-80">
+                      <SelectItem value="none">None</SelectItem>
                       {formSubcategories.map(sub => (
-                        <SelectItem key={sub.id} value={sub.id} className="rounded-md">{sub.name}</SelectItem>
+                        <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </CardContent>
-              
-              {/* Form Actions */}
               <CardFooter className="flex justify-end gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={resetForm}
-                  className="rounded-lg transition-transform duration-300 hover:scale-105"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isStockUpdating}
-                  className="rounded-lg transition-transform duration-300 hover:scale-105"
-                >
+                <Button variant="outline" onClick={resetForm} className="transition-all duration-300 hover:scale-105">Cancel</Button>
+                <Button type="submit" disabled={isStockUpdating} className="transition-all duration-300 hover:scale-105">
                   {isStockUpdating ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   ) : editingProduct ? (
@@ -862,70 +682,28 @@ export default function ProductsPage() {
                   ) : (
                     "Add Product"
                   )}
-                </Button>
+                  </Button>
               </CardFooter>
             </form>
           </Card>
         </div>
       )}
-      
-               {/* Custom Animations */}
       <style jsx global>{`
-        @keyframes fade-in {
+        @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        
-        @keyframes pop-in {
-          0% { transform: scale(0.5); opacity: 0; }
-          100% { transform: scale(1); opacity: 1; }
+        @keyframes slideIn {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
-        
-        @keyframes bounce-in {
-          0% { transform: translateY(-50px); opacity: 0; }
-          60% { transform: translateY(10px); opacity: 1; }
-          100% { transform: translateY(0); }
-        }
-        
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
-        }
-        
         .animate-fade-in {
-          animation: fade-in 0.5s ease-out;
+          animation: fadeIn 0.5s ease-out;
         }
-        
-        .animate-pop-in {
-          animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        
-        .animate-bounce-in {
-          animation: bounce-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        
-        .animate-shake {
-          animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
-        }
-        
-        .animate-fade-in-down {
-          animation: fade-in 0.5s ease-out, move-down 0.5s ease-out;
-        }
-        
-        @keyframes move-down {
-          from { transform: translateY(-10px); }
-          to { transform: translateY(0); }
-        }
-        
-        .animation-delay-100 {
-          animation-delay: 100ms;
-        }
-        
-        .animation-delay-200 {
-          animation-delay: 200ms;
+        .animate-slide-in {
+          animation: slideIn 0.3s ease-out;
         }
       `}</style>
     </div>
   )
-}       
+}
