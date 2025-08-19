@@ -1,6 +1,58 @@
 // app/admin/products/page.tsx
 
 "use client"
+  // Setup debug console
+  useEffect(() => {
+    const debugBox = document.createElement("div")
+    debugBox.style.position = "fixed"
+    debugBox.style.bottom = "0"
+    debugBox.style.left = "0"
+    debugBox.style.maxHeight = "40vh"
+    debugBox.style.overflowY = "auto"
+    debugBox.style.zIndex = "9999"
+    debugBox.style.background = "#000"
+    debugBox.style.color = "#0f0"
+    debugBox.style.fontSize = "12px"
+    debugBox.style.padding = "4px"
+    debugBox.style.borderTopRightRadius = "6px"
+    debugBox.style.width = "100%"
+    document.body.appendChild(debugBox)
+
+    const originalLog = console.log
+    const originalError = console.error
+    const originalWindowError = window.onerror
+
+    console.log = function (...args) {
+      originalLog.apply(console, args)
+      const msg = document.createElement("div")
+      msg.textContent = "[LOG] " + args.join(" ")
+      debugBox.appendChild(msg)
+    }
+
+    console.error = function (...args) {
+      originalError.apply(console, args)
+      const msg = document.createElement("div")
+      msg.style.color = "#f55"
+      msg.textContent = "[ERROR] " + args.join(" ")
+      debugBox.appendChild(msg)
+    }
+
+    window.onerror = function (message, source, lineno, colno, err) {
+      const msg = document.createElement("div")
+      msg.style.color = "#f55"
+      msg.textContent = `[ERROR] ${message} at ${source}:${lineno}:${colno}`
+      debugBox.appendChild(msg)
+      if (originalWindowError) return originalWindowError(message, source, lineno, colno, err)
+    }
+
+    return () => {
+      document.body.removeChild(debugBox)
+      console.log = originalLog
+      console.error = originalError
+      window.onerror = originalWindowError
+    }
+  }, [])
+
 import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,7 +66,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { Product, Category } from "@/types"
-
+import { debugFetch } from "@/lib/debug-fetch"
 interface ProductFormData {
   name: string
   description: string
