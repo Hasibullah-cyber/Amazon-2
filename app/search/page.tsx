@@ -24,7 +24,7 @@ interface Product {
   brand: string
 }
 
-function SearchResults() {
+const SearchPage = () => {
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get('q') || ''
 
@@ -72,9 +72,7 @@ function SearchResults() {
     }
   }
 
-  // Enhanced search mappings for better product discovery
   const searchMappings = {
-    // Beauty/Skincare brands and terms
     'fair': ['beauty', 'skincare', 'cosmetics'],
     'lovely': ['beauty', 'skincare', 'cosmetics'],
     'fairandlovely': ['beauty', 'skincare'],
@@ -86,16 +84,12 @@ function SearchResults() {
     'garnier': ['beauty', 'skincare'],
     'cream': ['beauty', 'skincare'],
     'moisturizer': ['beauty', 'skincare'],
-    
-    // Electronics brands and terms
     'samsung': ['electronics'],
     'apple': ['electronics'],
     'iphone': ['electronics'],
     'headphone': ['electronics'],
     'phone': ['electronics'],
     'mobile': ['electronics'],
-    
-    // Fashion terms
     'nike': ['fashion'],
     'adidas': ['fashion'],
     'shirt': ['fashion'],
@@ -107,11 +101,10 @@ function SearchResults() {
     const s2 = str2.toLowerCase()
     const search = searchTerm.toLowerCase()
     
-    // Check search mappings first
     for (const [key, categories] of Object.entries(searchMappings)) {
       if (search.includes(key) || key.includes(search)) {
         if (categories.some(cat => s1.includes(cat) || s2.includes(cat))) {
-          return 0.9 // High relevance for mapped terms
+          return 0.9
         }
       }
     }
@@ -157,13 +150,12 @@ function SearchResults() {
         const descScore = calculateSimilarity(product.description, searchTerm, searchTerm) * 0.7
         const categoryScore = calculateSimilarity(product.category, searchTerm, searchTerm) * 0.8
 
-        // Enhanced mapping-based scoring
         let mappingScore = 0
         const search = searchTerm.toLowerCase()
         for (const [key, categories] of Object.entries(searchMappings)) {
           if (search.includes(key) || key.includes(search)) {
             if (categories.includes(product.category.toLowerCase())) {
-              mappingScore = 0.95 // Very high relevance for category matches
+              mappingScore = 0.95
             }
             if (product.name.toLowerCase().includes(key)) {
               mappingScore = Math.max(mappingScore, 0.9)
@@ -258,94 +250,94 @@ function SearchResults() {
     setExpandedDescriptionId(expandedDescriptionId === id ? null : id)
   }
 
-    return (
-  <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-    <style jsx>{`
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      @keyframes slideDown {
-        from { max-height: 0; opacity: 0; padding: 0; }
-        to { max-height: 500px; opacity: 1; padding: 1.5rem; }
-      }
-      @keyframes slideUp {
-        from { max-height: 500px; opacity: 1; padding: 1.5rem; }
-        to { max-height: 0; opacity: 0; padding: 0; }
-      }
-      @keyframes float {
-        0% { transform: translateY(0); }
-        50% { transform: translateY(-5px); }
-        100% { transform: translateY(0); }
-      }
-      @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.02); }
-        100% { transform: scale(1); }
-      }
-      .animate-fade-in {
-        animation: fadeIn 0.4s ease-out forwards;
-      }
-      .animate-slide-down {
-        animation: slideDown 0.3s ease-out forwards;
-      }
-      .animate-slide-up {
-        animation: slideUp 0.3s ease-out forwards;
-        overflow: hidden;
-      }
-      .animate-float {
-        animation: float 4s ease-in-out infinite;
-      }
-      .animate-pulse {
-        animation: pulse 2s ease-in-out infinite;
-      }
-      .product-card {
-        transition: all 0.3s ease;
-        perspective: 1000px;
-        transform-style: preserve-3d;
-      }
-      .product-card:hover {
-        transform: translateY(-5px) scale(1.02);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-      }
-      .description-container {
-        transition: max-height 0.3s ease;
-        overflow: hidden;
-      }
-      .description-expanded {
-        max-height: 500px;
-      }
-      .description-collapsed {
-        max-height: 3.6rem;
-      }
-      .rating-stars {
-        display: inline-flex;
-      }
-      .rating-stars .star {
-        transition: transform 0.3s ease, color 0.3s ease;
-      }
-      .rating-stars .star:hover {
-        transform: scale(1.3);
-      }
-      .search-header {
-        transition: all 0.3s ease;
-        background: linear-gradient(to right, #fff, #f9fafb);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-      }
-      .search-header:hover {
-        box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
-        transform: translateY(-2px);
-      }
-      .no-results-card {
-        background: linear-gradient(135deg, #fff, #f8f9fa);
-        transition: all 0.5s ease;
-      }
-      .no-results-card:hover {
-        transform: scale(1.02);
-        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-      }
-    `}</style>
-    
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideDown {
+          from { max-height: 0; opacity: 0; padding: 0; }
+          to { max-height: 500px; opacity: 1; padding: 1.5rem; }
+        }
+        @keyframes slideUp {
+          from { max-height: 500px; opacity: 1; padding: 1.5rem; }
+          to { max-height: 0; opacity: 0; padding: 0; }
+        }
+        @keyframes float {
+          0% { transform: translateY(0); }
+          50% { transform: translateY(-5px); }
+          100% { transform: translateY(0); }
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.02); }
+          100% { transform: scale(1); }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.4s ease-out forwards;
+        }
+        .animate-slide-down {
+          animation: slideDown 0.3s ease-out forwards;
+        }
+        .animate-slide-up {
+          animation: slideUp 0.3s ease-out forwards;
+          overflow: hidden;
+        }
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
+        }
+        .animate-pulse {
+          animation: pulse 2s ease-in-out infinite;
+        }
+        .product-card {
+          transition: all 0.3s ease;
+          perspective: 1000px;
+          transform-style: preserve-3d;
+        }
+        .product-card:hover {
+          transform: translateY(-5px) scale(1.02);
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        }
+        .description-container {
+          transition: max-height 0.3s ease;
+          overflow: hidden;
+        }
+        .description-expanded {
+          max-height: 500px;
+        }
+        .description-collapsed {
+          max-height: 3.6rem;
+        }
+        .rating-stars {
+          display: inline-flex;
+        }
+        .rating-stars .star {
+          transition: transform 0.3s ease, color 0.3s ease;
+        }
+        .rating-stars .star:hover {
+          transform: scale(1.3);
+        }
+        .search-header {
+          transition: all 0.3s ease;
+          background: linear-gradient(to right, #fff, #f9fafb);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        .search-header:hover {
+          box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+          transform: translateY(-2px);
+        }
+        .no-results-card {
+          background: linear-gradient(135deg, #fff, #f8f9fa);
+          transition: all 0.5s ease;
+        }
+        .no-results-card:hover {
+          transform: scale(1.02);
+          box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+      `}</style>
+      
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Search Header */}
         <div className="search-header p-6 rounded-2xl mb-6">
@@ -575,8 +567,7 @@ function SearchResults() {
                     </Link>
                     
                     <div className="flex justify-between items-center mb-3">
-                      <p className="text-xl font-bold text-orange-600">৳{product.price.toFixed
-                                       <p className="text-xl font-bold text-orange-600">৳{product.price.toFixed(2)}</p>
+                      <p className="text-xl font-bold text-orange-600">৳{product.price.toFixed(2)}</p>
                       <div className="flex items-center">
                         <div className="rating-stars flex mr-1">
                           {[...Array(5)].map((_, i) => (
@@ -630,7 +621,7 @@ function SearchResults() {
                         </>
                       )}
                     </button>
-                   <Button 
+                    <Button 
                       className="w-full mt-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow transition-all duration-300 hover:shadow-md"
                       disabled={product.stock === 0}
                     >
@@ -669,10 +660,9 @@ function SearchResults() {
         </div>
       </div>
     </div>
-  )
-}
-
-export default function SearchPage() {
+  );
+};
+export default function SearchPageWrapper() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12">
@@ -693,7 +683,7 @@ export default function SearchPage() {
         </div>
       </div>
     }>
-      <SearchResults />
+      <SearchPage />
     </Suspense>
-  )
-}        
+  );
+}
