@@ -106,19 +106,18 @@ class StoreManager {
       
       if (updates.category !== undefined) {
         if (typeof updates.category === 'string') {
-          updateData.category = { id: updates.category };
+          updateData.categoryId = updates.category;
         } else if (updates.category && typeof updates.category === 'object') {
-          updateData.category = { id: updates.category.id };
+          updateData.categoryId = updates.category.id;
         }
+        // Remove the category field as we're using categoryId
+        delete updateData.category;
       }
 
-      const res = await fetch(this.getApiUrl('/api/admin/products'), {
-        method: 'PATCH',
+      const res = await fetch(this.getApiUrl(`/api/admin/products/${productId}`), {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: productId,
-          updates: updateData,
-        }),
+        body: JSON.stringify(updateData),
       });
 
       if (!res.ok) {
