@@ -26,7 +26,7 @@ interface Product {
 
 const SearchPage = () => {
   const searchParams = useSearchParams()
-  const initialQuery = searchParams.get('q') || ''
+  const initialQuery = searchParams?.get('q') || ''
 
   const [searchTerm, setSearchTerm] = useState(initialQuery)
   const [products, setProducts] = useState<Product[]>([])
@@ -58,12 +58,12 @@ const SearchPage = () => {
     setLoading(true)
     try {
       const fetchedProducts = await storeManager.getProducts()
-      setProducts(fetchedProducts)
+      setProducts(fetchedProducts || [])
 
-      const uniqueCategories = [...new Set(fetchedProducts.map(p => p.category))]
+      const uniqueCategories = [...new Set((fetchedProducts || []).map(p => p?.category).filter(Boolean))]
       setCategories(uniqueCategories)
       
-      const uniqueBrands = [...new Set(fetchedProducts.map(p => p.brand))]
+      const uniqueBrands = [...new Set((fetchedProducts || []).map(p => p?.brand).filter(Boolean))]
       setBrands(uniqueBrands)
     } catch (error) {
       console.error('Error loading products:', error)
@@ -97,9 +97,9 @@ const SearchPage = () => {
   }
 
   const calculateSimilarity = (str1: string, str2: string, searchTerm: string): number => {
-    const s1 = str1.toLowerCase()
-    const s2 = str2.toLowerCase()
-    const search = searchTerm.toLowerCase()
+    const s1 = (str1 || '').toLowerCase()
+    const s2 = (str2 || '').toLowerCase()
+    const search = (searchTerm || '').toLowerCase()
     
     for (const [key, categories] of Object.entries(searchMappings)) {
       if (search.includes(key) || key.includes(search)) {
@@ -145,32 +145,34 @@ const SearchPage = () => {
     let filtered: any[] = []
 
     if (searchTerm.trim()) {
-      const scoredProducts = products.map(product => {
-        const nameScore = calculateSimilarity(product.name, searchTerm, searchTerm)
-        const descScore = calculateSimilarity(product.description, searchTerm, searchTerm) * 0.7
-        const categoryScore = calculateSimilarity(product.category, searchTerm, searchTerm) * 0.8
+      const scoredProducts = (products || []).map(product => {
+        if (!product) return null
+        
+        const nameScore = calculateSimilarity(product.name || '', searchTerm, searchTerm)
+        const descScore = calculateSimilarity(product.description || '', searchTerm, searchTerm) * 0.7
+        const categoryScore = calculateSimilarity(product.category || '', searchTerm, searchTerm) * 0.8
 
         let mappingScore = 0
-        const search = searchTerm.toLowerCase()
+        const search = (searchTerm || '').toLowerCase()
         for (const [key, categories] of Object.entries(searchMappings)) {
           if (search.includes(key) || key.includes(search)) {
-            if (categories.includes(product.category.toLowerCase())) {
+            if (categories.includes((product.category || '').toLowerCase())) {
               mappingScore = 0.95
             }
-            if (product.name.toLowerCase().includes(key)) {
+            if ((product.name || '').toLowerCase().includes(key)) {
               mappingScore = Math.max(mappingScore, 0.9)
             }
           }
         }
 
-        const searchWords = searchTerm.toLowerCase().split(/\s+/)
+        const searchWords = (searchTerm || '').toLowerCase().split(/\s+/)
         let partialScore = 0
 
         for (const word of searchWords) {
           if (word.length >= 2) {
-            if (product.name.toLowerCase().includes(word)) partialScore += 0.3
-            if (product.description.toLowerCase().includes(word)) partialScore += 0.2
-            if (product.category.toLowerCase().includes(word)) partialScore += 0.4
+            if ((product.name || '').toLowerCase().includes(word)) partialScore += 0.3
+            if ((product.description || '').toLowerCase().includes(word)) partialScore += 0.2
+            if ((product.category || '').toLowerCase().includes(word)) partialScore += 0.4
           }
         }
 
@@ -181,6 +183,8 @@ const SearchPage = () => {
           similarity: totalScore
         }
       }).filter(product => {
+        if (!product) return false
+        
         const matchesCategory = !filters.category || product.category === filters.category
         const matchesPrice = product.price >= filters.minPrice && product.price <= filters.maxPrice
         const matchesRating = product.rating >= filters.minRating
@@ -193,20 +197,22 @@ const SearchPage = () => {
 
       scoredProducts.sort((a, b) => {
         if (filters.sortBy === 'relevance') {
-          return b.similarity - a.similarity
+          return (b?.similarity || 0) - (a?.similarity || 0)
         }
         switch (filters.sortBy) {
-          case 'price-low': return a.price - b.price
-          case 'price-high': return b.price - a.price
-          case 'name': return a.name.localeCompare(b.name)
-          case 'rating': return b.rating - a.rating
-          default: return b.similarity - a.similarity
+          case 'price-low': return (a?.price || 0) - (b?.price || 0)
+          case 'price-high': return (b?.price || 0) - (a?.price || 0)
+          case 'name': return (a?.name || '').localeCompare(b?.name || '')
+          case 'rating': return (b?.rating || 0) - (a?.rating || 0)
+          default: return (b?.similarity || 0) - (a?.similarity || 0)
         }
       })
 
       filtered = scoredProducts
     } else {
-      filtered = products.filter(product => {
+      filtered = (products || []).filter(product => {
+        if (!product) return false
+        
         const matchesCategory = !filters.category || product.category === filters.category
         const matchesPrice = product.price >= filters.minPrice && product.price <= filters.maxPrice
         const matchesRating = product.rating >= filters.minRating
@@ -217,16 +223,16 @@ const SearchPage = () => {
 
       switch (filters.sortBy) {
         case 'price-low':
-          filtered.sort((a, b) => a.price - b.price)
+          filtered.sort((a, b) => (a?.price || 0) - (b?.price || 0))
           break
         case 'price-high':
-          filtered.sort((a, b) => b.price - a.price)
+          filtered.sort((a, b) => (b?.price || 0) - (a?.price || 0))
           break
         case 'name':
-          filtered.sort((a, b) => a.name.localeCompare(b.name))
+          filtered.sort((a, b) => (a?.name || '').localeCompare(b?.name || ''))
           break
         case 'rating':
-          filtered.sort((a, b) => b.rating - a.rating)
+          filtered.sort((a, b) => (b?.rating || 0) - (a?.rating || 0))
           break
       }
     }
@@ -536,15 +542,15 @@ const SearchPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
               {filteredProducts.map((product, index) => (
                 <div 
-                  key={product.id} 
+                  key={product?.id || index} 
                   className="product-card bg-white rounded-2xl overflow-hidden shadow-md animate-fade-in" 
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
-                  <Link href={`/product/${product.id}`}>
+                  <Link href={`/product/${product?.id || ''}`}>
                     <div className="relative h-56 group">
                       <Image
-                        src={product.image}
-                        alt={product.name}
+                        src={product?.image || '/placeholder-image.jpg'}
+                        alt={product?.name || 'Product image'}
                         fill
                         className="object-contain transition-transform duration-500 group-hover:scale-110"
                       />
@@ -553,31 +559,30 @@ const SearchPage = () => {
                           variant="secondary" 
                           className="bg-white text-orange-600 border border-orange-200 shadow-sm"
                         >
-                          {product.brand}
+                          {product?.brand || 'Unknown'}
                         </Badge>
                       </div>
                     </div>
                   </Link>
-                  
                   <div className="p-4">
-                    <Link href={`/product/${product.id}`}>
+                    <Link href={`/product/${product?.id || ''}`}>
                       <h3 className="font-bold text-gray-800 mb-2 hover:text-orange-600 transition-colors">
-                        {product.name}
+                        {product?.name || 'Unknown Product'}
                       </h3>
                     </Link>
                     
                     <div className="flex justify-between items-center mb-3">
-                      <p className="text-xl font-bold text-orange-600">৳{product.price.toFixed(2)}</p>
+                      <p className="text-xl font-bold text-orange-600">৳{product?.price?.toFixed(2) || '0.00'}</p>
                       <div className="flex items-center">
                         <div className="rating-stars flex mr-1">
                           {[...Array(5)].map((_, i) => (
                             <Star 
                               key={i} 
-                              className={`star w-4 h-4 ${i < Math.floor(product.rating) ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
+                              className={`star w-4 h-4 ${i < Math.floor(product?.rating || 0) ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
                             />
                           ))}
                         </div>
-                        <span className="text-sm text-gray-500">({product.reviews})</span>
+                        <span className="text-sm text-gray-500">({product?.reviews || 0})</span>
                       </div>
                     </div>
                     
@@ -586,9 +591,9 @@ const SearchPage = () => {
                         variant="secondary" 
                         className="text-xs bg-gray-100 text-gray-700"
                       >
-                        {product.category}
+                        {product?.category || 'Uncategorized'}
                       </Badge>
-                      {product.stock > 0 ? (
+                      {(product?.stock || 0) > 0 ? (
                         <Badge variant="outline" className="text-green-600 border-green-600 text-xs">
                           In Stock
                         </Badge>
@@ -600,18 +605,18 @@ const SearchPage = () => {
                     </div>
                     
                     <div 
-                      className={`description-container ${expandedDescriptionId === product.id ? 'description-expanded' : 'description-collapsed'}`}
+                      className={`description-container ${expandedDescriptionId === product?.id ? 'description-expanded' : 'description-collapsed'}`}
                     >
                       <p className="text-sm text-gray-600">
-                        {product.description}
+                        {product?.description || 'No description available.'}
                       </p>
                     </div>
                     
                     <button 
-                      onClick={() => toggleDescription(product.id)}
+                      onClick={() => toggleDescription(product?.id || '')}
                       className="text-xs text-orange-500 mt-1 flex items-center"
                     >
-                      {expandedDescriptionId === product.id ? (
+                      {expandedDescriptionId === product?.id ? (
                         <>
                           Show less <ChevronUp className="ml-1 w-4 h-4" />
                         </>
@@ -623,9 +628,9 @@ const SearchPage = () => {
                     </button>
                     <Button 
                       className="w-full mt-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow transition-all duration-300 hover:shadow-md"
-                      disabled={product.stock === 0}
+                      disabled={(product?.stock || 0) === 0}
                     >
-                      {product.stock > 0 ? 'Add to Cart' : 'Notify Me'}
+                      {(product?.stock || 0) > 0 ? 'Add to Cart' : 'Notify Me'}
                     </Button>
                   </div>
                 </div>
@@ -660,8 +665,9 @@ const SearchPage = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
+
 export default function SearchPageWrapper() {
   return (
     <Suspense fallback={
@@ -685,5 +691,5 @@ export default function SearchPageWrapper() {
     }>
       <SearchPage />
     </Suspense>
-  );
+  )
 }
